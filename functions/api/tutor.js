@@ -49,16 +49,7 @@ Khi có hàm số, BPT hoặc tam giác, chèn 1 khối JSON trong \`\`\`mathplo
             if (isUnifiedKey) headers["x-goog-api-key"] = apiKey;
 
             for (const model of fastModels) {
-                const generationConfig = {
-                    temperature: 0.3,
-                    maxOutputTokens: 2500
-                };
-                if (model.includes("2.5")) {
-                    generationConfig.thinkingConfig = { thinkingBudget: 0 };
-                } else {
-                    generationConfig.thinkingConfig = { thinkingLevel: "minimal" };
-                }
-
+                const generationConfig = { temperature: 0.3, maxOutputTokens: 2500 }; if (model.includes("2.5")) { generationConfig.thinkingConfig = { thinkingBudget: 0 }; } else { generationConfig.thinkingConfig = { thinkingLevel: "low" }; }
                 const url = isUnifiedKey
                     ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`
                     : `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
