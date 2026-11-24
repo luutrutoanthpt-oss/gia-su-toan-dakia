@@ -19,7 +19,7 @@ Khi có hàm số, BPT hoặc tam giác, chèn 1 khối JSON trong \`\`\`mathplo
 - Miền nghiệm BPT: \`\`\`mathplot {"type":"ineq","a":1,"b":2,"c":4,"op":"<=","label":"x + 2y <= 4"} \`\`\`
 - Tam giác: \`\`\`mathplot {"type":"triangle","AB":5,"AC":7,"angleA":60,"label":"Tam giác ABC"} \`\`\``;
 
-        const contents = (Array.isArray(history) ? history : []).slice(-4).map(t => ({
+        const baseContents = (Array.isArray(history) ? history : []).slice(-4).map(t => ({
             role: t.role === "model" ? "model" : "user",
             parts: [{ text: t.text }]
         }));
@@ -30,35 +30,50 @@ Khi có hàm số, BPT hoặc tam giác, chèn 1 khối JSON trong \`\`\`mathplo
             const mimeType = (meta.match(/data:(image\/[a-zA-Z0-9+.-]+);base64/) || [])[1] || "image/jpeg";
             currentParts.push({ inlineData: { mimeType, data: base64Data } });
         }
-        contents.push({ role: "user", parts: currentParts });
+        baseContents.push({ role: "user", parts: currentParts });
 
-        // Xáo trộn 4 Key để chia đều tải
-        const shuffledKeys = [...rawKeys].sort(() => Math.random() - 0.5);
+        const orderedKeys = [...rawKeys].reverse();
 
-        // Duyệt theo từng Model ổn định nhất trước qua TẤT CẢ các Key
+        // Ưu tiên Gemini Flash, nếu nghẽn giờ cao điểm sẽ tự động chuyển sang Gemma 3 (không bao giờ nghẽn)
         const fastModels = [
-            "gemini-2.5-flash-lite",
             "gemini-2.5-flash",
-            "gemini-3.8-flash-lite",
+            "gemini-2.5-flash-lite",
             "gemini-3.8-flash",
-            "gemini-3.7-flash"
+            "gemini-3.7-flash",
+            "gemma-3-27b-it",
+            "gemma-3-12b-it"
         ];
         let lastError = "";
 
-        for (const model of fastModels) {
-            for (const apiKey of shuffledKeys) {
-                const isUnifiedKey = apiKey.startsWith("AQ.");
-                const headers = { "Content-Type": "application/json" };
-                if (isUnifiedKey) headers["x-goog-api-key"] = apiKey;
+        for (const apiKey of orderedKeys) {
+            const isUnifiedKey = apiKey.startsWith("AQ.");
+            const headers = { "Content-Type": "application/json" };
+            if (isUnifiedKey) headers["x-goog-api-key"] = apiKey;
 
+            for (const model of fastModels) {
+                const isGemma = model.startsWith("gemma-");
                 const generationConfig = {
                     temperature: 0.3,
                     maxOutputTokens: 2500
                 };
-                if (model.includes("2.5")) {
-                    generationConfig.thinkingConfig = { thinkingBudget: 0 };
+
+                let payload;
+                if (isGemma) {
+                    // Gemma 3 không nhận systemInstruction riêng và thinkingConfig, gộp trực tiếp vào hội thoại
+                    const gemmaContents = JSON.parse(JSON.stringify(baseContents));
+                    gemmaContents[0].parts[0].text = `${systemInstruction}\n\n---\nHọc sinh hỏi: ${gemmaContents[0].parts[0].text}`;
+                    payload = { contents: gemmaContents, generationConfig };
                 } else {
-                    generationConfig.thinkingConfig = { thinkingLevel: "low" };
+                    if (model.includes("2.5")) {
+                        generationConfig.thinkingConfig = { thinkingBudget: 0 };
+                    } else {
+                        generationConfig.thinkingConfig = { thinkingLevel: "low" };
+                    }
+                    payload = {
+                        systemInstruction: { parts: [{ text: systemInstruction }] },
+                        contents: baseContents,
+                        generationConfig
+                    };
                 }
 
                 const url = isUnifiedKey
@@ -68,11 +83,7 @@ Khi có hàm số, BPT hoặc tam giác, chèn 1 khối JSON trong \`\`\`mathplo
                 const res = await fetch(url, {
                     method: "POST",
                     headers,
-                    body: JSON.stringify({
-                        systemInstruction: { parts: [{ text: systemInstruction }] },
-                        contents,
-                        generationConfig
-                    })
+                    body: JSON.stringify(payload)
                 });
 
                 if (res.ok && res.body) {
@@ -87,13 +98,13 @@ Khi có hàm số, BPT hoặc tam giác, chèn 1 khối JSON trong \`\`\`mathplo
 
                 const errData = await res.json().catch(() => ({}));
                 lastError = `[Key ...${apiKey.slice(-4)} | ${model}]: ${errData.error?.message || res.status}`;
-                // Nếu model này đang quá tải chung trên toàn máy chủ Google (503), nhảy sang model khác ngay
-                if (res.status === 503 || res.status === 404) break;
+                // Chỉ thoát vòng lặp Key khi sai khóa (400/403); nếu hết lượt (429) hoặc bận (503) vẫn thử sang Gemma 3
+                if (res.status === 400 || res.status === 403) break;
             }
         }
 
         return new Response(JSON.stringify({
-            error: `Máy chủ Google đang quá tải tạm thời hoặc hết lượt hôm nay. Em đợi 5 giây rồi bấm Gửi lại nhé! (${lastError})`
+            error: `Máy chủ Google đang bận. Em bấm Gửi lại nhé! (${lastError})`
         }), {
             status: 502,
             headers: { "Content-Type": "application/json" }
