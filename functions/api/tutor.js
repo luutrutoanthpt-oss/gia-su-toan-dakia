@@ -1,3 +1,4 @@
+// v3
 export async function onRequestPost(context) {
     const { request, env } = context;
     const rawKeys = (env.GEMINI_API_KEY || "").split(",").map(k => k.trim()).filter(Boolean);
