@@ -535,3 +535,25 @@ function loadProgressTab() {
         `).join("");
     }
 }
+// Hàm chèn ký hiệu Toán học vào ô nhập chat của học sinh
+window.insertMathSymbol = function(symbol) {
+    const input = document.getElementById('chat-input') || document.querySelector('input[placeholder*="Nhập đề bài"], textarea[placeholder*="Nhập đề bài"]');
+    if (!input) return;
+
+    const start = input.selectionStart || input.value.length;
+    const end = input.selectionEnd || input.value.length;
+    const text = input.value;
+
+    // Tự động bọc trong dấu $...$ nếu học sinh chưa mở dấu $
+    const before = text.slice(0, start);
+    const dollarCount = (before.match(/\$/g) || []).length;
+    const wrapped = (dollarCount % 2 === 0) ? `$${symbol}$` : symbol;
+
+    input.value = before + wrapped + text.slice(end);
+    input.focus();
+
+    // Đặt con trỏ vào giữa ngoặc {} đối với căn thức/phân số để gõ tiếp ngay
+    const bracePos = wrapped.indexOf('{}');
+    const newPos = bracePos !== -1 ? start + bracePos + 1 : start + wrapped.length;
+    input.setSelectionRange(newPos, newPos);
+};
