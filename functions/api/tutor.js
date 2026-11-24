@@ -33,56 +33,53 @@ Chỉ chèn 1 khối lệnh JSON gọn nhẹ đặt trong \`\`\`mathplot ... \`\
         }
         contents.push({ role: "user", parts: currentParts });
 
-        // Đa tuyến model: Flash -> Pro -> Gemma (khác hàng đợi, chống quá tải giờ cao điểm)
-        const fastModels = [
+        // Chỉ dùng các model Gemini chuẩn hỗ trợ Streaming & Vision + tự thử lại 2 vòng khi gặp cao điểm
+        const models = [
             "gemini-2.5-flash-lite",
             "gemini-2.5-flash",
             "gemini-3.8-flash-lite",
             "gemini-3.8-flash",
-            "gemini-2.5-pro",
-            "gemma-3-27b-it"
+            "gemini-3.7-flash",
+            "gemini-2.5-pro"
         ];
         let lastError = "";
 
-        for (const model of fastModels) {
-            const isGemma = model.startsWith("gemma");
-            const finalContents = isGemma
-                ? [{ role: "user", parts: [{ text: systemInstruction + "\n\n" + (message || "") }] }]
-                : contents;
-
-            const payload = {
-                contents: finalContents,
-                generationConfig: {
-                    temperature: 0.3,
-                    maxOutputTokens: 900
-                }
-            };
-
-            if (!isGemma) {
-                payload.systemInstruction = { parts: [{ text: systemInstruction }] };
-            }
-            if (model.includes("2.5-flash")) {
-                payload.generationConfig.thinkingConfig = { thinkingBudget: 0 };
-            }
-
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
-
-            if (res.ok && res.body) {
-                return new Response(res.body, {
-                    status: 200,
-                    headers: {
-                        "Content-Type": "text/event-stream; charset=utf-8",
-                        "Cache-Control": "no-cache"
+        for (let round = 0; round < 2; round++) {
+            for (const model of models) {
+                const payload = {
+                    systemInstruction: { parts: [{ text: systemInstruction }] },
+                    contents,
+                    generationConfig: {
+                        temperature: 0.3,
+                        maxOutputTokens: 900
                     }
-                });
-            }
+                };
+                if (model.includes("2.5-flash")) {
+                    payload.generationConfig.thinkingConfig = { thinkingBudget: 0 };
+                }
 
-            const errData = await res.json().catch(() => ({}));
-            lastError = `[${model}]: ${errData.error?.message || res.status}`;
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok && res.body) {
+                    return new Response(res.body, {
+                        status: 200,
+                        headers: {
+                            "Content-Type": "text/event-stream; charset=utf-8",
+                            "Cache-Control": "no-cache"
+                        }
+                    });
+                }
+
+                const errData = await res.json().catch(() => ({}));
+                lastError = `[${model}]: ${errData.error?.message || res.status}`;
+                if (res.status === 503 || res.status === 429) {
+                    await new Promise(r => setTimeout(r, 350));
+                }
+            }
         }
 
         return new Response(JSON.stringify({
