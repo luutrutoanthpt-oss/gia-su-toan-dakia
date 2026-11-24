@@ -27,59 +27,74 @@ export async function onRequestPost(context) {
         }
         contents.push({ role: "user", parts: currentParts });
 
-        // Tự động lấy danh sách các model đang hoạt động thực tế trên khóa API của Thầy/Cô
-        let candidateModels = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"];
+        // Danh sách ưu tiên các model hỗ trợ đọc ảnh (Vision/Multimodal) ổn định nhất
+        let candidateModels = [
+            "gemini-2.5-flash",
+            "gemini-2.5-flash-lite",
+            "gemini-2.0-flash",
+            "gemini-2.0-flash-lite"
+        ];
+
         try {
             const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
             if (listRes.ok) {
                 const listData = await listRes.json();
                 const available = (listData.models || [])
-                    .filter(m =>
-                        m.supportedGenerationMethods?.includes("generateContent") &&
-                        m.name.includes("flash") &&
-                        !m.name.includes("thinking") &&
-                        !m.name.includes("image") &&
-                        !m.name.includes("audio")
-                    )
+                    .filter(m => {
+                        const n = m.name.toLowerCase();
+                        return m.supportedGenerationMethods?.includes("generateContent") &&
+                            n.includes("flash") &&
+                            !n.includes("tts") &&
+                            !n.includes("thinking") &&
+                            !n.includes("image") &&
+                            !n.includes("audio") &&
+                            !n.includes("live") &&
+                            !n.includes("robotics");
+                    })
                     .map(m => m.name.replace("models/", ""))
-                    .reverse(); // Ưu tiên bản mới nhất lên đầu
+                    .reverse();
                 if (available.length > 0) {
-                    candidateModels = [...new Set([...available, ...candidateModels])];
+                    candidateModels = [...new Set([...candidateModels, ...available])];
                 }
             }
         } catch (_) {}
 
         const errors = [];
 
-        for (const model of candidateModels.slice(0, 6)) {
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    systemInstruction: { parts: [{ text: systemInstruction }] },
-                    contents,
-                    generationConfig: { temperature: 0.4, maxOutputTokens: 1500 }
-                })
-            });
-
-            const data = await res.json();
-            if (res.ok) {
-                const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Em gửi lại đề bài rõ hơn nhé!";
-                return new Response(JSON.stringify({ reply }), {
-                    status: 200,
-                    headers: { "Content-Type": "application/json" }
+        // Chạy tối đa 2 vòng qua các model hỗ trợ ảnh để vượt qua cao điểm quá tải
+        for (let round = 0; round < 2; round++) {
+            for (const model of candidateModels.slice(0, 6)) {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        systemInstruction: { parts: [{ text: systemInstruction }] },
+                        contents,
+                        generationConfig: { temperature: 0.4, maxOutputTokens: 1500 }
+                    })
                 });
-            }
 
-            errors.push(`[${model}]: ${data.error?.message || res.status}`);
-            // Nghỉ ngắn 400ms nếu máy chủ Google đang bận trước khi thử model kế tiếp
-            if (res.status === 503 || res.status === 429) {
-                await new Promise(r => setTimeout(r, 400));
+                const data = await res.json();
+                if (res.ok) {
+                    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Em gửi lại đề bài rõ hơn nhé!";
+                    return new Response(JSON.stringify({ reply }), {
+                        status: 200,
+                        headers: { "Content-Type": "application/json" }
+                    });
+                }
+
+                if (round === 1) {
+                    errors.push(`[${model}]: ${data.error?.message || res.status}`);
+                }
+
+                if (res.status === 503 || res.status === 429) {
+                    await new Promise(r => setTimeout(r, 600));
+                }
             }
         }
 
         return new Response(JSON.stringify({
-            error: `Không gọi được AI. Chi tiết: ${errors.join(" | ")}`
+            error: `Máy chủ Google AI đang quá tải diện rộng lúc này, Thầy/Cô thử bấm Gửi lại sau 10 giây nhé! (${errors.slice(0, 3).join(" | ")})`
         }), {
             status: 502,
             headers: { "Content-Type": "application/json" }
