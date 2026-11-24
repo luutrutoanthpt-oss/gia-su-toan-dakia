@@ -7,7 +7,6 @@ export async function onRequestPost(context) {
             headers: { "Content-Type": "application/json" }
         });
     }
-    const apiKey = rawKeys[Math.floor(Math.random() * rawKeys.length)];
 
     try {
         const body = await request.json();
@@ -33,63 +32,64 @@ Khi có hàm số, BPT hoặc tam giác, chèn 1 khối JSON trong \`\`\`mathplo
         }
         contents.push({ role: "user", parts: currentParts });
 
-        const models = [
+        // Xáo trộn thứ tự các API Key để chia đều tải cho 47 học sinh, đồng thời tự động chuyển sang Key kế tiếp nếu Key hiện tại hết lượt
+        const shuffledKeys = [...rawKeys].sort(() => Math.random() - 0.5);
+        const fastModels = [
             "gemini-3.8-flash-lite",
             "gemini-3.7-flash-lite",
-            "gemini-3.7-flash",
-            "gemini-3.6-flash",
             "gemini-2.5-flash-lite",
+            "gemini-3.7-flash",
             "gemini-2.5-flash",
             "gemini-3.8-flash",
             "gemini-3.1-pro-preview"
         ];
         let lastError = "";
 
-        // Hỗ trợ cả khóa mới bắt đầu bằng AQ... (qua Header) lẫn khóa cũ AIza... (qua URL)
-        const isUnifiedKey = apiKey.startsWith("AQ.");
-        const headers = { "Content-Type": "application/json" };
-        if (isUnifiedKey) {
-            headers["x-goog-api-key"] = apiKey;
-        }
+        for (const model of fastModels) {
+            for (const apiKey of shuffledKeys) {
+                const isUnifiedKey = apiKey.startsWith("AQ.");
+                const headers = { "Content-Type": "application/json" };
+                if (isUnifiedKey) headers["x-goog-api-key"] = apiKey;
 
-        for (const model of models) {
-            const generationConfig = {
-                temperature: 0.3,
-                maxOutputTokens: 2500
-            };
+                const generationConfig = {
+                    temperature: 0.3,
+                    maxOutputTokens: 2500
+                };
+                if (model.includes("2.5")) {
+                    generationConfig.thinkingConfig = { thinkingBudget: 0 };
+                } else {
+                    generationConfig.thinkingConfig = { thinkingLevel: "minimal" };
+                }
 
-            if (model.includes("2.5")) {
-                generationConfig.thinkingConfig = { thinkingBudget: 0 };
-            } else {
-                generationConfig.thinkingConfig = { thinkingLevel: "minimal" };
-            }
+                const url = isUnifiedKey
+                    ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`
+                    : `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
 
-            const url = isUnifiedKey
-                ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`
-                : `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
-
-            const res = await fetch(url, {
-                method: "POST",
-                headers,
-                body: JSON.stringify({
-                    systemInstruction: { parts: [{ text: systemInstruction }] },
-                    contents,
-                    generationConfig
-                })
-            });
-
-            if (res.ok && res.body) {
-                return new Response(res.body, {
-                    status: 200,
-                    headers: {
-                        "Content-Type": "text/event-stream; charset=utf-8",
-                        "Cache-Control": "no-cache"
-                    }
+                const res = await fetch(url, {
+                    method: "POST",
+                    headers,
+                    body: JSON.stringify({
+                        systemInstruction: { parts: [{ text: systemInstruction }] },
+                        contents,
+                        generationConfig
+                    })
                 });
-            }
 
-            const errData = await res.json().catch(() => ({}));
-            lastError = `[${model}]: ${errData.error?.message || res.status}`;
+                if (res.ok && res.body) {
+                    return new Response(res.body, {
+                        status: 200,
+                        headers: {
+                            "Content-Type": "text/event-stream; charset=utf-8",
+                            "Cache-Control": "no-cache"
+                        }
+                    });
+                }
+
+                const errData = await res.json().catch(() => ({}));
+                lastError = `[${model}]: ${errData.error?.message || res.status}`;
+                // Nếu lỗi do sai tên model (404) thì thoát vòng lặp key để thử model tiếp theo ngay
+                if (res.status === 404) break;
+            }
         }
 
         return new Response(JSON.stringify({
