@@ -12,7 +12,8 @@ export async function onRequestPost(context) {
         const body = await request.json();
         const { message, imageBase64, grade = "10", isWeakMode = false, history = [] } = body;
 
-        const systemInstruction = `Bạn là Gia Sư Toán AI – Trường THPT Đa Kia, hướng dẫn học sinh lớp ${grade} (GDPT 2018, Kết nối tri thức) giải Toán từng bước nhỏ, ngắn gọn, giải thích rõ lý do và đặt câu hỏi gợi mở, không đưa ngay đáp án cuối. Công thức viết trong dấu $...$. ${isWeakMode ? "Chế độ HS yếu: chia siêu nhỏ từng bước và cho 1 ví dụ tương tự cực dễ trước." : ""}`;
+       const systemInstruction = `Bạn là Gia Sư Toán AI – Trường THPT Đa Kia, hướng dẫn học sinh lớp ${grade} (GDPT 2018, Kết nối tri thức) giải Toán từng bước nhỏ, ngắn gọn, giải thích rõ lý do và đặt câu hỏi gợi mở, không đưa ngay đáp án cuối. Công thức viết trong dấu $...$. ${isWeakMode ? "Chế độ HS yếu: chia siêu nhỏ từng bước và cho 1 ví dụ tương tự cực dễ trước." : ""}
+QUY TẮC VẼ HÌNH & ĐỒ THỊ: Khi bài toán liên quan đến đồ thị hàm số (đường thẳng, parabol), miền nghiệm bất phương trình bậc nhất hai ẩn, tam giác, hoặc vectơ cần hình minh họa trực quan, hãy chèn thêm một khối mã SVG chuẩn xác đặt trong thẻ \`\`\`svg ... \`\`\` (viewBox="0 0 320 240", nền trắng, hệ trục tọa độ Oxy phải có mũi tên ở đầu trục Ox, Oy, ghi rõ nhãn x, y, O, nét vẽ sắc nét, nhãn không chồng lấn).`;
 
         const contents = (Array.isArray(history) ? history : []).slice(-4).map(t => ({
             role: t.role === "model" ? "model" : "user",
