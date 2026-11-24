@@ -12,8 +12,13 @@ export async function onRequestPost(context) {
         const body = await request.json();
         const { message, imageBase64, grade = "10", isWeakMode = false, history = [] } = body;
 
-        const systemInstruction = `Bạn là Gia Sư Toán AI – Trường THPT Đa Kia, hướng dẫn học sinh lớp ${grade} (GDPT 2018, Kết nối tri thức) giải Toán từng bước nhỏ, ngắn gọn, giải thích rõ lý do và đặt câu hỏi gợi mở, không đưa ngay đáp án cuối. Công thức viết trong dấu $...$. ${isWeakMode ? "Chế độ HS yếu: chia siêu nhỏ từng bước và cho 1 ví dụ tương tự cực dễ trước." : ""}
-QUY TẮC VẼ HÌNH & ĐỒ THỊ: Khi bài toán liên quan đến đồ thị hàm số (đường thẳng, parabol), miền nghiệm bất phương trình bậc nhất hai ẩn, tam giác, hoặc vectơ cần hình minh họa trực quan, hãy chèn thêm một khối mã SVG chuẩn xác đặt trong thẻ \`\`\`svg ... \`\`\` (viewBox="0 0 320 240", nền trắng, hệ trục tọa độ Oxy phải có mũi tên ở đầu trục Ox, Oy, ghi rõ nhãn x, y, O, nét vẽ sắc nét, nhãn không chồng lấn).`;
+        const systemInstruction = `Bạn là Gia Sư Toán AI – Trường THPT Đa Kia, hướng dẫn học sinh lớp ${grade} (GDPT 2018, Kết nối tri thức) giải Toán từng bước ngắn gọn, súc tích, gợi mở từng bước nhỏ, không đưa ngay đáp án cuối. Công thức đặt trong dấu $...$. ${isWeakMode ? "Chế độ HS yếu: chia siêu nhỏ từng bước, cho 1 ví dụ tương tự cực dễ trước." : ""}
+QUY TẮC VẼ HÌNH TỨC THÌ (BẮT BUỘC DÙNG KHI CÓ HÀM SỐ, BPT HOẶC TAM GIÁC):
+Thay vì viết mã SVG dài, chỉ cần chèn 1 dòng lệnh JSON gọn nhẹ đặt trong \`\`\`mathplot ... \`\`\` theo đúng 1 trong 4 mẫu sau:
+1. Parabol y = ax^2 + bx + c: \`\`\`mathplot {"type":"parabola","a":1,"b":-2,"c":-3,"label":"y = x^2 - 2x - 3"} \`\`\`
+2. Đường thẳng y = ax + b: \`\`\`mathplot {"type":"line","a":2,"b":-1,"label":"y = 2x - 1"} \`\`\`
+3. Miền nghiệm BPT ax + by <= c (hoặc >=, <, >): \`\`\`mathplot {"type":"ineq","a":1,"b":2,"c":4,"op":"<=","label":"x + 2y <= 4"} \`\`\`
+4. Tam giác ABC biết 3 cạnh hoặc 2 cạnh 1 góc: \`\`\`mathplot {"type":"triangle","AB":5,"AC":7,"angleA":60,"label":"Tam giác ABC"} \`\`\``;
 
         const contents = (Array.isArray(history) ? history : []).slice(-4).map(t => ({
             role: t.role === "model" ? "model" : "user",
@@ -28,48 +33,47 @@ QUY TẮC VẼ HÌNH & ĐỒ THỊ: Khi bài toán liên quan đến đồ thị
         }
         contents.push({ role: "user", parts: currentParts });
 
-        // Danh sách các model Gemini mới nhất (3.8, 3.7, 3.6, 2.5) hỗ trợ Streaming & Vision siêu nhanh
+        // Gọi thẳng model nhanh nhất và tắt thinkingBudget để phản hồi dưới 0.8 giây
         const fastModels = [
-            "gemini-3.8-flash-lite",
-            "gemini-3.8-flash",
-            "gemini-3.7-flash",
-            "gemini-3.6-flash",
+            "gemini-2.5-flash-lite",
             "gemini-2.5-flash",
-            "gemini-2.5-flash-lite"
+            "gemini-3.8-flash-lite",
+            "gemini-3.8-flash"
         ];
         let lastError = "";
 
-        for (let round = 0; round < 2; round++) {
-            for (const model of fastModels) {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        systemInstruction: { parts: [{ text: systemInstruction }] },
-                        contents,
-                        generationConfig: {
-                            temperature: 0.35,
-                            maxOutputTokens: 1500
-                        }
-                    })
-                });
-
-                if (res.ok && res.body) {
-                    return new Response(res.body, {
-                        status: 200,
-                        headers: {
-                            "Content-Type": "text/event-stream; charset=utf-8",
-                            "Cache-Control": "no-cache"
-                        }
-                    });
+        for (const model of fastModels) {
+            const payload = {
+                systemInstruction: { parts: [{ text: systemInstruction }] },
+                contents,
+                generationConfig: {
+                    temperature: 0.3,
+                    maxOutputTokens: 900
                 }
-
-                const errData = await res.json().catch(() => ({}));
-                lastError = `[${model}]: ${errData.error?.message || res.status}`;
-                if (res.status === 503 || res.status === 429) {
-                    await new Promise(r => setTimeout(r, 400));
-                }
+            };
+            // Tắt suy nghĩ ngầm trên dòng 2.5 để tốc độ nhả chữ tức thì
+            if (model.includes("2.5")) {
+                payload.generationConfig.thinkingConfig = { thinkingBudget: 0 };
             }
+
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok && res.body) {
+                return new Response(res.body, {
+                    status: 200,
+                    headers: {
+                        "Content-Type": "text/event-stream; charset=utf-8",
+                        "Cache-Control": "no-cache"
+                    }
+                });
+            }
+
+            const errData = await res.json().catch(() => ({}));
+            lastError = `[${model}]: ${errData.error?.message || res.status}`;
         }
 
         return new Response(JSON.stringify({
