@@ -195,20 +195,94 @@
                     <button onclick="clearSelectedImage()" class="text-xs text-red-600 font-semibold hover:underline">Xóa ảnh</button>
                 </div>
 
-                <!-- Thanh phím tắt ký hiệu Toán học -->
-                <div class="px-3 pt-2 pb-1 bg-slate-50 border-t border-slate-200 flex flex-wrap gap-1.5" id="math-toolbar">
-                    <button type="button" onclick="insertMathSymbol('x^2')" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded shadow-sm">x²</button>
-                    <button type="button" onclick="insertMathSymbol('^2')" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded shadow-sm">□²</button>
-                    <button type="button" onclick="insertMathSymbol('\\sqrt{}')" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded shadow-sm">√□</button>
-                    <button type="button" onclick="insertMathSymbol('\\frac{a}{b}')" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded shadow-sm">a/b</button>
-                    <button type="button" onclick="insertMathSymbol('\\vec{u}')" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded shadow-sm">u⃗</button>
-                    <button type="button" onclick="insertMathSymbol('\\Delta')" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded shadow-sm">Δ</button>
-                    <button type="button" onclick="insertMathSymbol('\\le')" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded shadow-sm">≤</button>
-                    <button type="button" onclick="insertMathSymbol('\\ge')" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded shadow-sm">≥</button>
-                    <button type="button" onclick="insertMathSymbol('\\neq')" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded shadow-sm">≠</button>
-                    <button type="button" onclick="insertMathSymbol('\\in')" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded shadow-sm">∈</button>
-                    <button type="button" onclick="insertMathSymbol('\\cup')" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded shadow-sm">∪</button>
-                    <button type="button" onclick="insertMathSymbol('\\cap')" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded shadow-sm">∩</button>
+                <!-- Bảng công thức & ký hiệu Toán 10 đa ngăn -->
+                <div class="px-3 pt-2 pb-1.5 bg-slate-50 border-t border-slate-200 space-y-1.5" id="math-toolbar">
+                    <!-- Thanh chọn nhóm chuyên đề -->
+                    <div class="flex flex-wrap items-center gap-1 text-[11px] font-semibold">
+                        <span class="text-slate-500 mr-1">Công thức:</span>
+                        <button type="button" onclick="switchMathGroup('daiso')" id="mgrp-daiso" class="math-grp-btn px-2 py-0.5 rounded bg-blue-700 text-white">Đại số & Căn</button>
+                        <button type="button" onclick="switchMathGroup('taphop')" id="mgrp-taphop" class="math-grp-btn px-2 py-0.5 rounded bg-slate-200 text-slate-700 hover:bg-slate-300">Tập hợp & Logic</button>
+                        <button type="button" onclick="switchMathGroup('vecto')" id="mgrp-vecto" class="math-grp-btn px-2 py-0.5 rounded bg-slate-200 text-slate-700 hover:bg-slate-300">Vectơ & Tọa độ</button>
+                        <button type="button" onclick="switchMathGroup('hinhhoc')" id="mgrp-hinhhoc" class="math-grp-btn px-2 py-0.5 rounded bg-slate-200 text-slate-700 hover:bg-slate-300">Lượng giác & Hình</button>
+                        <button type="button" onclick="switchMathGroup('thongke')" id="mgrp-thongke" class="math-grp-btn px-2 py-0.5 rounded bg-slate-200 text-slate-700 hover:bg-slate-300">Thống kê</button>
+                    </div>
+
+                    <!-- Nhóm 1: Đại số & Căn thức -->
+                    <div id="mpanel-daiso" class="math-panel flex flex-wrap gap-1.5">
+                        <button type="button" onclick="insertMathSymbol('x^2')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">x²</button>
+                        <button type="button" onclick="insertMathSymbol('^{}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">xⁿ</button>
+                        <button type="button" onclick="insertMathSymbol('\\sqrt{}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">√□</button>
+                        <button type="button" onclick="insertMathSymbol('\\frac{a}{b}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">a/b</button>
+                        <button type="button" onclick="insertMathSymbol('|x|')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">|x|</button>
+                        <button type="button" onclick="insertMathSymbol('\\Delta')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">Δ</button>
+                        <button type="button" onclick="insertMathSymbol('\\le')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">≤</button>
+                        <button type="button" onclick="insertMathSymbol('\\ge')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">≥</button>
+                        <button type="button" onclick="insertMathSymbol('\\neq')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">≠</button>
+                        <button type="button" onclick="insertMathSymbol('\\pm')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">±</button>
+                        <button type="button" onclick="insertMathSymbol('\\begin{cases} x + y = 1 \\\\ x - y = 0 \\end{cases}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">{ Hệ PT</button>
+                        <button type="button" onclick="insertMathSymbol('\\Leftrightarrow')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">⇔</button>
+                        <button type="button" onclick="insertMathSymbol('\\Rightarrow')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">⇒</button>
+                    </div>
+
+                    <!-- Nhóm 2: Tập hợp & Mệnh đề -->
+                    <div id="mpanel-taphop" class="math-panel hidden flex-wrap gap-1.5">
+                        <button type="button" onclick="insertMathSymbol('\\in')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">∈</button>
+                        <button type="button" onclick="insertMathSymbol('\\notin')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">∉</button>
+                        <button type="button" onclick="insertMathSymbol('\\subset')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">⊂</button>
+                        <button type="button" onclick="insertMathSymbol('\\cup')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">∪ (Hợp)</button>
+                        <button type="button" onclick="insertMathSymbol('\\cap')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">∩ (Giao)</button>
+                        <button type="button" onclick="insertMathSymbol('\\setminus')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">\ (Hiệu)</button>
+                        <button type="button" onclick="insertMathSymbol('\\emptyset')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">∅</button>
+                        <button type="button" onclick="insertMathSymbol('\\mathbb{R}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">ℝ</button>
+                        <button type="button" onclick="insertMathSymbol('\\mathbb{N}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">ℕ</button>
+                        <button type="button" onclick="insertMathSymbol('\\mathbb{Z}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">ℤ</button>
+                        <button type="button" onclick="insertMathSymbol('\\forall')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">∀</button>
+                        <button type="button" onclick="insertMathSymbol('\\exists')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">∃</button>
+                        <button type="button" onclick="insertMathSymbol('(-\\infty; +\\infty)')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">(-∞;+∞)</button>
+                    </div>
+
+                    <!-- Nhóm 3: Vectơ & Tọa độ -->
+                    <div id="mpanel-vecto" class="math-panel hidden flex-wrap gap-1.5">
+                        <button type="button" onclick="insertMathSymbol('\\vec{u}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">u⃗</button>
+                        <button type="button" onclick="insertMathSymbol('\\vec{v}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">v⃗</button>
+                        <button type="button" onclick="insertMathSymbol('\\overrightarrow{AB}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">AB⃗</button>
+                        <button type="button" onclick="insertMathSymbol('\\vec{0}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">0⃗</button>
+                        <button type="button" onclick="insertMathSymbol('|\\vec{u}|')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">|u⃗|</button>
+                        <button type="button" onclick="insertMathSymbol('\\vec{u} \\cdot \\vec{v}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">u⃗·v⃗</button>
+                        <button type="button" onclick="insertMathSymbol('(\\vec{u}, \\vec{v})')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">(u⃗,v⃗)</button>
+                        <button type="button" onclick="insertMathSymbol('\\vec{i}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">i⃗</button>
+                        <button type="button" onclick="insertMathSymbol('\\vec{j}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">j⃗</button>
+                        <button type="button" onclick="insertMathSymbol('A(x_A; y_A)')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">A(x;y)</button>
+                    </div>
+
+                    <!-- Nhóm 4: Lượng giác & Hình học -->
+                    <div id="mpanel-hinhhoc" class="math-panel hidden flex-wrap gap-1.5">
+                        <button type="button" onclick="insertMathSymbol('\\sin')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">sin</button>
+                        <button type="button" onclick="insertMathSymbol('\\cos')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">cos</button>
+                        <button type="button" onclick="insertMathSymbol('\\tan')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">tan</button>
+                        <button type="button" onclick="insertMathSymbol('\\cot')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">cot</button>
+                        <button type="button" onclick="insertMathSymbol('^\\circ')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">° (Độ)</button>
+                        <button type="button" onclick="insertMathSymbol('\\alpha')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">α</button>
+                        <button type="button" onclick="insertMathSymbol('\\beta')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">β</button>
+                        <button type="button" onclick="insertMathSymbol('\\pi')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">π</button>
+                        <button type="button" onclick="insertMathSymbol('\\widehat{ABC}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">∠ABC</button>
+                        <button type="button" onclick="insertMathSymbol('\\triangle ABC')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">△ABC</button>
+                        <button type="button" onclick="insertMathSymbol('\\perp')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">⊥</button>
+                        <button type="button" onclick="insertMathSymbol('\\parallel')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">∥</button>
+                    </div>
+
+                    <!-- Nhóm 5: Thống kê (Chương V) -->
+                    <div id="mpanel-thongke" class="math-panel hidden flex-wrap gap-1.5">
+                        <button type="button" onclick="insertMathSymbol('\\overline{x}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">x̄ (TB)</button>
+                        <button type="button" onclick="insertMathSymbol('M_e')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">Mₑ</button>
+                        <button type="button" onclick="insertMathSymbol('M_o')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">Mₒ</button>
+                        <button type="button" onclick="insertMathSymbol('Q_1')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">Q₁</button>
+                        <button type="button" onclick="insertMathSymbol('Q_2')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">Q₂</button>
+                        <button type="button" onclick="insertMathSymbol('Q_3')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">Q₃</button>
+                        <button type="button" onclick="insertMathSymbol('\\Delta_Q')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">Δ_Q</button>
+                        <button type="button" onclick="insertMathSymbol('s^2')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">s²</button>
+                        <button type="button" onclick="insertMathSymbol('\\approx')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">≈</button>
+                    </div>
                 </div>
 
                 <!-- Khu vực nhập đề bài & tải ảnh -->
