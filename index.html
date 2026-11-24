@@ -195,6 +195,22 @@
                     <button onclick="clearSelectedImage()" class="text-xs text-red-600 font-semibold hover:underline">Xóa ảnh</button>
                 </div>
 
+                <!-- Thanh phím tắt ký hiệu Toán học -->
+                <div class="px-3 pt-2 pb-1 bg-slate-50 border-t border-slate-200 flex flex-wrap gap-1.5" id="math-toolbar">
+                    <button type="button" onclick="insertMathSymbol('x^2')" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded shadow-sm">x²</button>
+                    <button type="button" onclick="insertMathSymbol('^2')" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded shadow-sm">□²</button>
+                    <button type="button" onclick="insertMathSymbol('\\sqrt{}')" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded shadow-sm">√□</button>
+                    <button type="button" onclick="insertMathSymbol('\\frac{a}{b}')" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded shadow-sm">a/b</button>
+                    <button type="button" onclick="insertMathSymbol('\\vec{u}')" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded shadow-sm">u⃗</button>
+                    <button type="button" onclick="insertMathSymbol('\\Delta')" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded shadow-sm">Δ</button>
+                    <button type="button" onclick="insertMathSymbol('\\le')" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded shadow-sm">≤</button>
+                    <button type="button" onclick="insertMathSymbol('\\ge')" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded shadow-sm">≥</button>
+                    <button type="button" onclick="insertMathSymbol('\\neq')" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded shadow-sm">≠</button>
+                    <button type="button" onclick="insertMathSymbol('\\in')" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded shadow-sm">∈</button>
+                    <button type="button" onclick="insertMathSymbol('\\cup')" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded shadow-sm">∪</button>
+                    <button type="button" onclick="insertMathSymbol('\\cap')" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded shadow-sm">∩</button>
+                </div>
+
                 <!-- Khu vực nhập đề bài & tải ảnh -->
                 <div class="p-3 bg-white border-t border-slate-200 flex items-end gap-2">
                     <label class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-700 p-2.5 rounded-xl border border-slate-300 flex items-center justify-center transition" title="Chụp ảnh hoặc tải ảnh bài tập">
