@@ -32,13 +32,15 @@ Khi có hàm số, BPT hoặc tam giác, chèn 1 khối JSON trong \`\`\`mathplo
         }
         contents.push({ role: "user", parts: currentParts });
 
-        // Đảo ngược danh sách để ưu tiên gọi ngay Key mới nhất ở cuối chuỗi trước, sau đó xoay vòng các Key còn lại
+        // Đảo ngược danh sách để ưu tiên gọi ngay Key mới nhất ở cuối chuỗi trước
         const orderedKeys = [...rawKeys].reverse();
+
+        // Sắp xếp ưu tiên các model ổn định nhất, ít bị nghẽn giờ cao điểm
         const fastModels = [
-            "gemini-2.5-flash-lite",
             "gemini-2.5-flash",
-            "gemini-3.8-flash-lite",
+            "gemini-2.5-flash-lite",
             "gemini-3.8-flash",
+            "gemini-3.8-flash-lite",
             "gemini-3.7-flash"
         ];
         let lastError = "";
@@ -49,7 +51,16 @@ Khi có hàm số, BPT hoặc tam giác, chèn 1 khối JSON trong \`\`\`mathplo
             if (isUnifiedKey) headers["x-goog-api-key"] = apiKey;
 
             for (const model of fastModels) {
-                const generationConfig = { temperature: 0.3, maxOutputTokens: 2500 }; if (model.includes("2.5")) { generationConfig.thinkingConfig = { thinkingBudget: 0 }; } else { generationConfig.thinkingConfig = { thinkingLevel: "low" }; }
+                const generationConfig = {
+                    temperature: 0.3,
+                    maxOutputTokens: 2500
+                };
+                if (model.includes("2.5")) {
+                    generationConfig.thinkingConfig = { thinkingBudget: 0 };
+                } else {
+                    generationConfig.thinkingConfig = { thinkingLevel: "low" };
+                }
+
                 const url = isUnifiedKey
                     ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`
                     : `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
@@ -76,13 +87,13 @@ Khi có hàm số, BPT hoặc tam giác, chèn 1 khối JSON trong \`\`\`mathplo
 
                 const errData = await res.json().catch(() => ({}));
                 lastError = `[Key ...${apiKey.slice(-4)} | ${model}]: ${errData.error?.message || res.status}`;
-                // Nếu Key này báo hết hạn mức (429) hoặc sai khóa (400/403), nhảy sang Key khác ngay lập tức
+                // Nếu Key này hết lượt (429) hoặc không hợp lệ (400/403), chuyển sang Key khác ngay lập tức
                 if (res.status === 429 || res.status === 400 || res.status === 403) break;
             }
         }
 
         return new Response(JSON.stringify({
-            error: `Đã kiểm tra ${rawKeys.length} Key nhưng đều đang bận hoặc hết lượt hôm nay. Chi tiết: ${lastError}`
+            error: `Máy chủ Google đang quá tải tạm thời hoặc hết lượt hôm nay. Em đợi 5 giây rồi bấm Gửi lại nhé! (${lastError})`
         }), {
             status: 502,
             headers: { "Content-Type": "application/json" }
