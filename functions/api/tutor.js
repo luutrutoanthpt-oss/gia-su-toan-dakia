@@ -32,25 +32,25 @@ Khi có hàm số, BPT hoặc tam giác, chèn 1 khối JSON trong \`\`\`mathplo
         }
         contents.push({ role: "user", parts: currentParts });
 
-        // Đảo ngược danh sách để ưu tiên gọi ngay Key mới nhất ở cuối chuỗi trước
-        const orderedKeys = [...rawKeys].reverse();
+        // Xáo trộn 4 Key để chia đều tải
+        const shuffledKeys = [...rawKeys].sort(() => Math.random() - 0.5);
 
-        // Sắp xếp ưu tiên các model ổn định nhất, ít bị nghẽn giờ cao điểm
+        // Duyệt theo từng Model ổn định nhất trước qua TẤT CẢ các Key
         const fastModels = [
-            "gemini-2.5-flash",
             "gemini-2.5-flash-lite",
-            "gemini-3.8-flash",
+            "gemini-2.5-flash",
             "gemini-3.8-flash-lite",
+            "gemini-3.8-flash",
             "gemini-3.7-flash"
         ];
         let lastError = "";
 
-        for (const apiKey of orderedKeys) {
-            const isUnifiedKey = apiKey.startsWith("AQ.");
-            const headers = { "Content-Type": "application/json" };
-            if (isUnifiedKey) headers["x-goog-api-key"] = apiKey;
+        for (const model of fastModels) {
+            for (const apiKey of shuffledKeys) {
+                const isUnifiedKey = apiKey.startsWith("AQ.");
+                const headers = { "Content-Type": "application/json" };
+                if (isUnifiedKey) headers["x-goog-api-key"] = apiKey;
 
-            for (const model of fastModels) {
                 const generationConfig = {
                     temperature: 0.3,
                     maxOutputTokens: 2500
@@ -87,8 +87,8 @@ Khi có hàm số, BPT hoặc tam giác, chèn 1 khối JSON trong \`\`\`mathplo
 
                 const errData = await res.json().catch(() => ({}));
                 lastError = `[Key ...${apiKey.slice(-4)} | ${model}]: ${errData.error?.message || res.status}`;
-                // Nếu Key này hết lượt (429) hoặc không hợp lệ (400/403), chuyển sang Key khác ngay lập tức
-                if (res.status === 429 || res.status === 400 || res.status === 403) break;
+                // Nếu model này đang quá tải chung trên toàn máy chủ Google (503), nhảy sang model khác ngay
+                if (res.status === 503 || res.status === 404) break;
             }
         }
 
