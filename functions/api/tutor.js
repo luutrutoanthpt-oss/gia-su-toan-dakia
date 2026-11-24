@@ -12,9 +12,9 @@ export async function onRequestPost(context) {
         const body = await request.json();
         const { message, imageBase64, grade = "10", isWeakMode = false, history = [] } = body;
 
-        const systemInstruction = `Bạn là Gia Sư Toán AI – Trường THPT Đa Kia, hướng dẫn học sinh lớp ${grade} (GDPT 2018, bộ sách Kết nối tri thức) giải Toán từng bước nhỏ, giải thích rõ tại sao làm bước đó và đặt câu hỏi gợi mở, không đưa ngay đáp án cuối. Công thức viết trong dấu $...$. ${isWeakMode ? "Chế độ HS yếu: chia siêu nhỏ từng bước và cho 1 ví dụ tương tự cực dễ trước." : ""}`;
+        const systemInstruction = `Bạn là Gia Sư Toán AI – Trường THPT Đa Kia, hướng dẫn học sinh lớp ${grade} (GDPT 2018, Kết nối tri thức) giải Toán từng bước nhỏ, ngắn gọn, giải thích rõ lý do và đặt câu hỏi gợi mở, không đưa ngay đáp án cuối. Công thức viết trong dấu $...$. ${isWeakMode ? "Chế độ HS yếu: chia siêu nhỏ từng bước và cho 1 ví dụ tương tự cực dễ trước." : ""}`;
 
-        const contents = (Array.isArray(history) ? history : []).map(t => ({
+        const contents = (Array.isArray(history) ? history : []).slice(-4).map(t => ({
             role: t.role === "model" ? "model" : "user",
             parts: [{ text: t.text }]
         }));
@@ -27,74 +27,42 @@ export async function onRequestPost(context) {
         }
         contents.push({ role: "user", parts: currentParts });
 
-        // Danh sách ưu tiên các model hỗ trợ đọc ảnh (Vision/Multimodal) ổn định nhất
-        let candidateModels = [
-            "gemini-2.5-flash",
-            "gemini-2.5-flash-lite",
-            "gemini-2.0-flash",
-            "gemini-2.0-flash-lite"
-        ];
+        // Gọi thẳng các model nhanh nhất, bỏ qua bước ListModels trung gian để tiết kiệm ~1 giây
+        const fastModels = ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-2.0-flash"];
+        let lastError = "";
 
-        try {
-            const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-            if (listRes.ok) {
-                const listData = await listRes.json();
-                const available = (listData.models || [])
-                    .filter(m => {
-                        const n = m.name.toLowerCase();
-                        return m.supportedGenerationMethods?.includes("generateContent") &&
-                            n.includes("flash") &&
-                            !n.includes("tts") &&
-                            !n.includes("thinking") &&
-                            !n.includes("image") &&
-                            !n.includes("audio") &&
-                            !n.includes("live") &&
-                            !n.includes("robotics");
-                    })
-                    .map(m => m.name.replace("models/", ""))
-                    .reverse();
-                if (available.length > 0) {
-                    candidateModels = [...new Set([...candidateModels, ...available])];
-                }
-            }
-        } catch (_) {}
+        for (const model of fastModels) {
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    systemInstruction: { parts: [{ text: systemInstruction }] },
+                    contents,
+                    generationConfig: {
+                        temperature: 0.35,
+                        maxOutputTokens: 1000,
+                        thinkingConfig: { thinkingBudget: 0 }
+                    }
+                })
+            });
 
-        const errors = [];
-
-        // Chạy tối đa 2 vòng qua các model hỗ trợ ảnh để vượt qua cao điểm quá tải
-        for (let round = 0; round < 2; round++) {
-            for (const model of candidateModels.slice(0, 6)) {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        systemInstruction: { parts: [{ text: systemInstruction }] },
-                        contents,
-                        generationConfig: { temperature: 0.4, maxOutputTokens: 1500 }
-                    })
+            if (res.ok && res.body) {
+                // Truyền thẳng luồng chữ (Stream) về trình duyệt học sinh ngay lập tức
+                return new Response(res.body, {
+                    status: 200,
+                    headers: {
+                        "Content-Type": "text/event-stream; charset=utf-8",
+                        "Cache-Control": "no-cache"
+                    }
                 });
-
-                const data = await res.json();
-                if (res.ok) {
-                    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Em gửi lại đề bài rõ hơn nhé!";
-                    return new Response(JSON.stringify({ reply }), {
-                        status: 200,
-                        headers: { "Content-Type": "application/json" }
-                    });
-                }
-
-                if (round === 1) {
-                    errors.push(`[${model}]: ${data.error?.message || res.status}`);
-                }
-
-                if (res.status === 503 || res.status === 429) {
-                    await new Promise(r => setTimeout(r, 600));
-                }
             }
+
+            const errData = await res.json().catch(() => ({}));
+            lastError = errData.error?.message || `Lỗi ${res.status}`;
         }
 
         return new Response(JSON.stringify({
-            error: `Máy chủ Google AI đang quá tải diện rộng lúc này, Thầy/Cô thử bấm Gửi lại sau 10 giây nhé! (${errors.slice(0, 3).join(" | ")})`
+            error: `Hệ thống AI đang bận, em bấm Gửi lại nhé! (${lastError})`
         }), {
             status: 502,
             headers: { "Content-Type": "application/json" }
