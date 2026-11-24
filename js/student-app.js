@@ -328,7 +328,37 @@ async function sendTutorMessage() {
                             .join("");
                         if (chunk) {
                             fullReply += chunk;
-                            aiDiv.innerHTML = formatAiResponse(fullReply);
+                            aiDiv.innerHTML = function formatAiResponse(text) {
+    const plotBlocks = [];
+    // Bắt khối lệnh vẽ đồ thị/hình học ```mathplot {...} ```
+    let processed = text.replace(/```mathplot\s*([\s\S]*?)```/gi, (_, jsonStr) => {
+        const idx = plotBlocks.length;
+        try {
+            const cfg = JSON.parse(jsonStr.trim());
+            plotBlocks.push(renderMathPlotSVG(cfg));
+        } catch (e) {
+            plotBlocks.push("");
+        }
+        return `__PLOT_BLOCK_${idx}__`;
+    });
+
+    // Giữ hỗ trợ nếu AI trả về ```svg ... ```
+    processed = processed.replace(/```svg\s*([\s\S]*?)```/gi, (_, svgCode) => {
+        const idx = plotBlocks.length;
+        plotBlocks.push(`<div class="my-2 p-2 bg-white border border-slate-200 rounded-xl flex justify-center overflow-x-auto shadow-sm">${svgCode.trim()}</div>`);
+        return `__PLOT_BLOCK_${idx}__`;
+    });
+
+    processed = processed
+        .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+        .split("\n").join("<br>");
+
+    plotBlocks.forEach((html, idx) => {
+        processed = processed.replace(`__PLOT_BLOCK_${idx}__`, html);
+    });
+
+    return processed;
+};
                             container.scrollTop = container.scrollHeight;
                         }
                     } catch (_) {}
