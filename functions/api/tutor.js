@@ -12,13 +12,12 @@ export async function onRequestPost(context) {
         const body = await request.json();
         const { message, imageBase64, grade = "10", isWeakMode = false, history = [] } = body;
 
-        const systemInstruction = `Bạn là Gia Sư Toán AI – Trường THPT Đa Kia, hướng dẫn học sinh lớp ${grade} (GDPT 2018, Kết nối tri thức) giải Toán từng bước ngắn gọn, súc tích bằng tiếng Việt, gợi mở từng bước nhỏ, không đưa ngay đáp án cuối. Công thức đặt trong dấu $...$. ${isWeakMode ? "Chế độ HS yếu: chia siêu nhỏ từng bước, cho 1 ví dụ tương tự cực dễ trước." : ""}
-QUY TẮC VẼ HÌNH TỨC THÌ (BẮT BUỘC DÙNG KHI CÓ HÀM SỐ, BPT HOẶC TAM GIÁC):
-Chỉ chèn 1 khối lệnh JSON gọn nhẹ đặt trong \`\`\`mathplot ... \`\`\` theo đúng 1 trong 4 mẫu sau:
-1. Parabol y = ax^2 + bx + c: \`\`\`mathplot {"type":"parabola","a":1,"b":-2,"c":-3,"label":"y = x^2 - 2x - 3"} \`\`\`
-2. Đường thẳng y = ax + b: \`\`\`mathplot {"type":"line","a":2,"b":-1,"label":"y = 2x - 1"} \`\`\`
-3. Miền nghiệm BPT ax + by <= c (hoặc >=, <, >): \`\`\`mathplot {"type":"ineq","a":1,"b":2,"c":4,"op":"<=","label":"x + 2y <= 4"} \`\`\`
-4. Tam giác ABC: \`\`\`mathplot {"type":"triangle","AB":5,"AC":7,"angleA":60,"label":"Tam giác ABC"} \`\`\``;
+        const systemInstruction = `Gia Sư Toán AI – THPT Đa Kia. Hướng dẫn HS lớp ${grade} (KNTT) giải từng bước nhỏ, ngắn gọn bằng tiếng Việt, gợi mở, không đưa ngay đáp án cuối. Công thức đặt trong $...$. ${isWeakMode ? "Chế độ HS yếu: chia siêu nhỏ từng bước, cho 1 ví dụ tương tự cực dễ trước." : ""}
+Khi có hàm số, BPT hoặc tam giác, chèn 1 khối JSON trong \`\`\`mathplot ... \`\`\`:
+- Parabol: \`\`\`mathplot {"type":"parabola","a":1,"b":-2,"c":-3,"label":"y = x^2 - 2x - 3"} \`\`\`
+- Đường thẳng: \`\`\`mathplot {"type":"line","a":2,"b":-1,"label":"y = 2x - 1"} \`\`\`
+- Miền nghiệm BPT: \`\`\`mathplot {"type":"ineq","a":1,"b":2,"c":4,"op":"<=","label":"x + 2y <= 4"} \`\`\`
+- Tam giác: \`\`\`mathplot {"type":"triangle","AB":5,"AC":7,"angleA":60,"label":"Tam giác ABC"} \`\`\``;
 
         const contents = (Array.isArray(history) ? history : []).slice(-4).map(t => ({
             role: t.role === "model" ? "model" : "user",
@@ -33,52 +32,50 @@ Chỉ chèn 1 khối lệnh JSON gọn nhẹ đặt trong \`\`\`mathplot ... \`\
         }
         contents.push({ role: "user", parts: currentParts });
 
+        // Đưa thẳng các model phản hồi tức thì (< 0.8s) lên đầu, không chạy vòng lặp thừa
         const models = [
-            "gemini-3.8-flash-lite",
-            "gemini-3.8-flash",
-            "gemini-3.7-flash",
-            "gemini-3.6-flash",
+            "gemini-2.5-flash-lite",
+            "gemini-2.5-flash",
             "gemini-3.1-pro-preview",
-            "gemini-2.5-flash"
+            "gemini-3.8-flash"
         ];
         let lastError = "";
 
-        for (let round = 0; round < 2; round++) {
-            for (const model of models) {
-                const payload = {
+        for (const model of models) {
+            const generationConfig = {
+                temperature: 0.3,
+                maxOutputTokens: 2500
+            };
+
+            // Tắt suy nghĩ ngầm trên 2.5 và giảm mức suy nghĩ xuống tối thiểu trên 3.1-pro để nhả chữ ngay lập tức
+            if (model.includes("2.5")) {
+                generationConfig.thinkingConfig = { thinkingBudget: 0 };
+            } else if (model.includes("3.1-pro")) {
+                generationConfig.thinkingConfig = { thinkingLevel: "low" };
+            }
+
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
                     systemInstruction: { parts: [{ text: systemInstruction }] },
                     contents,
-                    generationConfig: {
-                        temperature: 0.3,
-                        maxOutputTokens: 4000
+                    generationConfig
+                })
+            });
+
+            if (res.ok && res.body) {
+                return new Response(res.body, {
+                    status: 200,
+                    headers: {
+                        "Content-Type": "text/event-stream; charset=utf-8",
+                        "Cache-Control": "no-cache"
                     }
-                };
-                if (model.includes("2.5-flash")) {
-                    payload.generationConfig.thinkingConfig = { thinkingBudget: 0 };
-                }
-
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
                 });
-
-                if (res.ok && res.body) {
-                    return new Response(res.body, {
-                        status: 200,
-                        headers: {
-                            "Content-Type": "text/event-stream; charset=utf-8",
-                            "Cache-Control": "no-cache"
-                        }
-                    });
-                }
-
-                const errData = await res.json().catch(() => ({}));
-                lastError = `[${model}]: ${errData.error?.message || res.status}`;
-                if (res.status === 503 || res.status === 429) {
-                    await new Promise(r => setTimeout(r, 350));
-                }
             }
+
+            const errData = await res.json().catch(() => ({}));
+            lastError = `[${model}]: ${errData.error?.message || res.status}`;
         }
 
         return new Response(JSON.stringify({
