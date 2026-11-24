@@ -6,7 +6,7 @@ const SUPABASE_CONFIG = {
 };
 
 // Mật khẩu đăng nhập trang Quản trị Giáo viên (admin.html) - Có thể đổi tùy ý
-const TEACHER_ADMIN_PASS = "ToanDaKia2026";
+const TEACHER_ADMIN_PASS = "Vanphong@2015";
 
 // Khởi tạo kết nối Supabase nếu đã cấu hình
 let supabaseClient = null;
