@@ -1,0 +1,105 @@
+/* Giao diện chuẩn giáo dục - Tối ưu hiển thị trên điện thoại Android & Máy tính */
+:root {
+    --primary: #1d4ed8;       /* Xanh dương giáo dục */
+    --primary-light: #eff6ff;
+    --secondary: #0f766e;     /* Xanh ngọc dịu mắt */
+    --accent: #f59e0b;        /* Vàng nhấn */
+    --bg-main: #f8fafc;
+    --text-dark: #1e293b;
+}
+
+body {
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg-main);
+    color: var(--text-dark);
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Hiệu ứng mượt mà khi chuyển tab */
+.tab-content {
+    display: none;
+    animation: fadeIn 0.25s ease-in-out;
+}
+.tab-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Khung chat Gia sư AI */
+.chat-container {
+    height: calc(100vh - 340px);
+    min-height: 360px;
+    max-height: 550px;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+}
+
+.msg-ai {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid var(--primary);
+    border-radius: 0.75rem;
+    padding: 0.875rem 1rem;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+
+.msg-student {
+    background-color: var(--primary);
+    color: #ffffff;
+    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+    margin-left: auto;
+}
+
+/* Hiệu ứng AI đang suy nghĩ */
+.typing-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: var(--primary);
+    animation: bounce 1.4s infinite ease-in-out both;
+}
+.typing-dot:nth-child(1) { animation-delay: -0.32s; }
+.typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes bounce {
+    0%, 80%, 100% { transform: scale(0); }
+    40% { transform: scale(1); }
+}
+
+/* Tối ưu hiển thị công thức toán KaTeX trên màn hình nhỏ */
+.katex-display {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0.4rem 0;
+}
+
+/* Nút chọn đáp án trắc nghiệm */
+.option-btn {
+    transition: all 0.15s ease;
+    text-align: left;
+}
+.option-btn:hover:not(:disabled) {
+    border-color: var(--primary);
+    background-color: var(--primary-light);
+}
+.option-selected {
+    border-color: var(--primary) !important;
+    background-color: #dbeafe !important;
+    font-weight: 600;
+}
+.option-correct {
+    border-color: #16a34a !important;
+    background-color: #dcfce7 !important;
+    color: #14532d !important;
+}
+.option-wrong {
+    border-color: #dc2626 !important;
+    background-color: #fee2e2 !important;
+    color: #7f1d1d !important;
+}
