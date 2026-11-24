@@ -4,7 +4,6 @@ let chatHistory = [];
 let selectedImageBase64 = null;
 let currentQuizQuestions = [];
 
-// Khởi tạo khi tải trang
 document.addEventListener("DOMContentLoaded", () => {
     updateStudentUI();
     renderTopics("10");
@@ -13,7 +12,6 @@ document.addEventListener("DOMContentLoaded", () => {
     initClipboardImagePaste();
 });
 
-// Hàm render công thức Toán KaTeX an toàn
 function renderMathInElementSafe(element) {
     if (window.renderMathInElement && element) {
         renderMathInElement(element, {
@@ -26,7 +24,6 @@ function renderMathInElementSafe(element) {
     }
 }
 
-// Chèn ký hiệu Toán học từ thanh công cụ vào ô nhập chat
 window.insertMathSymbol = function(symbol) {
     const input = document.getElementById("chatInput");
     if (!input) return;
@@ -47,7 +44,7 @@ window.insertMathSymbol = function(symbol) {
     input.setSelectionRange(newPos, newPos);
 };
 
-// Nén ảnh từ Blob/File sang Base64 JPEG (tối đa 1024px) và hiển thị xem trước
+// Nén ảnh tối ưu 800px JPEG (giảm 60% dung lượng giúp tải lên cực nhanh)
 function processAndPreviewImageFile(file) {
     if (!file) return;
     const reader = new FileReader();
@@ -55,7 +52,7 @@ function processAndPreviewImageFile(file) {
         const img = new Image();
         img.onload = function() {
             const canvas = document.createElement("canvas");
-            const MAX_DIM = 1024;
+            const MAX_DIM = 800;
             let width = img.width;
             let height = img.height;
             if (width > MAX_DIM || height > MAX_DIM) {
@@ -74,7 +71,7 @@ function processAndPreviewImageFile(file) {
             ctx.fillRect(0, 0, width, height);
             ctx.drawImage(img, 0, 0, width, height);
 
-            selectedImageBase64 = canvas.toDataURL("image/jpeg", 0.82);
+            selectedImageBase64 = canvas.toDataURL("image/jpeg", 0.72);
             const previewImg = document.getElementById("imagePreview");
             const previewBox = document.getElementById("imagePreviewContainer");
             if (previewImg) previewImg.src = selectedImageBase64;
@@ -85,7 +82,6 @@ function processAndPreviewImageFile(file) {
     reader.readAsDataURL(file);
 }
 
-// Lắng nghe sự kiện dán ảnh trực tiếp (Ctrl + V) vào ô chat
 function initClipboardImagePaste() {
     const chatInput = document.getElementById("chatInput");
     if (!chatInput) return;
@@ -98,16 +94,13 @@ function initClipboardImagePaste() {
             if (items[i].type.indexOf("image") !== -1) {
                 event.preventDefault();
                 const blob = items[i].getAsFile();
-                if (blob) {
-                    processAndPreviewImageFile(blob);
-                }
+                if (blob) processAndPreviewImageFile(blob);
                 break;
             }
         }
     });
 }
 
-// Chuyển đổi giữa các Tab
 function switchTab(tabName) {
     document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
     document.querySelectorAll(".nav-btn").forEach(btn => {
@@ -124,7 +117,6 @@ function switchTab(tabName) {
     if (tabName === "progress") loadProgressTab();
 }
 
-// ==================== 1. ĐĂNG NHẬP BẰNG MÃ HỌC SINH ====================
 function openLoginModal() {
     document.getElementById("loginModal").classList.remove("hidden");
     document.getElementById("loginModal").classList.add("flex");
@@ -196,7 +188,6 @@ function toggleWeakMode() {
     appendMessageToChat("ai", notice);
 }
 
-// ==================== 2. GIA SƯ AI & XỬ LÝ ẢNH CHỤP TỪ ĐIỆN THOẠI / CLIPBOARD ====================
 function handleImageUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -233,6 +224,7 @@ function resetChat() {
     `;
 }
 
+// Gửi câu hỏi và hiển thị câu trả lời theo luồng Streaming (chữ chạy ra ngay lập tức)
 async function sendTutorMessage() {
     const inputEl = document.getElementById("chatInput");
     const text = inputEl.value.trim();
@@ -263,7 +255,7 @@ async function sendTutorMessage() {
                 imageBase64: imageToSend,
                 grade: grade,
                 isWeakMode: isWeakMode,
-                history: chatHistory.slice(-6)
+                history: chatHistory.slice(-4)
             })
         });
 
@@ -274,13 +266,50 @@ async function sendTutorMessage() {
             throw new Error(errData.error || `Lỗi máy chủ (Mã ${response.status})`);
         }
 
-        const data = await response.json();
-        const aiReply = data.reply || "Thầy chưa nhận được phản hồi, em thử gửi lại nhé!";
+        // Tạo bong bóng chat AI trống và đổ từng chữ nhận được vào ngay lập tức
+        const container = document.getElementById("chatMessages");
+        const aiDiv = document.createElement("div");
+        aiDiv.className = "msg-ai max-w-2xl text-sm sm:text-base space-y-2";
+        container.appendChild(aiDiv);
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let fullReply = "";
+        let buffer = "";
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+
+            const lines = buffer.split("\n");
+            buffer = lines.pop();
+
+            for (const line of lines) {
+                if (line.startsWith("data: ")) {
+                    const jsonStr = line.slice(6).trim();
+                    if (!jsonStr || jsonStr === "[DONE]") continue;
+                    try {
+                        const parsed = JSON.parse(jsonStr);
+                        const chunk = parsed.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                        if (chunk) {
+                            fullReply += chunk;
+                            aiDiv.innerHTML = formatAiResponse(fullReply);
+                            container.scrollTop = container.scrollHeight;
+                        }
+                    } catch (_) {}
+                }
+            }
+        }
+
+        if (!fullReply) fullReply = "Thầy chưa nhận được phản hồi, em thử gửi lại nhé!";
+        aiDiv.innerHTML = formatAiResponse(fullReply);
+        renderMathInElementSafe(aiDiv);
+        container.scrollTop = container.scrollHeight;
 
         chatHistory.push({ role: "user", text: text || "[Hình ảnh bài tập]" });
-        chatHistory.push({ role: "model", text: aiReply });
+        chatHistory.push({ role: "model", text: fullReply });
 
-        appendMessageToChat("ai", formatAiResponse(aiReply));
         if (typeof logLearningActivity === "function") {
             logLearningActivity("ai_tutor", `Hỏi Gia sư AI Toán ${grade}`, null, "");
         }
@@ -328,7 +357,6 @@ function escapeHtml(str) {
     return str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
 }
 
-// ==================== 3. HỌC TOÁN THEO CHỦ ĐỀ ====================
 function renderTopics(grade) {
     document.querySelectorAll(".grade-filter-btn").forEach(btn => {
         btn.classList.remove("bg-blue-700", "text-white");
@@ -365,19 +393,16 @@ function showTopicDetail(grade, index) {
                 🤖 Luyện chủ đề này với AI
             </button>
         </div>
-
         <div class="space-y-2 text-sm text-slate-700 leading-relaxed">
             <h4 class="font-bold text-slate-900">I. Tóm tắt lý thuyết trọng tâm</h4>
             ${topic.summary}
         </div>
-
         <div class="bg-blue-50/80 border border-blue-200 rounded-xl p-4 space-y-2">
             <h4 class="font-bold text-blue-900 text-sm">II. Công thức cần nhớ</h4>
             <div class="space-y-1.5 text-sm">
                 ${topic.formulas.map(f => `<div class="bg-white px-3 py-2 rounded-lg border border-blue-100">$$${f}$$</div>`).join("")}
             </div>
         </div>
-
         <div class="bg-amber-50/70 border border-amber-200 rounded-xl p-4 space-y-2 text-sm">
             <h4 class="font-bold text-amber-900">III. Ví dụ minh họa</h4>
             <p class="font-medium text-slate-800"><strong>Đề bài:</strong> ${topic.example.problem}</p>
@@ -392,7 +417,6 @@ function askAiAboutTopic(topicTitle) {
     sendQuickPrompt(`Em muốn ôn tập và làm bài tập cơ bản về chủ đề "${topicTitle}". Thầy ra cho em 1 bài dễ để em tập làm từng bước nhé!`);
 }
 
-// ==================== 4. LUYỆN TẬP & KIỂM TRA (4 DẠNG CÂU HỎI) ====================
 function startPracticeQuiz() {
     const gradeEl = document.getElementById("pracGrade");
     if (!gradeEl || typeof PRACTICE_QUESTIONS === "undefined") return;
