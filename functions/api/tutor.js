@@ -1,12 +1,13 @@
 export async function onRequestPost(context) {
     const { request, env } = context;
-    const apiKey = env.GEMINI_API_KEY?.trim();
-    if (!apiKey) {
+    const rawKeys = (env.GEMINI_API_KEY || "").split(",").map(k => k.trim()).filter(Boolean);
+    if (rawKeys.length === 0) {
         return new Response(JSON.stringify({ error: "Chưa cấu hình GEMINI_API_KEY trên Cloudflare" }), {
             status: 500,
             headers: { "Content-Type": "application/json" }
         });
     }
+    const apiKey = rawKeys[Math.floor(Math.random() * rawKeys.length)];
 
     try {
         const body = await request.json();
@@ -32,15 +33,15 @@ Khi có hàm số, BPT hoặc tam giác, chèn 1 khối JSON trong \`\`\`mathplo
         }
         contents.push({ role: "user", parts: currentParts });
 
-        // Đưa thẳng các model phản hồi tức thì (< 0.8s) lên đầu, không chạy vòng lặp thừa
-       const models = [
-            "gemini-2.5-flash-lite",
-            "gemini-2.5-flash",
+        // Đưa các model lite siêu nhanh & còn hạn mức lên đầu tiên để gọi trúng ngay lượt 1
+        const models = [
             "gemini-3.8-flash-lite",
-            "gemini-3.8-flash",
             "gemini-3.7-flash-lite",
             "gemini-3.7-flash",
             "gemini-3.6-flash",
+            "gemini-2.5-flash-lite",
+            "gemini-2.5-flash",
+            "gemini-3.8-flash",
             "gemini-3.1-pro-preview"
         ];
         let lastError = "";
@@ -51,11 +52,11 @@ Khi có hàm số, BPT hoặc tam giác, chèn 1 khối JSON trong \`\`\`mathplo
                 maxOutputTokens: 2500
             };
 
-            // Tắt suy nghĩ ngầm trên 2.5 và giảm mức suy nghĩ xuống tối thiểu trên 3.1-pro để nhả chữ ngay lập tức
+            // Giảm tối đa thời gian suy nghĩ ngầm để nhả chữ ngay lập tức (~0.5 giây)
             if (model.includes("2.5")) {
                 generationConfig.thinkingConfig = { thinkingBudget: 0 };
-            } else if (model.includes("3.1-pro")) {
-                generationConfig.thinkingConfig = { thinkingLevel: "low" };
+            } else {
+                generationConfig.thinkingConfig = { thinkingLevel: "minimal" };
             }
 
             const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`, {
