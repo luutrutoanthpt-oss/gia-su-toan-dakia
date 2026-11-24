@@ -436,4 +436,297 @@ function renderMathPlotSVG(cfg) {
         content += `<line x1="${cx + x1 * scale}" y1="${cy - y1 * scale}" x2="${cx + x2 * scale}" y2="${cy - y2 * scale}" stroke="#0d9488" stroke-width="2.2"/>`;
     } else if (cfg.type === "ineq") {
         const a = Number(cfg.a) || 1, b = Number(cfg.b) || 1, c = Number(cfg.c) || 0;
-        const op = cfg
+        const op = cfg.op || "<=";
+        content += drawAxes();
+        for (let gx = -7; gx <= 7; gx += 0.5) {
+            for (let gy = -5; gy <= 5; gy += 0.5) {
+                const val = a * gx + b * gy;
+                const ok = op.includes("<") ? val <= c : val >= c;
+                if (ok) {
+                    content += `<circle cx="${cx + gx * scale}" cy="${cy - gy * scale}" r="1.6" fill="#93c5fd" opacity="0.65"/>`;
+                }
+            }
+        }
+        if (Math.abs(b) > 0.001) {
+            const x1 = -7, y1 = (c - a * x1) / b;
+            const x2 = 7, y2 = (c - a * x2) / b;
+            const dash = (op === "<" || op === ">") ? `stroke-dasharray="5,4"` : "";
+            content += `<line x1="${cx + x1 * scale}" y1="${cy - y1 * scale}" x2="${cx + x2 * scale}" y2="${cy - y2 * scale}" stroke="#1d4ed8" stroke-width="2" ${dash}/>`;
+        }
+    } else if (cfg.type === "triangle") {
+        const ab = Number(cfg.AB) || 5, ac = Number(cfg.AC) || 6;
+        const rad = ((Number(cfg.angleA) || 60) * Math.PI) / 180;
+        const s = Math.min(180 / Math.max(ab, ac, 5), 28);
+        const Ax = 65, Ay = 190;
+        const Cx = Ax + ac * s, Cy = Ay;
+        const Bx = Ax + ab * Math.cos(rad) * s, By = Ay - ab * Math.sin(rad) * s;
+
+        content += `
+            <polygon points="${Ax},${Ay} ${Bx.toFixed(1)},${By.toFixed(1)} ${Cx.toFixed(1)},${Cy}" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2"/>
+            <text x="${Ax - 14}" y="${Ay + 14}" font-size="13" font-weight="bold" fill="#0f172a">A</text>
+            <text x="${Bx - 4}" y="${By - 8}" font-size="13" font-weight="bold" fill="#0f172a">B</text>
+            <text x="${Cx + 6}" y="${Cy + 14}" font-size="13" font-weight="bold" fill="#0f172a">C</text>
+            <text x="${(Ax + Bx) / 2 - 22}" y="${(Ay + By) / 2}" font-size="11" font-weight="bold" fill="#0369a1">${ab}</text>
+            <text x="${(Ax + Cx) / 2 - 6}" y="${Ay + 15}" font-size="11" font-weight="bold" fill="#0369a1">${ac}</text>
+            <text x="${Ax + 18}" y="${Ay - 8}" font-size="11" font-weight="bold" fill="#dc2626">${cfg.angleA || 60}°</text>
+        `;
+    }
+
+    const caption = cfg.label ? `<div class="text-center text-xs font-semibold text-slate-600 mt-1">${escapeHtml(cfg.label)}</div>` : "";
+    return `<div class="my-2.5 p-2.5 bg-white border border-slate-200 rounded-xl shadow-sm inline-block max-w-full">
+        <svg viewBox="0 0 ${W} ${H}" class="w-full max-w-[320px] h-auto mx-auto block">${content}</svg>
+        ${caption}
+    </div>`;
+}
+
+function formatAiResponse(text) {
+    const plotBlocks = [];
+    const NEWLINE = String.fromCharCode(10);
+
+    let processed = text.replace(/```mathplot\s*([\s\S]*?)```/gi, (_, jsonStr) => {
+        const idx = plotBlocks.length;
+        try {
+            const cfg = JSON.parse(jsonStr.trim());
+            plotBlocks.push(renderMathPlotSVG(cfg));
+        } catch (e) {
+            plotBlocks.push("");
+        }
+        return `__PLOT_BLOCK_${idx}__`;
+    });
+
+    processed = processed.replace(/```svg\s*([\s\S]*?)```/gi, (_, svgCode) => {
+        const idx = plotBlocks.length;
+        plotBlocks.push(`<div class="my-2 p-2 bg-white border border-slate-200 rounded-xl flex justify-center overflow-x-auto shadow-sm">${svgCode.trim()}</div>`);
+        return `__PLOT_BLOCK_${idx}__`;
+    });
+
+    processed = processed
+        .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+        .split(NEWLINE).join("<br>");
+
+    plotBlocks.forEach((html, idx) => {
+        processed = processed.replace(`__PLOT_BLOCK_${idx}__`, html);
+    });
+
+    return processed;
+}
+
+function escapeHtml(str) {
+    return str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+}
+
+function renderTopics(grade) {
+    document.querySelectorAll(".grade-filter-btn").forEach(btn => {
+        btn.classList.remove("bg-blue-700", "text-white");
+        btn.classList.add("bg-slate-100", "text-slate-700");
+    });
+    const activeBtn = document.getElementById(`gradeBtn-${grade}`);
+    if (activeBtn) {
+        activeBtn.classList.add("bg-blue-700", "text-white");
+        activeBtn.classList.remove("bg-slate-100", "text-slate-700");
+    }
+
+    const topics = (typeof CURRICULUM_DATA !== "undefined" ? CURRICULUM_DATA[grade] : []) || [];
+    const listEl = document.getElementById("topicList");
+    if (!listEl) return;
+
+    listEl.innerHTML = topics.map((t, idx) => `
+        <button onclick="showTopicDetail('${grade}', ${idx})" class="w-full text-left bg-white hover:bg-blue-50 border border-slate-200 p-3.5 rounded-xl shadow-sm transition font-semibold text-sm text-slate-800">
+            ${t.title}
+        </button>
+    `).join("");
+
+    if (topics.length > 0) showTopicDetail(grade, 0);
+}
+
+function showTopicDetail(grade, index) {
+    const topic = CURRICULUM_DATA[grade][index];
+    const detailEl = document.getElementById("topicDetail");
+    if (!detailEl) return;
+
+    detailEl.innerHTML = `
+        <div class="border-b border-slate-200 pb-3 flex flex-wrap justify-between items-center gap-2">
+            <h3 class="font-bold text-lg text-blue-800">${topic.title}</h3>
+            <button onclick="askAiAboutTopic('${topic.title}')" class="bg-blue-100 hover:bg-blue-200 text-blue-800 text-xs font-semibold px-3 py-1.5 rounded-lg">
+                🤖 Luyện chủ đề này với AI
+            </button>
+        </div>
+
+        <div class="space-y-2 text-sm text-slate-700 leading-relaxed">
+            <h4 class="font-bold text-slate-900">I. Tóm tắt lý thuyết trọng tâm</h4>
+            ${topic.summary}
+        </div>
+
+        <div class="bg-blue-50/80 border border-blue-200 rounded-xl p-4 space-y-2">
+            <h4 class="font-bold text-blue-900 text-sm">II. Công thức cần nhớ</h4>
+            <div class="space-y-1.5 text-sm">
+                ${topic.formulas.map(f => `<div class="bg-white px-3 py-2 rounded-lg border border-blue-100">$$${f}$$</div>`).join("")}
+            </div>
+        </div>
+
+        <div class="bg-amber-50/70 border border-amber-200 rounded-xl p-4 space-y-2 text-sm">
+            <h4 class="font-bold text-amber-900">III. Ví dụ minh họa</h4>
+            <p class="font-medium text-slate-800"><strong>Đề bài:</strong> ${topic.example.problem}</p>
+            <p class="text-slate-700"><strong>Hướng dẫn giải:</strong> ${topic.example.solution}</p>
+        </div>
+    `;
+    renderMathInElementSafe(detailEl);
+}
+
+function askAiAboutTopic(topicTitle) {
+    switchTab("tutor");
+    sendQuickPrompt(`Em muốn ôn tập và làm bài tập cơ bản về chủ đề "${topicTitle}". Thầy ra cho em 1 bài dễ để em tập làm từng bước nhé!`);
+}
+
+function startPracticeQuiz() {
+    const gradeEl = document.getElementById("pracGrade");
+    if (!gradeEl || typeof PRACTICE_QUESTIONS === "undefined") return;
+
+    const grade = gradeEl.value;
+    const level = document.getElementById("pracLevel").value;
+    const type = document.getElementById("pracType").value;
+
+    currentQuizQuestions = PRACTICE_QUESTIONS.filter(q => {
+        const matchGrade = q.grade === grade;
+        const matchLevel = level === "all" || q.level === level;
+        const matchType = type === "all" || q.type === type;
+        return matchGrade && matchLevel && matchType;
+    });
+
+    const container = document.getElementById("quizContainer");
+    document.getElementById("quizAnalysisResult").classList.add("hidden");
+
+    if (currentQuizQuestions.length === 0) {
+        container.innerHTML = `<div class="bg-white p-6 rounded-xl border border-slate-200 text-center text-sm text-slate-500">Chưa có câu hỏi đúng bộ lọc này. Em hãy chọn "Tất cả mức độ" hoặc "Tất cả dạng câu hỏi" nhé!</div>`;
+        return;
+    }
+
+    container.innerHTML = currentQuizQuestions.map((q, idx) => {
+        let inputArea = "";
+
+        if (q.type === "trac_nghiem") {
+            inputArea = `<div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-3">
+                ${q.options.map((opt, optIdx) => `
+                    <label class="option-btn border border-slate-300 rounded-xl p-3 cursor-pointer flex items-center gap-2.5 text-sm">
+                        <input type="radio" name="q_${q.id}" value="${optIdx}" class="accent-blue-700">
+                        <span><strong>${String.fromCharCode(65 + optIdx)}.</strong> ${opt}</span>
+                    </label>
+                `).join("")}
+            </div>`;
+        } else if (q.type === "dung_sai") {
+            inputArea = `<div class="mt-3 space-y-2">
+                ${q.subQuestions.map((sub, sIdx) => `
+                    <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-sm">
+                        <span>${sub.text}</span>
+                        <div class="flex gap-3">
+                            <label class="cursor-pointer font-medium text-teal-700"><input type="radio" name="q_${q.id}_${sIdx}" value="true"> Đúng</label>
+                            <label class="cursor-pointer font-medium text-red-700"><input type="radio" name="q_${q.id}_${sIdx}" value="false"> Sai</label>
+                        </div>
+                    </div>
+                `).join("")}
+            </div>`;
+        } else if (q.type === "tra_loi_ngan") {
+            inputArea = `<div class="mt-3">
+                <input type="text" id="ans_${q.id}" maxlength="6" placeholder="Nhập đáp số (tối đa 4 ký tự, VD: 3.61)" class="border border-slate-300 rounded-lg px-3.5 py-2 text-sm w-64 focus:border-blue-600 focus:outline-none">
+            </div>`;
+        } else if (q.type === "tu_luan") {
+            inputArea = `<div class="mt-3 bg-blue-50 p-3.5 rounded-xl border border-blue-200 space-y-2 text-sm">
+                <p class="font-semibold text-blue-900">Gợi ý từng bước suy nghĩ:</p>
+                <ul class="list-disc pl-5 text-slate-700 space-y-1">
+                    ${q.steps.map(s => `<li>${s}</li>`).join("")}
+                </ul>
+                <textarea id="ans_${q.id}" rows="2" placeholder="Nhập bài làm tóm tắt của em vào đây..." class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white mt-2"></textarea>
+            </div>`;
+        }
+
+        return `
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm" id="card_${q.id}">
+                <div class="flex items-center justify-between text-xs text-slate-500 mb-2">
+                    <span class="font-bold text-blue-700 uppercase">Câu ${idx + 1} • ${q.topicName}</span>
+                    <span class="bg-slate-100 px-2 py-0.5 rounded">${typeof formatLevelLabel === "function" ? formatLevelLabel(q.level) : q.level}</span>
+                </div>
+                <div class="text-sm sm:text-base text-slate-800 font-medium">${q.content}</div>
+                ${inputArea}
+                <div id="exp_${q.id}" class="hidden mt-3 p-3 rounded-lg bg-slate-100 text-xs sm:text-sm text-slate-700 border-l-4 border-teal-600">
+                    <strong>Lời giải chi tiết:</strong> ${q.explanation}
+                </div>
+            </div>
+        `;
+    }).join("") + `
+        <div class="flex justify-end">
+            <button onclick="submitPracticeQuiz()" class="bg-teal-700 hover:bg-teal-800 text-white font-bold px-6 py-3 rounded-xl shadow-md text-sm sm:text-base">
+                Nộp Bài & Xem Phân Tích AI
+            </button>
+        </div>
+    `;
+
+    renderMathInElementSafe(container);
+}
+
+function submitPracticeQuiz() {
+    let correctCount = 0;
+    let weakTopics = [];
+
+    currentQuizQuestions.forEach(q => {
+        let isCorrect = false;
+
+        if (q.type === "trac_nghiem") {
+            const selected = document.querySelector(`input[name="q_${q.id}"]:checked`);
+            if (selected && parseInt(selected.value) === q.correct) isCorrect = true;
+        } else if (q.type === "dung_sai") {
+            let subCorrect = 0;
+            q.subQuestions.forEach((sub, sIdx) => {
+                const sel = document.querySelector(`input[name="q_${q.id}_${sIdx}"]:checked`);
+                if (sel && (sel.value === "true") === sub.answer) subCorrect++;
+            });
+            if (subCorrect === q.subQuestions.length) isCorrect = true;
+        } else if (q.type === "tra_loi_ngan") {
+            const val = document.getElementById(`ans_${q.id}`).value.trim().replace(",", ".");
+            if (val === q.correctText) isCorrect = true;
+        } else if (q.type === "tu_luan") {
+            const val = document.getElementById(`ans_${q.id}`).value.trim();
+            if (val.length >= 5) isCorrect = true;
+        }
+
+        if (isCorrect) {
+            correctCount++;
+            document.getElementById(`card_${q.id}`).classList.add("border-green-500");
+        } else {
+            document.getElementById(`card_${q.id}`).classList.add("border-red-400");
+            weakTopics.push(q.weakPoint);
+        }
+        document.getElementById(`exp_${q.id}`).classList.remove("hidden");
+    });
+
+    const total = currentQuizQuestions.length;
+    const score = Math.round((correctCount / total) * 10 * 10) / 10;
+    const wrongCount = total - correctCount;
+
+    const analysisEl = document.getElementById("quizAnalysisResult");
+    analysisEl.classList.remove("hidden");
+    analysisEl.innerHTML = `
+        <h3 class="font-bold text-lg text-blue-900">📊 Kết Quả & Phân Tích Từ Gia Sư AI</h3>
+        <div class="grid grid-cols-3 gap-3 text-center">
+            <div class="bg-green-50 p-3 rounded-xl border border-green-200">
+                <span class="text-xs text-slate-500 block">Số câu đúng</span>
+                <strong class="text-xl text-green-700">${correctCount}/${total}</strong>
+            </div>
+            <div class="bg-red-50 p-3 rounded-xl border border-red-200">
+                <span class="text-xs text-slate-500 block">Số câu sai</span>
+                <strong class="text-xl text-red-700">${wrongCount}</strong>
+            </div>
+            <div class="bg-blue-50 p-3 rounded-xl border border-blue-200">
+                <span class="text-xs text-slate-500 block">Điểm số</span>
+                <strong class="text-xl text-blue-800">${score} / 10</strong>
+            </div>
+        </div>
+        <div class="text-sm text-slate-700 space-y-2">
+            <p><strong>Nhận xét:</strong> ${score >= 8 ? "Em nắm bài rất tốt! Hãy thử sức với các câu Vận dụng nhé." : score >= 5 ? "Em đã hiểu phần cơ bản, hãy xem lại lời giải các câu màu đỏ và luyện thêm với Gia sư AI nhé!" : "Em nên bật Chế độ Học sinh yếu ở tab Gia sư AI để thầy hướng dẫn lại từng bước cơ bản nhé!"}</p>
+            ${weakTopics.length > 0 ? `<p class="text-red-700"><strong>Nội dung cần củng cố:</strong> ${[...new Set(weakTopics)].join(", ")}</p>` : ""}
+        </div>
+    `;
+    renderMathInElementSafe(analysisEl);
+    if (typeof logLearningActivity === "function") {
+        logLearningActivity("practice_quiz", `Luyện tập (${correctCount}/${total} câu đúng)`, score, weakTopics.join(", "));
+    }
+}
