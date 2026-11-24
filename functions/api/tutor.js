@@ -33,11 +33,15 @@ Khi có hàm số, BPT hoặc tam giác, chèn 1 khối JSON trong \`\`\`mathplo
         contents.push({ role: "user", parts: currentParts });
 
         // Đưa thẳng các model phản hồi tức thì (< 0.8s) lên đầu, không chạy vòng lặp thừa
-        const models = [
+       const models = [
             "gemini-2.5-flash-lite",
             "gemini-2.5-flash",
-            "gemini-3.1-pro-preview",
-            "gemini-3.8-flash"
+            "gemini-3.8-flash-lite",
+            "gemini-3.8-flash",
+            "gemini-3.7-flash-lite",
+            "gemini-3.7-flash",
+            "gemini-3.6-flash",
+            "gemini-3.1-pro-preview"
         ];
         let lastError = "";
 
