@@ -6,12 +6,11 @@ async function getAvailableFlashModels(apiKey) {
     }
 
     const fallbackModels = [
+        "gemini-2.5-flash-lite",
+        "gemini-2.5-flash",
         "gemini-3.8-flash-lite",
         "gemini-3.8-flash",
-        "gemini-3.7-flash-lite",
-        "gemini-3.7-flash",
-        "gemini-2.5-flash-lite",
-        "gemini-2.5-flash"
+        "gemini-3.7-flash"
     ];
 
     try {
@@ -23,7 +22,7 @@ async function getAvailableFlashModels(apiKey) {
 
         const res = await fetch(url, {
             headers,
-            signal: AbortSignal.timeout(3000)
+            signal: AbortSignal.timeout(3500)
         });
 
         if (!res.ok) return fallbackModels;
@@ -43,11 +42,10 @@ async function getAvailableFlashModels(apiKey) {
                 !m.name.includes("thinking")
             )
             .map(m => m.name.replace("models/", ""))
-            // Ưu tiên bản lite và đời mới nhất lên đầu để phản hồi nhanh nhất
             .sort((a, b) => {
                 const score = name =>
                     (name.includes("lite") ? 10 : 0) +
-                    (name.includes("3.8") ? 8 : name.includes("3.7") ? 7 : name.includes("2.5") ? 5 : 1);
+                    (name.includes("2.5") ? 8 : name.includes("3.8") ? 7 : name.includes("3.7") ? 6 : 1);
                 return score(b) - score(a);
             });
 
@@ -55,9 +53,7 @@ async function getAvailableFlashModels(apiKey) {
             cachedFlashModels = valid;
             return valid;
         }
-    } catch (_) {
-        // Bỏ qua nếu quá 3s và dùng danh sách dự phòng
-    }
+    } catch (_) {}
 
     return fallbackModels;
 }
@@ -77,7 +73,7 @@ export async function onRequestPost(context) {
         const { message, imageBase64, grade = "10", isWeakMode = false, history = [] } = body;
 
         const systemInstruction = `Gia Sư Toán AI – THPT Đa Kia. Hướng dẫn HS lớp ${grade} (KNTT) giải từng bước nhỏ, ngắn gọn bằng tiếng Việt, gợi mở, không đưa ngay đáp án cuối. Công thức đặt trong $...$. ${isWeakMode ? "Chế độ HS yếu: chia siêu nhỏ từng bước, cho 1 ví dụ tương tự cực dễ trước." : ""}
-QUY TẮC VẼ HÌNH BẮT BUỘC: Khi đề bài nhắc đến vẽ đồ thị, parabol, đường thẳng, bất phương trình/miền nghiệm hoặc tam giác, BẮT BUỘC chèn đúng 1 khối \`\`\`mathplot ở cuối câu trả lời, JSON phải viết gọn trên CÙNG 1 DÒNG DUY NHẤT (không xuống dòng trong ngoặc nhọn):
+QUY TẮC VẼ HÌNH BẮT BUỘC: Khi đề bài nhắc đến vẽ đồ thị, parabol, đường thẳng, bất phương trình/miền nghiệm hoặc tam giác, BẮT BUỘC chèn đúng 1 khối \`\`\`mathplot ở cuối câu trả lời, JSON viết gọn trên CÙNG 1 DÒNG DUY NHẤT:
 \`\`\`mathplot
 {"type":"parabola","a":1,"b":-2,"c":-3,"label":"y = x^2 - 2x - 3"}
 \`\`\`
@@ -99,7 +95,6 @@ Các mẫu hợp lệ khác (thay đúng hệ số của đề bài):
         }
         contents.push({ role: "user", parts: currentParts });
 
-        // Chọn tối đa 2 Key ngẫu nhiên để phản hồi tức thì, tránh treo vòng lặp dài
         const pickedKeys = [...rawKeys].sort(() => Math.random() - 0.5).slice(0, 2);
         const models = await getAvailableFlashModels(pickedKeys[0]);
         const logs = [];
@@ -116,11 +111,17 @@ Các mẫu hợp lệ khác (thay đúng hệ số của đề bài):
                 };
                 if (model.includes("2.5")) {
                     generationConfig.thinkingConfig = { thinkingBudget: 0 };
+                } else {
+                    generationConfig.thinkingConfig = { thinkingLevel: "low" };
                 }
 
                 const url = isUnifiedKey
                     ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`
                     : `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+
+                // Chỉ giới hạn thời gian chờ phản hồi đầu tiên (6s), hủy bộ đếm ngay khi bắt đầu chạy chữ
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), 6000);
 
                 try {
                     const res = await fetch(url, {
@@ -131,8 +132,9 @@ Các mẫu hợp lệ khác (thay đúng hệ số của đề bài):
                             contents,
                             generationConfig
                         }),
-                        signal: AbortSignal.timeout(5000)
+                        signal: controller.signal
                     });
+                    clearTimeout(timer);
 
                     if (res.ok && res.body) {
                         return new Response(res.body, {
@@ -148,7 +150,8 @@ Các mẫu hợp lệ khác (thay đúng hệ số của đề bài):
                     logs.push(`${model}(${res.status}): ${errData.error?.message || "Lỗi"}`);
                     if (res.status === 429 || res.status === 400 || res.status === 403) break;
                 } catch (_) {
-                    logs.push(`${model}(timeout 5s)`);
+                    clearTimeout(timer);
+                    logs.push(`${model}(timeout)`);
                 }
             }
         }
