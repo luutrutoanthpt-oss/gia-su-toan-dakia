@@ -1,4 +1,3 @@
-// v3
 export async function onRequestPost(context) {
     const { request, env } = context;
     const rawKeys = (env.GEMINI_API_KEY || "").split(",").map(k => k.trim()).filter(Boolean);
@@ -33,25 +32,23 @@ Khi có hàm số, BPT hoặc tam giác, chèn 1 khối JSON trong \`\`\`mathplo
         }
         contents.push({ role: "user", parts: currentParts });
 
-        // Chỉ lấy tối đa 2 Key ngẫu nhiên mỗi lượt hỏi để không bao giờ bị chờ lâu
-        const sampleKeys = [...rawKeys].sort(() => Math.random() - 0.5).slice(0, 2);
-
-        // Chỉ giữ 5 model chuẩn còn hoạt động (loại bỏ hoàn toàn dòng 2.0 đã ngừng hỗ trợ)
+        // Đảo ngược danh sách để ưu tiên gọi ngay Key mới nhất ở cuối chuỗi trước, sau đó xoay vòng các Key còn lại
+        const orderedKeys = [...rawKeys].reverse();
         const fastModels = [
+            "gemini-2.5-flash-lite",
+            "gemini-2.5-flash",
             "gemini-3.8-flash-lite",
             "gemini-3.8-flash",
-            "gemini-3.7-flash",
-            "gemini-2.5-flash-lite",
-            "gemini-2.5-flash"
+            "gemini-3.7-flash"
         ];
         let lastError = "";
 
-        for (const model of fastModels) {
-            for (const apiKey of sampleKeys) {
-                const isUnifiedKey = apiKey.startsWith("AQ.");
-                const headers = { "Content-Type": "application/json" };
-                if (isUnifiedKey) headers["x-goog-api-key"] = apiKey;
+        for (const apiKey of orderedKeys) {
+            const isUnifiedKey = apiKey.startsWith("AQ.");
+            const headers = { "Content-Type": "application/json" };
+            if (isUnifiedKey) headers["x-goog-api-key"] = apiKey;
 
+            for (const model of fastModels) {
                 const generationConfig = {
                     temperature: 0.3,
                     maxOutputTokens: 2500
@@ -87,13 +84,14 @@ Khi có hàm số, BPT hoặc tam giác, chèn 1 khối JSON trong \`\`\`mathplo
                 }
 
                 const errData = await res.json().catch(() => ({}));
-                lastError = `[${model}]: ${errData.error?.message || res.status}`;
-                if (res.status === 404) break;
+                lastError = `[Key ...${apiKey.slice(-4)} | ${model}]: ${errData.error?.message || res.status}`;
+                // Nếu Key này báo hết hạn mức (429) hoặc sai khóa (400/403), nhảy sang Key khác ngay lập tức
+                if (res.status === 429 || res.status === 400 || res.status === 403) break;
             }
         }
 
         return new Response(JSON.stringify({
-            error: `Tất cả Key hôm nay đã dùng hết 20 lượt miễn phí. Thầy/Cô thêm Key từ Gmail khác hoặc chờ chiều mai cấp lại lượt nhé! (${lastError})`
+            error: `Đã kiểm tra ${rawKeys.length} Key nhưng đều đang bận hoặc hết lượt hôm nay. Chi tiết: ${lastError}`
         }), {
             status: 502,
             headers: { "Content-Type": "application/json" }
