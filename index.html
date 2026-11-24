@@ -429,5 +429,179 @@
     <script src="js/config.js"></script>
     <script src="js/curriculum-data.js"></script>
     <script src="js/student-app.js"></script>
+<script>
+(function() {
+  function drawMathCanvas(cfg) {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'margin:10px 0;padding:10px;background:#fff;border:1px solid #cbd5e1;border-radius:10px;text-align:center;max-width:420px;';
+    const canvas = document.createElement('canvas');
+    const W = 380, H = 290;
+    canvas.width = W; canvas.height = H;
+    canvas.style.cssText = 'max-width:100%;height:auto;display:block;margin:0 auto;';
+    wrap.appendChild(canvas);
+
+    if (cfg.label) {
+      const cap = document.createElement('div');
+      cap.textContent = cfg.label;
+      cap.style.cssText = 'margin-top:6px;font-size:13px;font-weight:600;color:#1e3a8a;';
+      wrap.appendChild(cap);
+    }
+
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H);
+
+    if (cfg.type === 'triangle') {
+      const AB = Number(cfg.AB) || 5, AC = Number(cfg.AC) || 6, ang = (Number(cfg.angleA) || 60) * Math.PI / 180;
+      const bx = AB * Math.cos(ang), by = AB * Math.sin(ang);
+      const minX = Math.min(0, AC, bx), maxX = Math.max(0, AC, bx);
+      const maxY = Math.max(by, 1);
+      const scale = Math.min((W - 90) / (maxX - minX || 1), (H - 90) / maxY);
+      const ox = 45 - minX * scale, oy = H - 45;
+      const Ax = ox, Ay = oy;
+      const Cx = ox + AC * scale, Cy = oy;
+      const Bx = ox + bx * scale, By = oy - by * scale;
+
+      ctx.strokeStyle = '#2563eb'; ctx.lineWidth = 2.5;
+      ctx.fillStyle = 'rgba(37,99,235,0.08)';
+      ctx.beginPath(); ctx.moveTo(Ax, Ay); ctx.lineTo(Cx, Cy); ctx.lineTo(Bx, By); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+
+      ctx.fillStyle = '#0f172a'; ctx.font = 'bold 13px sans-serif';
+      ctx.fillText('A', Ax - 14, Ay + 14);
+      ctx.fillText('C', Cx + 6, Cy + 14);
+      ctx.fillText('B', Bx - 4, By - 8);
+      ctx.font = '12px sans-serif'; ctx.fillStyle = '#334155';
+      ctx.fillText('AC = ' + AC, (Ax + Cx) / 2 - 20, Ay + 18);
+      ctx.fillText('AB = ' + AB, (Ax + Bx) / 2 - 42, (Ay + By) / 2);
+      return wrap;
+    }
+
+    let cx = 0, cy = 0;
+    if (cfg.type === 'parabola' && Number(cfg.a)) {
+      const a = Number(cfg.a), b = Number(cfg.b) || 0, c = Number(cfg.c) || 0;
+      const xv = -b / (2 * a), yv = a * xv * xv + b * xv + c;
+      if (Math.abs(xv) > 3) cx = Math.round(xv);
+      if (Math.abs(yv) > 3) cy = Math.round(yv);
+    }
+
+    const s = 24;
+    const ox = W / 2 - cx * s, oy = H / 2 + cy * s;
+    const toPx = (x, y) => [ox + x * s, oy - y * s];
+
+    ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1;
+    for (let gx = Math.floor((0 - ox) / s); gx <= Math.ceil((W - ox) / s); gx++) {
+      const px = ox + gx * s;
+      ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, H); ctx.stroke();
+    }
+    for (let gy = Math.floor((oy - H) / s); gy <= Math.ceil(oy / s); gy++) {
+      const py = oy - gy * s;
+      ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(W, py); ctx.stroke();
+    }
+
+    ctx.strokeStyle = '#334155'; ctx.lineWidth = 1.5;
+    if (oy >= 10 && oy <= H - 10) {
+      ctx.beginPath(); ctx.moveTo(10, oy); ctx.lineTo(W - 10, oy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(W - 16, oy - 4); ctx.lineTo(W - 10, oy); ctx.lineTo(W - 16, oy + 4); ctx.stroke();
+      ctx.fillStyle = '#334155'; ctx.font = 'bold 12px sans-serif'; ctx.fillText('x', W - 16, oy + 15);
+    }
+    if (ox >= 10 && ox <= W - 10) {
+      ctx.beginPath(); ctx.moveTo(ox, H - 10); ctx.lineTo(ox, 10); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(ox - 4, 16); ctx.lineTo(ox, 10); ctx.lineTo(ox + 4, 16); ctx.stroke();
+      ctx.fillStyle = '#334155'; ctx.font = 'bold 12px sans-serif'; ctx.fillText('y', ox + 8, 18);
+    }
+    if (ox >= 10 && ox <= W - 10 && oy >= 10 && oy <= H - 10) {
+      ctx.fillText('O', ox - 13, oy + 14);
+    }
+
+    if (cfg.type === 'parabola') {
+      const a = Number(cfg.a) || 1, b = Number(cfg.b) || 0, c = Number(cfg.c) || 0;
+      ctx.strokeStyle = '#2563eb'; ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      let started = false;
+      for (let px = 0; px <= W; px += 2) {
+        const x = (px - ox) / s;
+        const y = a * x * x + b * x + c;
+        const py = oy - y * s;
+        if (py >= -50 && py <= H + 50) {
+          if (!started) { ctx.moveTo(px, py); started = true; }
+          else ctx.lineTo(px, py);
+        } else { started = false; }
+      }
+      ctx.stroke();
+
+      const xv = -b / (2 * a), yv = a * xv * xv + b * xv + c;
+      const [vx, vy] = toPx(xv, yv);
+      ctx.fillStyle = '#dc2626';
+      ctx.beginPath(); ctx.arc(vx, vy, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillText('I(' + Number(xv.toFixed(2)) + '; ' + Number(yv.toFixed(2)) + ')', vx + 6, vy + (a > 0 ? 14 : -8));
+    } else if (cfg.type === 'line') {
+      const a = Number(cfg.a) || 1, b = Number(cfg.b) || 0;
+      const x1 = (0 - ox) / s, x2 = (W - ox) / s;
+      const [px1, py1] = toPx(x1, a * x1 + b);
+      const [px2, py2] = toPx(x2, a * x2 + b);
+      ctx.strokeStyle = '#2563eb'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(px1, py1); ctx.lineTo(px2, py2); ctx.stroke();
+    } else if (cfg.type === 'ineq') {
+      const a = Number(cfg.a) || 0, b = Number(cfg.b) || 0, c = Number(cfg.c) || 0;
+      const op = cfg.op || '<=';
+      const len = Math.hypot(a, b) || 1;
+      const x0 = (a * c) / (len * len), y0 = (b * c) / (len * len);
+      const tx = -b / len, ty = a / len;
+      const sign = (op.includes('<')) ? -1 : 1;
+      const nx = sign * (a / len), ny = sign * (b / len);
+      const R = 40;
+      const p1 = toPx(x0 - R * tx, y0 - R * ty);
+      const p2 = toPx(x0 + R * tx, y0 + R * ty);
+      const p3 = toPx(x0 + R * tx + R * nx, y0 + R * ty + R * ny);
+      const p4 = toPx(x0 - R * tx + R * nx, y0 - R * ty + R * ny);
+
+      ctx.fillStyle = 'rgba(37, 99, 235, 0.18)';
+      ctx.beginPath(); ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]); ctx.lineTo(p3[0], p3[1]); ctx.lineTo(p4[0], p4[1]); ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = '#2563eb'; ctx.lineWidth = 2;
+      if (op === '<' || op === '>') ctx.setLineDash([6, 4]);
+      ctx.beginPath(); ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    return wrap;
+  }
+
+  function scanAndRenderPlots() {
+    document.querySelectorAll('pre code').forEach(codeEl => {
+      const raw = codeEl.textContent.trim();
+      if (!raw.startsWith('{') || !raw.endsWith('}')) return;
+      if (!/"type"\s*:\s*"(parabola|line|ineq|triangle)"/.test(raw)) return;
+      try {
+        const cfg = JSON.parse(raw);
+        const pre = codeEl.closest('pre') || codeEl;
+        pre.replaceWith(drawMathCanvas(cfg));
+      } catch (_) {}
+    });
+
+    document.querySelectorAll('div, p').forEach(el => {
+      if (el.children.length > 3) return;
+      const txt = el.textContent;
+      const m = txt.match(/```(?:mathplot|json)?\s*(\{\s*"type"\s*:\s*"(?:parabola|line|ineq|triangle)"[\s\S]*?\})\s*```/);
+      if (m) {
+        try {
+          const cfg = JSON.parse(m[1]);
+          el.innerHTML = el.innerHTML.replace(m[0], '');
+          el.appendChild(drawMathCanvas(cfg));
+        } catch (_) {}
+      }
+    });
+  }
+
+  let timer = null;
+  const obs = new MutationObserver(() => {
+    clearTimeout(timer);
+    timer = setTimeout(scanAndRenderPlots, 350);
+  });
+  obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+})();
+</script>
 </body>
 </html>
