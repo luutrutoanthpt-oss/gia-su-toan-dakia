@@ -1,10 +1,8 @@
-// Trạng thái toàn cục của ứng dụng Học sinh
 let currentStudent = JSON.parse(localStorage.getItem("dakia_student")) || null;
 let chatHistory = [];
 let selectedImageBase64 = null;
 let currentQuizQuestions = [];
 
-// Khởi tạo khi tải trang
 document.addEventListener("DOMContentLoaded", () => {
     updateStudentUI();
     renderTopics("10");
@@ -13,7 +11,6 @@ document.addEventListener("DOMContentLoaded", () => {
     initClipboardImagePaste();
 });
 
-// Hàm render công thức Toán KaTeX an toàn
 function renderMathInElementSafe(element) {
     if (window.renderMathInElement && element) {
         renderMathInElement(element, {
@@ -26,7 +23,6 @@ function renderMathInElementSafe(element) {
     }
 }
 
-// Chuyển đổi giữa 5 nhóm công thức Toán 10
 window.switchMathGroup = function(groupName) {
     document.querySelectorAll(".math-panel").forEach(el => {
         el.classList.add("hidden");
@@ -49,7 +45,6 @@ window.switchMathGroup = function(groupName) {
     }
 };
 
-// Chèn ký hiệu Toán học từ thanh công cụ vào ô nhập chat
 window.insertMathSymbol = function(symbol) {
     const input = document.getElementById("chatInput");
     if (!input) return;
@@ -70,7 +65,6 @@ window.insertMathSymbol = function(symbol) {
     input.setSelectionRange(newPos, newPos);
 };
 
-// Nén ảnh tối ưu 800px JPEG (giảm 60% dung lượng giúp tải lên cực nhanh)
 function processAndPreviewImageFile(file) {
     if (!file) return;
     const reader = new FileReader();
@@ -108,7 +102,6 @@ function processAndPreviewImageFile(file) {
     reader.readAsDataURL(file);
 }
 
-// Lắng nghe sự kiện dán ảnh trực tiếp (Ctrl + V) vào ô chat
 function initClipboardImagePaste() {
     const chatInput = document.getElementById("chatInput");
     if (!chatInput) return;
@@ -128,7 +121,6 @@ function initClipboardImagePaste() {
     });
 }
 
-// Chuyển đổi giữa các Tab
 function switchTab(tabName) {
     document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
     document.querySelectorAll(".nav-btn").forEach(btn => {
@@ -136,24 +128,24 @@ function switchTab(tabName) {
         btn.classList.add("border-transparent");
     });
 
-    document.getElementById(`tab-${tabName}`).classList.add("active");
+    const targetTab = document.getElementById(`tab-${tabName}`);
+    if (targetTab) targetTab.classList.add("active");
     const activeBtn = document.getElementById(`nav-${tabName}`);
     if (activeBtn) {
         activeBtn.classList.add("border-white", "text-white", "font-semibold");
         activeBtn.classList.remove("border-transparent");
     }
-    if (tabName === "progress") loadProgressTab();
+    if (tabName === "progress" && typeof loadProgressTab === "function") loadProgressTab();
 }
 
-// ==================== 1. ĐĂNG NHẬP BẰNG MÃ HỌC SINH ====================
 function openLoginModal() {
-    document.getElementById("loginModal").classList.remove("hidden");
-    document.getElementById("loginModal").classList.add("flex");
+    const m = document.getElementById("loginModal");
+    if (m) { m.classList.remove("hidden"); m.classList.add("flex"); }
 }
 
 function closeLoginModal() {
-    document.getElementById("loginModal").classList.add("hidden");
-    document.getElementById("loginModal").classList.remove("flex");
+    const m = document.getElementById("loginModal");
+    if (m) { m.classList.add("hidden"); m.classList.remove("flex"); }
 }
 
 async function loginWithStudentCode() {
@@ -199,9 +191,12 @@ async function loginWithStudentCode() {
 
 function updateStudentUI() {
     if (currentStudent) {
-        document.getElementById("studentDisplayName").textContent = `${currentStudent.full_name} (${currentStudent.class_name})`;
-        document.getElementById("welcomeGreeting").textContent = `Chào ${currentStudent.full_name} – Lớp ${currentStudent.class_name}!`;
-        document.getElementById("weakModeToggle").checked = !!currentStudent.is_weak_mode;
+        const disp = document.getElementById("studentDisplayName");
+        const greet = document.getElementById("welcomeGreeting");
+        const weak = document.getElementById("weakModeToggle");
+        if (disp) disp.textContent = `${currentStudent.full_name} (${currentStudent.class_name})`;
+        if (greet) greet.textContent = `Chào ${currentStudent.full_name} – Lớp ${currentStudent.class_name}!`;
+        if (weak) weak.checked = !!currentStudent.is_weak_mode;
     }
 }
 
@@ -217,7 +212,6 @@ function toggleWeakMode() {
     appendMessageToChat("ai", notice);
 }
 
-// ==================== 2. GIA SƯ AI, STREAMING & VẼ HÌNH TOÁN HỌC ====================
 function handleImageUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -240,21 +234,26 @@ function handleChatKeydown(e) {
 }
 
 function sendQuickPrompt(text) {
-    document.getElementById("chatInput").value = text;
-    sendTutorMessage();
+    const input = document.getElementById("chatInput");
+    if (input) {
+        input.value = text;
+        sendTutorMessage();
+    }
 }
 
 function resetChat() {
     chatHistory = [];
     clearSelectedImage();
-    document.getElementById("chatMessages").innerHTML = `
-        <div class="msg-ai max-w-2xl text-sm sm:text-base">
-            <p>Đã bắt đầu bài mới! Em hãy nhập đề bài hoặc chụp/dán ảnh bài tập tiếp theo nhé.</p>
-        </div>
-    `;
+    const box = document.getElementById("chatMessages");
+    if (box) {
+        box.innerHTML = `
+            <div class="msg-ai max-w-2xl text-sm sm:text-base">
+                <p>Đã bắt đầu bài mới! Em hãy nhập đề bài hoặc chụp/dán ảnh bài tập tiếp theo nhé.</p>
+            </div>
+        `;
+    }
 }
 
-// Gửi câu hỏi và hiển thị câu trả lời theo luồng Streaming (lọc bỏ suy nghĩ nháp tiếng Anh)
 async function sendTutorMessage() {
     const inputEl = document.getElementById("chatInput");
     const text = inputEl.value.trim();
@@ -262,7 +261,7 @@ async function sendTutorMessage() {
 
     const gradeEl = document.getElementById("tutorGradeSelect");
     const grade = gradeEl ? gradeEl.value : "10";
-    const isWeakMode = document.getElementById("weakModeToggle").checked;
+    const isWeakMode = document.getElementById("weakModeToggle")?.checked || false;
 
     let studentHtml = text ? `<p class="whitespace-pre-wrap">${escapeHtml(text)}</p>` : "";
     if (selectedImageBase64) {
@@ -275,6 +274,7 @@ async function sendTutorMessage() {
     clearSelectedImage();
 
     const loadingId = appendLoadingBubble();
+    const NEWLINE = String.fromCharCode(10);
 
     try {
         const response = await fetch("/api/tutor", {
@@ -311,7 +311,7 @@ async function sendTutorMessage() {
             if (done) break;
             buffer += decoder.decode(value, { stream: true });
 
-            const lines = buffer.split("\n");
+            const lines = buffer.split(NEWLINE);
             buffer = lines.pop();
 
             for (const line of lines) {
@@ -321,44 +321,13 @@ async function sendTutorMessage() {
                     try {
                         const parsed = JSON.parse(jsonStr);
                         const parts = parsed.candidates?.[0]?.content?.parts || [];
-                        // Chỉ lấy phần nội dung trả lời chính thức, bỏ qua phần suy nghĩ nháp (p.thought)
                         const chunk = parts
                             .filter(p => !p.thought && p.text)
                             .map(p => p.text)
                             .join("");
                         if (chunk) {
                             fullReply += chunk;
-                            aiDiv.innerHTML = function formatAiResponse(text) {
-    const plotBlocks = [];
-    // Bắt khối lệnh vẽ đồ thị/hình học ```mathplot {...} ```
-    let processed = text.replace(/```mathplot\s*([\s\S]*?)```/gi, (_, jsonStr) => {
-        const idx = plotBlocks.length;
-        try {
-            const cfg = JSON.parse(jsonStr.trim());
-            plotBlocks.push(renderMathPlotSVG(cfg));
-        } catch (e) {
-            plotBlocks.push("");
-        }
-        return `__PLOT_BLOCK_${idx}__`;
-    });
-
-    // Giữ hỗ trợ nếu AI trả về ```svg ... ```
-    processed = processed.replace(/```svg\s*([\s\S]*?)```/gi, (_, svgCode) => {
-        const idx = plotBlocks.length;
-        plotBlocks.push(`<div class="my-2 p-2 bg-white border border-slate-200 rounded-xl flex justify-center overflow-x-auto shadow-sm">${svgCode.trim()}</div>`);
-        return `__PLOT_BLOCK_${idx}__`;
-    });
-
-    processed = processed
-        .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-        .split("\n").join("<br>");
-
-    plotBlocks.forEach((html, idx) => {
-        processed = processed.replace(`__PLOT_BLOCK_${idx}__`, html);
-    });
-
-    return processed;
-};
+                            aiDiv.innerHTML = formatAiResponse(fullReply);
                             container.scrollTop = container.scrollHeight;
                         }
                     } catch (_) {}
@@ -386,6 +355,7 @@ async function sendTutorMessage() {
 
 function appendMessageToChat(sender, htmlContent) {
     const container = document.getElementById("chatMessages");
+    if (!container) return;
     const div = document.createElement("div");
     div.className = sender === "ai" ? "msg-ai max-w-2xl text-sm sm:text-base space-y-2" : "msg-student max-w-xl text-sm sm:text-base";
     div.innerHTML = htmlContent;
@@ -411,7 +381,6 @@ function removeLoadingBubble(id) {
     if (el) el.remove();
 }
 
-// Bộ dựng hình đồ thị & hình học Toán 10 tự động bằng SVG sắc nét
 function renderMathPlotSVG(cfg) {
     const W = 320, H = 240, cx = 160, cy = 120, scale = 22;
     let content = `
@@ -467,64 +436,4 @@ function renderMathPlotSVG(cfg) {
         content += `<line x1="${cx + x1 * scale}" y1="${cy - y1 * scale}" x2="${cx + x2 * scale}" y2="${cy - y2 * scale}" stroke="#0d9488" stroke-width="2.2"/>`;
     } else if (cfg.type === "ineq") {
         const a = Number(cfg.a) || 1, b = Number(cfg.b) || 1, c = Number(cfg.c) || 0;
-        const op = cfg.op || "<=";
-        content += drawAxes();
-        for (let gx = -7; gx <= 7; gx += 0.5) {
-            for (let gy = -5; gy <= 5; gy += 0.5) {
-                const val = a * gx + b * gy;
-                const ok = op.includes("<") ? val <= c : val >= c;
-                if (ok) {
-                    content += `<circle cx="${cx + gx * scale}" cy="${cy - gy * scale}" r="1.6" fill="#93c5fd" opacity="0.65"/>`;
-                }
-            }
-        }
-        if (Math.abs(b) > 0.001) {
-            const x1 = -7, y1 = (c - a * x1) / b;
-            const x2 = 7, y2 = (c - a * x2) / b;
-            const dash = (op === "<" || op === ">") ? `stroke-dasharray="5,4"` : "";
-            content += `<line x1="${cx + x1 * scale}" y1="${cy - y1 * scale}" x2="${cx + x2 * scale}" y2="${cy - y2 * scale}" stroke="#1d4ed8" stroke-width="2" ${dash}/>`;
-        }
-    } else if (cfg.type === "triangle") {
-        const ab = Number(cfg.AB) || 5, ac = Number(cfg.AC) || 6;
-        const rad = ((Number(cfg.angleA) || 60) * Math.PI) / 180;
-        const s = Math.min(180 / Math.max(ab, ac, 5), 28);
-        const Ax = 65, Ay = 190;
-        const Cx = Ax + ac * s, Cy = Ay;
-        const Bx = Ax + ab * Math.cos(rad) * s, By = Ay - ab * Math.sin(rad) * s;
-
-        content += `
-            <polygon points="${Ax},${Ay} ${Bx.toFixed(1)},${By.toFixed(1)} ${Cx.toFixed(1)},${Cy}" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2"/>
-            <text x="${Ax - 14}" y="${Ay + 14}" font-size="13" font-weight="bold" fill="#0f172a">A</text>
-            <text x="${Bx - 4}" y="${By - 8}" font-size="13" font-weight="bold" fill="#0f172a">B</text>
-            <text x="${Cx + 6}" y="${Cy + 14}" font-size="13" font-weight="bold" fill="#0f172a">C</text>
-            <text x="${(Ax + Bx) / 2 - 22}" y="${(Ay + By) / 2}" font-size="11" font-weight="bold" fill="#0369a1">${ab}</text>
-            <text x="${(Ax + Cx) / 2 - 6}" y="${Ay + 15}" font-size="11" font-weight="bold" fill="#0369a1">${ac}</text>
-            <text x="${Ax + 18}" y="${Ay - 8}" font-size="11" font-weight="bold" fill="#dc2626">${cfg.angleA || 60}°</text>
-        `;
-    }
-
-    const caption = cfg.label ? `<div class="text-center text-xs font-semibold text-slate-600 mt-1">${escapeHtml(cfg.label)}</div>` : "";
-    return `<div class="my-2.5 p-2.5 bg-white border border-slate-200 rounded-xl shadow-sm inline-block max-w-full">
-        <svg viewBox="0 0 ${W} ${H}" class="w-full max-w-[320px] h-auto mx-auto block">${content}</svg>
-        ${caption}
-    </div>`;
-}
-
-function formatAiResponse(text) {
-    const plotBlocks = [];
-    // Bắt khối lệnh vẽ đồ thị/hình học ```mathplot {...} ```
-    let processed = text.replace(/```mathplot\s*([\s\S]*?)```/gi, (_, jsonStr) => {
-        const idx = plotBlocks.length;
-        try {
-            const cfg = JSON.parse(jsonStr.trim());
-            plotBlocks.push(renderMathPlotSVG(cfg));
-        } catch (e) {
-            plotBlocks.push("");
-        }
-        return `__PLOT_BLOCK_${idx}__`;
-    });
-
-    // Giữ hỗ trợ nếu AI trả về ```svg ... ```
-    processed = processed.replace(/```svg\s*([\s\S]*?)```/gi, (_, svgCode) => {
-        const idx = plotBlocks.length;
-        plotBlocks.push(`<div class="my-2
+        const op = cfg
