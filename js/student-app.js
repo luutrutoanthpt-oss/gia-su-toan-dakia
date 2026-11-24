@@ -347,12 +347,48 @@ function removeLoadingBubble(id) {
     if (el) el.remove();
 }
 
+// Chuyển đổi giữa 5 nhóm công thức Toán
+window.switchMathGroup = function(groupName) {
+    document.querySelectorAll(".math-panel").forEach(el => {
+        el.classList.add("hidden");
+        el.classList.remove("flex");
+    });
+    document.querySelectorAll(".math-grp-btn").forEach(btn => {
+        btn.classList.remove("bg-blue-700", "text-white");
+        btn.classList.add("bg-slate-200", "text-slate-700");
+    });
+
+    const targetPanel = document.getElementById(`mpanel-${groupName}`);
+    if (targetPanel) {
+        targetPanel.classList.remove("hidden");
+        targetPanel.classList.add("flex");
+    }
+    const targetBtn = document.getElementById(`mgrp-${groupName}`);
+    if (targetBtn) {
+        targetBtn.classList.add("bg-blue-700", "text-white");
+        targetBtn.classList.remove("bg-slate-200", "text-slate-700");
+    }
+};
+
 function formatAiResponse(text) {
-    return text
+    // Tách và giữ nguyên các khối hình vẽ SVG để không bị thay thế dấu xuống dòng
+    const svgBlocks = [];
+    let processed = text.replace(/```svg\s*([\s\S]*?)```/gi, (_, svgCode) => {
+        const idx = svgBlocks.length;
+        svgBlocks.push(`<div class="my-2 p-2 bg-white border border-slate-200 rounded-xl flex justify-center overflow-x-auto shadow-sm">${svgCode.trim()}</div>`);
+        return `__SVG_BLOCK_${idx}__`;
+    });
+
+    processed = processed
         .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
         .replace(/\n/g, "<br>");
-}
 
+    svgBlocks.forEach((html, idx) => {
+        processed = processed.replace(`__SVG_BLOCK_${idx}__`, html);
+    });
+
+    return processed;
+}
 function escapeHtml(str) {
     return str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
 }
