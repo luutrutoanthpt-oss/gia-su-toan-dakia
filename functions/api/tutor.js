@@ -33,7 +33,6 @@ Khi có hàm số, BPT hoặc tam giác, chèn 1 khối JSON trong \`\`\`mathplo
         }
         contents.push({ role: "user", parts: currentParts });
 
-        // Đưa các model lite siêu nhanh & còn hạn mức lên đầu tiên để gọi trúng ngay lượt 1
         const models = [
             "gemini-3.8-flash-lite",
             "gemini-3.7-flash-lite",
@@ -46,22 +45,32 @@ Khi có hàm số, BPT hoặc tam giác, chèn 1 khối JSON trong \`\`\`mathplo
         ];
         let lastError = "";
 
+        // Hỗ trợ cả khóa mới bắt đầu bằng AQ... (qua Header) lẫn khóa cũ AIza... (qua URL)
+        const isUnifiedKey = apiKey.startsWith("AQ.");
+        const headers = { "Content-Type": "application/json" };
+        if (isUnifiedKey) {
+            headers["x-goog-api-key"] = apiKey;
+        }
+
         for (const model of models) {
             const generationConfig = {
                 temperature: 0.3,
                 maxOutputTokens: 2500
             };
 
-            // Giảm tối đa thời gian suy nghĩ ngầm để nhả chữ ngay lập tức (~0.5 giây)
             if (model.includes("2.5")) {
                 generationConfig.thinkingConfig = { thinkingBudget: 0 };
             } else {
                 generationConfig.thinkingConfig = { thinkingLevel: "minimal" };
             }
 
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`, {
+            const url = isUnifiedKey
+                ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`
+                : `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+
+            const res = await fetch(url, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers,
                 body: JSON.stringify({
                     systemInstruction: { parts: [{ text: systemInstruction }] },
                     contents,
