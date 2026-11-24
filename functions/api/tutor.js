@@ -32,40 +32,32 @@ Khi có hàm số, BPT hoặc tam giác, chèn 1 khối JSON trong \`\`\`mathplo
         }
         contents.push({ role: "user", parts: currentParts });
 
-        // Xáo trộn thứ tự các API Key để chia đều tải cho 47 học sinh lớp 10A8
-        const shuffledKeys = [...rawKeys].sort(() => Math.random() - 0.5);
+        // Chỉ lấy tối đa 2 Key ngẫu nhiên mỗi lượt hỏi để không bao giờ bị chờ lâu
+        const sampleKeys = [...rawKeys].sort(() => Math.random() - 0.5).slice(0, 2);
 
-        // Danh sách 9 model miễn phí tốc độ cao (đã loại bỏ các model limit: 0)
+        // Chỉ giữ 5 model chuẩn còn hoạt động (loại bỏ hoàn toàn dòng 2.0 đã ngừng hỗ trợ)
         const fastModels = [
-            "gemini-2.5-flash-lite",
-            "gemini-2.5-flash",
             "gemini-3.8-flash-lite",
             "gemini-3.8-flash",
-            "gemini-3.7-flash-lite",
             "gemini-3.7-flash",
-            "gemini-3.6-flash",
-            "gemini-2.0-flash-lite",
-            "gemini-2.0-flash"
+            "gemini-2.5-flash-lite",
+            "gemini-2.5-flash"
         ];
         let lastError = "";
 
         for (const model of fastModels) {
-            for (const apiKey of shuffledKeys) {
+            for (const apiKey of sampleKeys) {
                 const isUnifiedKey = apiKey.startsWith("AQ.");
                 const headers = { "Content-Type": "application/json" };
-                if (isUnifiedKey) {
-                    headers["x-goog-api-key"] = apiKey;
-                }
+                if (isUnifiedKey) headers["x-goog-api-key"] = apiKey;
 
                 const generationConfig = {
                     temperature: 0.3,
                     maxOutputTokens: 2500
                 };
-
-                // Tắt suy nghĩ ngầm trên dòng 2.5 và giảm tối thiểu trên dòng 3.x để phản hồi dưới 1 giây
                 if (model.includes("2.5")) {
                     generationConfig.thinkingConfig = { thinkingBudget: 0 };
-                } else if (model.includes("3.")) {
+                } else {
                     generationConfig.thinkingConfig = { thinkingLevel: "minimal" };
                 }
 
@@ -95,14 +87,12 @@ Khi có hàm số, BPT hoặc tam giác, chèn 1 khối JSON trong \`\`\`mathplo
 
                 const errData = await res.json().catch(() => ({}));
                 lastError = `[${model}]: ${errData.error?.message || res.status}`;
-
-                // Nếu tên model không tồn tại trên API (404) thì chuyển thẳng sang model tiếp theo
                 if (res.status === 404) break;
             }
         }
 
         return new Response(JSON.stringify({
-            error: `Hệ thống AI đang bận, em bấm Gửi lại nhé! (${lastError})`
+            error: `Tất cả Key hôm nay đã dùng hết 20 lượt miễn phí. Thầy/Cô thêm Key từ Gmail khác hoặc chờ chiều mai cấp lại lượt nhé! (${lastError})`
         }), {
             status: 502,
             headers: { "Content-Type": "application/json" }
