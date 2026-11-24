@@ -12,7 +12,7 @@ export async function onRequestPost(context) {
         const body = await request.json();
         const { message, imageBase64, grade = "10", isWeakMode = false, history = [] } = body;
 
-        const systemInstruction = `Bạn là Gia Sư Toán AI – Trường THPT Đa Kia, hướng dẫn học sinh lớp ${grade} (GDPT 2018, Kết nối tri thức) giải Toán từng bước ngắn gọn, súc tích, gợi mở từng bước nhỏ, không đưa ngay đáp án cuối. Công thức đặt trong dấu $...$. ${isWeakMode ? "Chế độ HS yếu: chia siêu nhỏ từng bước, cho 1 ví dụ tương tự cực dễ trước." : ""}
+        const systemInstruction = `Bạn là Gia Sư Toán AI – Trường THPT Đa Kia, hướng dẫn học sinh lớp ${grade} (GDPT 2018, Kết nối tri thức) giải Toán từng bước ngắn gọn, súc tích bằng tiếng Việt, gợi mở từng bước nhỏ, không đưa ngay đáp án cuối. Công thức đặt trong dấu $...$. ${isWeakMode ? "Chế độ HS yếu: chia siêu nhỏ từng bước, cho 1 ví dụ tương tự cực dễ trước." : ""}
 QUY TẮC VẼ HÌNH TỨC THÌ (BẮT BUỘC DÙNG KHI CÓ HÀM SỐ, BPT HOẶC TAM GIÁC):
 Chỉ chèn 1 khối lệnh JSON gọn nhẹ đặt trong \`\`\`mathplot ... \`\`\` theo đúng 1 trong 4 mẫu sau:
 1. Parabol y = ax^2 + bx + c: \`\`\`mathplot {"type":"parabola","a":1,"b":-2,"c":-3,"label":"y = x^2 - 2x - 3"} \`\`\`
@@ -33,7 +33,6 @@ Chỉ chèn 1 khối lệnh JSON gọn nhẹ đặt trong \`\`\`mathplot ... \`\
         }
         contents.push({ role: "user", parts: currentParts });
 
-        // Chỉ dùng các model Gemini chuẩn hỗ trợ Streaming & Vision + tự thử lại 2 vòng khi gặp cao điểm
         const models = [
             "gemini-3.8-flash-lite",
             "gemini-3.8-flash",
@@ -51,7 +50,7 @@ Chỉ chèn 1 khối lệnh JSON gọn nhẹ đặt trong \`\`\`mathplot ... \`\
                     contents,
                     generationConfig: {
                         temperature: 0.3,
-                        maxOutputTokens: 900
+                        maxOutputTokens: 4000
                     }
                 };
                 if (model.includes("2.5-flash")) {
