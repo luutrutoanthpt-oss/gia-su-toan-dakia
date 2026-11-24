@@ -36,13 +36,15 @@ Khi có hàm số, BPT hoặc tam giác, chèn 1 khối JSON trong \`\`\`mathplo
         // Xáo trộn thứ tự các API Key để chia đều tải cho 47 học sinh, đồng thời tự động chuyển sang Key kế tiếp nếu Key hiện tại hết lượt
         const shuffledKeys = [...rawKeys].sort(() => Math.random() - 0.5);
         const fastModels = [
-            "gemini-3.8-flash-lite",
-            "gemini-3.7-flash-lite",
             "gemini-2.5-flash-lite",
-            "gemini-3.7-flash",
             "gemini-2.5-flash",
+            "gemini-3.8-flash-lite",
             "gemini-3.8-flash",
-            "gemini-3.1-pro-preview"
+            "gemini-3.7-flash-lite",
+            "gemini-3.7-flash",
+            "gemini-3.6-flash",
+            "gemini-2.0-flash-lite",
+            "gemini-2.0-flash"
         ];
         let lastError = "";
 
