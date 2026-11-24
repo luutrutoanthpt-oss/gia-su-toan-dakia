@@ -10,6 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
     renderTopics("10");
     startPracticeQuiz();
     renderMathInElementSafe(document.body);
+    initClipboardImagePaste();
 });
 
 // Hàm render công thức Toán KaTeX an toàn
@@ -23,6 +24,87 @@ function renderMathInElementSafe(element) {
             throwOnError: false
         });
     }
+}
+
+// Chèn ký hiệu Toán học từ thanh công cụ vào ô nhập chat
+window.insertMathSymbol = function(symbol) {
+    const input = document.getElementById("chatInput");
+    if (!input) return;
+
+    const start = input.selectionStart ?? input.value.length;
+    const end = input.selectionEnd ?? input.value.length;
+    const text = input.value;
+
+    const before = text.slice(0, start);
+    const dollarCount = (before.match(/\$/g) || []).length;
+    const wrapped = (dollarCount % 2 === 0) ? `$${symbol}$` : symbol;
+
+    input.value = before + wrapped + text.slice(end);
+    input.focus();
+
+    const bracePos = wrapped.indexOf("{}");
+    const newPos = bracePos !== -1 ? start + bracePos + 1 : start + wrapped.length;
+    input.setSelectionRange(newPos, newPos);
+};
+
+// Nén ảnh từ Blob/File sang Base64 JPEG (tối đa 1024px) và hiển thị xem trước
+function processAndPreviewImageFile(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+            const canvas = document.createElement("canvas");
+            const MAX_DIM = 1024;
+            let width = img.width;
+            let height = img.height;
+            if (width > MAX_DIM || height > MAX_DIM) {
+                if (width > height) {
+                    height = Math.round(height * MAX_DIM / width);
+                    width = MAX_DIM;
+                } else {
+                    width = Math.round(width * MAX_DIM / height);
+                    height = MAX_DIM;
+                }
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            ctx.fillStyle = "#FFFFFF";
+            ctx.fillRect(0, 0, width, height);
+            ctx.drawImage(img, 0, 0, width, height);
+
+            selectedImageBase64 = canvas.toDataURL("image/jpeg", 0.82);
+            const previewImg = document.getElementById("imagePreview");
+            const previewBox = document.getElementById("imagePreviewContainer");
+            if (previewImg) previewImg.src = selectedImageBase64;
+            if (previewBox) previewBox.classList.remove("hidden");
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+// Lắng nghe sự kiện dán ảnh trực tiếp (Ctrl + V) vào ô chat
+function initClipboardImagePaste() {
+    const chatInput = document.getElementById("chatInput");
+    if (!chatInput) return;
+
+    chatInput.addEventListener("paste", function(event) {
+        const items = (event.clipboardData || event.originalEvent?.clipboardData)?.items;
+        if (!items) return;
+
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf("image") !== -1) {
+                event.preventDefault();
+                const blob = items[i].getAsFile();
+                if (blob) {
+                    processAndPreviewImageFile(blob);
+                }
+                break;
+            }
+        }
+    });
 }
 
 // Chuyển đổi giữa các Tab
@@ -62,8 +144,7 @@ async function loginWithStudentCode() {
         return;
     }
 
-    // Kiểm tra trên Supabase nếu đã kết nối
-    if (supabaseClient) {
+    if (typeof supabaseClient !== "undefined" && supabaseClient) {
         const { data, error } = await supabaseClient
             .from("students")
             .select("*")
@@ -77,7 +158,6 @@ async function loginWithStudentCode() {
         }
         currentStudent = data;
     } else {
-        // Chế độ dự phòng cục bộ nếu giáo viên chưa nối Supabase
         const localStudents = JSON.parse(localStorage.getItem("dakia_all_students")) || [];
         const found = localStudents.find(s => s.student_code === code);
         currentStudent = found || {
@@ -116,42 +196,19 @@ function toggleWeakMode() {
     appendMessageToChat("ai", notice);
 }
 
-// ==================== 2. GIA SƯ AI & XỬ LÝ ẢNH CHỤP TỪ ĐIỆN THOẠI ====================
+// ==================== 2. GIA SƯ AI & XỬ LÝ ẢNH CHỤP TỪ ĐIỆN THOẠI / CLIPBOARD ====================
 function handleImageUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
-
-    // Nén ảnh trên điện thoại để gửi nhanh và tiết kiệm dung lượng
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const img = new Image();
-        img.onload = function() {
-            const canvas = document.createElement("canvas");
-            const MAX_WIDTH = 1024;
-            let width = img.width;
-            let height = img.height;
-            if (width > MAX_WIDTH) {
-                height *= MAX_WIDTH / width;
-                width = MAX_WIDTH;
-            }
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext("2d");
-            ctx.drawImage(img, 0, 0, width, height);
-
-            selectedImageBase64 = canvas.toDataURL("image/jpeg", 0.8);
-            document.getElementById("imagePreview").src = selectedImageBase64;
-            document.getElementById("imagePreviewContainer").classList.remove("hidden");
-        };
-        img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
+    processAndPreviewImageFile(file);
 }
 
 function clearSelectedImage() {
     selectedImageBase64 = null;
-    document.getElementById("imageInput").value = "";
-    document.getElementById("imagePreviewContainer").classList.add("hidden");
+    const imgInput = document.getElementById("imageInput");
+    if (imgInput) imgInput.value = "";
+    const previewBox = document.getElementById("imagePreviewContainer");
+    if (previewBox) previewBox.classList.add("hidden");
 }
 
 function handleChatKeydown(e) {
@@ -171,7 +228,7 @@ function resetChat() {
     clearSelectedImage();
     document.getElementById("chatMessages").innerHTML = `
         <div class="msg-ai max-w-2xl text-sm sm:text-base">
-            <p>Đã bắt đầu bài mới! Em hãy nhập đề bài hoặc chụp ảnh bài tập tiếp theo nhé.</p>
+            <p>Đã bắt đầu bài mới! Em hãy nhập đề bài hoặc chụp/dán ảnh bài tập tiếp theo nhé.</p>
         </div>
     `;
 }
@@ -181,10 +238,10 @@ async function sendTutorMessage() {
     const text = inputEl.value.trim();
     if (!text && !selectedImageBase64) return;
 
-    const grade = document.getElementById("tutorGradeSelect").value;
+    const gradeEl = document.getElementById("tutorGradeSelect");
+    const grade = gradeEl ? gradeEl.value : "10";
     const isWeakMode = document.getElementById("weakModeToggle").checked;
 
-    // Hiển thị tin nhắn học sinh lên khung chat
     let studentHtml = text ? `<p class="whitespace-pre-wrap">${escapeHtml(text)}</p>` : "";
     if (selectedImageBase64) {
         studentHtml += `<img src="${selectedImageBase64}" class="mt-2 max-h-48 rounded-lg border border-blue-300">`;
@@ -195,11 +252,9 @@ async function sendTutorMessage() {
     inputEl.value = "";
     clearSelectedImage();
 
-    // Hiển thị hiệu ứng AI đang suy nghĩ
     const loadingId = appendLoadingBubble();
 
     try {
-        // Gọi Backend bảo mật /api/tutor
         const response = await fetch("/api/tutor", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -208,14 +263,15 @@ async function sendTutorMessage() {
                 imageBase64: imageToSend,
                 grade: grade,
                 isWeakMode: isWeakMode,
-                history: chatHistory.slice(-6) // Giữ 6 lượt hội thoại gần nhất để hiểu ngữ cảnh
+                history: chatHistory.slice(-6)
             })
         });
 
         removeLoadingBubble(loadingId);
 
         if (!response.ok) {
-            throw new Error("Không kết nối được với máy chủ Gia sư AI.");
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.error || `Lỗi máy chủ (Mã ${response.status})`);
         }
 
         const data = await response.json();
@@ -225,11 +281,13 @@ async function sendTutorMessage() {
         chatHistory.push({ role: "model", text: aiReply });
 
         appendMessageToChat("ai", formatAiResponse(aiReply));
-        logLearningActivity("ai_tutor", `Hỏi Gia sư AI Toán ${grade}`, null, "");
+        if (typeof logLearningActivity === "function") {
+            logLearningActivity("ai_tutor", `Hỏi Gia sư AI Toán ${grade}`, null, "");
+        }
 
     } catch (err) {
         removeLoadingBubble(loadingId);
-        appendMessageToChat("ai", `<span class="text-red-600 font-semibold">⚠️ Lỗi kết nối AI:</span> ${err.message}. <br><span class="text-xs text-slate-500">(Lưu ý: Chức năng AI hoạt động sau khi Thầy/Cô hoàn tất Giai đoạn 4 & đưa lên Cloudflare Pages).</span>`);
+        appendMessageToChat("ai", `<span class="text-red-600 font-semibold">⚠️ Lỗi kết nối AI:</span> ${err.message}`);
     }
 }
 
@@ -261,7 +319,6 @@ function removeLoadingBubble(id) {
 }
 
 function formatAiResponse(text) {
-    // Chuyển đổi xuống dòng và in đậm Markdown cơ bản sang HTML đẹp mắt
     return text
         .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
         .replace(/\n/g, "<br>");
@@ -278,11 +335,15 @@ function renderTopics(grade) {
         btn.classList.add("bg-slate-100", "text-slate-700");
     });
     const activeBtn = document.getElementById(`gradeBtn-${grade}`);
-    activeBtn.classList.add("bg-blue-700", "text-white");
-    activeBtn.classList.remove("bg-slate-100", "text-slate-700");
+    if (activeBtn) {
+        activeBtn.classList.add("bg-blue-700", "text-white");
+        activeBtn.classList.remove("bg-slate-100", "text-slate-700");
+    }
 
-    const topics = CURRICULUM_DATA[grade] || [];
+    const topics = (typeof CURRICULUM_DATA !== "undefined" ? CURRICULUM_DATA[grade] : []) || [];
     const listEl = document.getElementById("topicList");
+    if (!listEl) return;
+
     listEl.innerHTML = topics.map((t, idx) => `
         <button onclick="showTopicDetail('${grade}', ${idx})" class="w-full text-left bg-white hover:bg-blue-50 border border-slate-200 p-3.5 rounded-xl shadow-sm transition font-semibold text-sm text-slate-800">
             ${t.title}
@@ -295,6 +356,8 @@ function renderTopics(grade) {
 function showTopicDetail(grade, index) {
     const topic = CURRICULUM_DATA[grade][index];
     const detailEl = document.getElementById("topicDetail");
+    if (!detailEl) return;
+
     detailEl.innerHTML = `
         <div class="border-b border-slate-200 pb-3 flex flex-wrap justify-between items-center gap-2">
             <h3 class="font-bold text-lg text-blue-800">${topic.title}</h3>
@@ -331,7 +394,10 @@ function askAiAboutTopic(topicTitle) {
 
 // ==================== 4. LUYỆN TẬP & KIỂM TRA (4 DẠNG CÂU HỎI) ====================
 function startPracticeQuiz() {
-    const grade = document.getElementById("pracGrade").value;
+    const gradeEl = document.getElementById("pracGrade");
+    if (!gradeEl || typeof PRACTICE_QUESTIONS === "undefined") return;
+
+    const grade = gradeEl.value;
     const level = document.getElementById("pracLevel").value;
     const type = document.getElementById("pracType").value;
 
@@ -392,7 +458,7 @@ function startPracticeQuiz() {
             <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm" id="card_${q.id}">
                 <div class="flex items-center justify-between text-xs text-slate-500 mb-2">
                     <span class="font-bold text-blue-700 uppercase">Câu ${idx + 1} • ${q.topicName}</span>
-                    <span class="bg-slate-100 px-2 py-0.5 rounded">${formatLevelLabel(q.level)}</span>
+                    <span class="bg-slate-100 px-2 py-0.5 rounded">${typeof formatLevelLabel === "function" ? formatLevelLabel(q.level) : q.level}</span>
                 </div>
                 <div class="text-sm sm:text-base text-slate-800 font-medium">${q.content}</div>
                 ${inputArea}
@@ -470,90 +536,12 @@ function submitPracticeQuiz() {
             </div>
         </div>
         <div class="text-sm text-slate-700 space-y-2">
-            <p><strong>Nhận xét:</strong> ${score >= 8 ? "Em nắm bài rất tốt! Hãy thử sức với các câu Vận dụng nhé." : score >= 5 ? "Em đã hiểu phần cơ bản nhưng còn nhầm lẫn ở một số bước biến đổi." : "Em đang hổng kiến thức nền tảng. Thầy khuyên em nên bật 'Chế độ Học sinh yếu' để ôn lại từng bước nhỏ."}</p>
-            ${weakTopics.length > 0 ? `<p class="text-red-700"><strong>Kiến thức cần ôn tập ngay:</strong> ${[...new Set(weakTopics)].join("; ")}.</p>` : ""}
+            <p><strong>Nhận xét:</strong> ${score >= 8 ? "Em nắm bài rất tốt! Hãy thử sức với các câu Vận dụng nhé." : score >= 5 ? "Em đã hiểu phần cơ bản, hãy xem lại lời giải các câu màu đỏ và luyện thêm với Gia sư AI nhé!" : "Em nên bật Chế độ Học sinh yếu ở tab Gia sư AI để thầy hướng dẫn lại từng bước cơ bản nhé!"}</p>
+            ${weakTopics.length > 0 ? `<p class="text-red-700"><strong>Nội dung cần củng cố:</strong> ${[...new Set(weakTopics)].join(", ")}</p>` : ""}
         </div>
     `;
-
     renderMathInElementSafe(analysisEl);
-    analysisEl.scrollIntoView({ behavior: "smooth" });
-    logLearningActivity("practice_test", "Luyện tập tổng hợp", score, weakTopics.join("; "));
-}
-
-function formatLevelLabel(lvl) {
-    return { nhan_biet: "Nhận biết", thong_hieu: "Thông hiểu", van_dung: "Vận dụng" }[lvl] || lvl;
-}
-
-// ==================== 5. LƯU & HIỂN THỊ TIẾN ĐỘ HỌC TẬP ====================
-async function logLearningActivity(type, topicName, score, weakPoints) {
-    const code = currentStudent ? currentStudent.student_code : "KHACH";
-    const entry = {
-        student_code: code,
-        activity_type: type,
-        topic_name: topicName,
-        score: score,
-        weak_points: weakPoints,
-        created_at: new Date().toLocaleString("vi-VN")
-    };
-
-    // Lưu cục bộ
-    const logs = JSON.parse(localStorage.getItem("dakia_learning_logs")) || [];
-    logs.unshift(entry);
-    localStorage.setItem("dakia_learning_logs", JSON.stringify(logs.slice(0, 50)));
-
-    // Đồng bộ lên Supabase nếu đã kết nối
-    if (supabaseClient && currentStudent) {
-        await supabaseClient.from("learning_logs").insert([entry]);
+    if (typeof logLearningActivity === "function") {
+        logLearningActivity("practice_quiz", `Luyện tập (${correctCount}/${total} câu đúng)`, score, weakTopics.join(", "));
     }
 }
-
-function loadProgressTab() {
-    const logs = JSON.parse(localStorage.getItem("dakia_learning_logs")) || [];
-    if (currentStudent) {
-        document.getElementById("progName").textContent = `${currentStudent.full_name} (${currentStudent.class_name})`;
-        document.getElementById("progMode").textContent = currentStudent.is_weak_mode ? "Hỗ trợ HS yếu" : "Tiêu chuẩn";
-    }
-    document.getElementById("progSolved").textContent = logs.length;
-
-    const scoredLogs = logs.filter(l => l.score !== null);
-    if (scoredLogs.length > 0) {
-        const avg = scoredLogs.reduce((acc, cur) => acc + cur.score, 0) / scoredLogs.length;
-        document.getElementById("progAvgScore").textContent = avg.toFixed(1);
-    }
-
-    const histEl = document.getElementById("learningHistoryList");
-    if (logs.length > 0) {
-        histEl.innerHTML = logs.map(l => `
-            <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 flex flex-wrap justify-between items-center gap-2">
-                <div>
-                    <span class="font-semibold text-slate-800">${l.topic_name}</span>
-                    <span class="text-xs text-slate-400 block">${l.created_at}</span>
-                    ${l.weak_points ? `<span class="text-xs text-red-600 block">Cần ôn: ${l.weak_points}</span>` : ""}
-                </div>
-                ${l.score !== null ? `<span class="bg-blue-100 text-blue-800 font-bold px-2.5 py-1 rounded text-xs">Điểm: ${l.score}</span>` : `<span class="text-xs text-teal-700 font-medium">Đã tương tác AI</span>`}
-            </div>
-        `).join("");
-    }
-}
-// Hàm chèn ký hiệu Toán học vào ô nhập chat của học sinh
-window.insertMathSymbol = function(symbol) {
-    const input = document.getElementById('chat-input') || document.querySelector('input[placeholder*="Nhập đề bài"], textarea[placeholder*="Nhập đề bài"]');
-    if (!input) return;
-
-    const start = input.selectionStart || input.value.length;
-    const end = input.selectionEnd || input.value.length;
-    const text = input.value;
-
-    // Tự động bọc trong dấu $...$ nếu học sinh chưa mở dấu $
-    const before = text.slice(0, start);
-    const dollarCount = (before.match(/\$/g) || []).length;
-    const wrapped = (dollarCount % 2 === 0) ? `$${symbol}$` : symbol;
-
-    input.value = before + wrapped + text.slice(end);
-    input.focus();
-
-    // Đặt con trỏ vào giữa ngoặc {} đối với căn thức/phân số để gõ tiếp ngay
-    const bracePos = wrapped.indexOf('{}');
-    const newPos = bracePos !== -1 ? start + bracePos + 1 : start + wrapped.length;
-    input.setSelectionRange(newPos, newPos);
-};
