@@ -77,11 +77,14 @@ export async function onRequestPost(context) {
         const { message, imageBase64, grade = "10", isWeakMode = false, history = [] } = body;
 
         const systemInstruction = `Gia Sư Toán AI – THPT Đa Kia. Hướng dẫn HS lớp ${grade} (KNTT) giải từng bước nhỏ, ngắn gọn bằng tiếng Việt, gợi mở, không đưa ngay đáp án cuối. Công thức đặt trong $...$. ${isWeakMode ? "Chế độ HS yếu: chia siêu nhỏ từng bước, cho 1 ví dụ tương tự cực dễ trước." : ""}
-Khi có hàm số, BPT hoặc tam giác, chèn 1 khối JSON trong \`\`\`mathplot ... \`\`\`:
-- Parabol: \`\`\`mathplot {"type":"parabola","a":1,"b":-2,"c":-3,"label":"y = x^2 - 2x - 3"} \`\`\`
-- Đường thẳng: \`\`\`mathplot {"type":"line","a":2,"b":-1,"label":"y = 2x - 1"} \`\`\`
-- Miền nghiệm BPT: \`\`\`mathplot {"type":"ineq","a":1,"b":2,"c":4,"op":"<=","label":"x + 2y <= 4"} \`\`\`
-- Tam giác: \`\`\`mathplot {"type":"triangle","AB":5,"AC":7,"angleA":60,"label":"Tam giác ABC"} \`\`\``;
+QUY TẮC VẼ HÌNH BẮT BUỘC: Khi đề bài nhắc đến vẽ đồ thị, parabol, đường thẳng, bất phương trình/miền nghiệm hoặc tam giác, BẮT BUỘC chèn đúng 1 khối \`\`\`mathplot ở cuối câu trả lời, JSON phải viết gọn trên CÙNG 1 DÒNG DUY NHẤT (không xuống dòng trong ngoặc nhọn):
+\`\`\`mathplot
+{"type":"parabola","a":1,"b":-2,"c":-3,"label":"y = x^2 - 2x - 3"}
+\`\`\`
+Các mẫu hợp lệ khác (thay đúng hệ số của đề bài):
+- Đường thẳng: \`\`\`mathplot\n{"type":"line","a":2,"b":-1,"label":"y = 2x - 1"}\n\`\`\`
+- Miền nghiệm BPT: \`\`\`mathplot\n{"type":"ineq","a":1,"b":2,"c":4,"op":"<=","label":"x + 2y <= 4"}\n\`\`\`
+- Tam giác: \`\`\`mathplot\n{"type":"triangle","AB":5,"AC":7,"angleA":60,"label":"Tam giác ABC"}\n\`\`\``;
 
         const contents = (Array.isArray(history) ? history : []).slice(-4).map(t => ({
             role: t.role === "model" ? "model" : "user",
