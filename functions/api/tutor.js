@@ -35,12 +35,12 @@ Chỉ chèn 1 khối lệnh JSON gọn nhẹ đặt trong \`\`\`mathplot ... \`\
 
         // Chỉ dùng các model Gemini chuẩn hỗ trợ Streaming & Vision + tự thử lại 2 vòng khi gặp cao điểm
         const models = [
-            "gemini-2.5-flash-lite",
-            "gemini-2.5-flash",
             "gemini-3.8-flash-lite",
             "gemini-3.8-flash",
             "gemini-3.7-flash",
-            "gemini-2.5-pro"
+            "gemini-3.6-flash",
+            "gemini-3.1-pro-preview",
+            "gemini-2.5-flash"
         ];
         let lastError = "";
 
