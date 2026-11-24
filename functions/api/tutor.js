@@ -1,4 +1,3 @@
-// v2
 export async function onRequestPost(context) {
     const { request, env } = context;
     const rawKeys = (env.GEMINI_API_KEY || "").split(",").map(k => k.trim()).filter(Boolean);
@@ -33,8 +32,10 @@ Khi có hàm số, BPT hoặc tam giác, chèn 1 khối JSON trong \`\`\`mathplo
         }
         contents.push({ role: "user", parts: currentParts });
 
-        // Xáo trộn thứ tự các API Key để chia đều tải cho 47 học sinh, đồng thời tự động chuyển sang Key kế tiếp nếu Key hiện tại hết lượt
+        // Xáo trộn thứ tự các API Key để chia đều tải cho 47 học sinh lớp 10A8
         const shuffledKeys = [...rawKeys].sort(() => Math.random() - 0.5);
+
+        // Danh sách 9 model miễn phí tốc độ cao (đã loại bỏ các model limit: 0)
         const fastModels = [
             "gemini-2.5-flash-lite",
             "gemini-2.5-flash",
@@ -52,15 +53,19 @@ Khi có hàm số, BPT hoặc tam giác, chèn 1 khối JSON trong \`\`\`mathplo
             for (const apiKey of shuffledKeys) {
                 const isUnifiedKey = apiKey.startsWith("AQ.");
                 const headers = { "Content-Type": "application/json" };
-                if (isUnifiedKey) headers["x-goog-api-key"] = apiKey;
+                if (isUnifiedKey) {
+                    headers["x-goog-api-key"] = apiKey;
+                }
 
                 const generationConfig = {
                     temperature: 0.3,
                     maxOutputTokens: 2500
                 };
+
+                // Tắt suy nghĩ ngầm trên dòng 2.5 và giảm tối thiểu trên dòng 3.x để phản hồi dưới 1 giây
                 if (model.includes("2.5")) {
                     generationConfig.thinkingConfig = { thinkingBudget: 0 };
-                } else {
+                } else if (model.includes("3.")) {
                     generationConfig.thinkingConfig = { thinkingLevel: "minimal" };
                 }
 
@@ -90,7 +95,8 @@ Khi có hàm số, BPT hoặc tam giác, chèn 1 khối JSON trong \`\`\`mathplo
 
                 const errData = await res.json().catch(() => ({}));
                 lastError = `[${model}]: ${errData.error?.message || res.status}`;
-                // Nếu lỗi do sai tên model (404) thì thoát vòng lặp key để thử model tiếp theo ngay
+
+                // Nếu tên model không tồn tại trên API (404) thì chuyển thẳng sang model tiếp theo
                 if (res.status === 404) break;
             }
         }
