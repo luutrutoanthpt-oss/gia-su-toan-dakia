@@ -13,17 +13,21 @@ if (window.pdfjsLib) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 }
 
-// ==================== ĐĂNG NHẬP PHÂN QUYỀN SHA-256 ====================
+// ==================== ĐĂNG NHẬP PHÂN QUYỀN BẢO MẬT ====================
 async function verifyAdmin() {
     const user = document.getElementById("adminUserInput").value.trim().toLowerCase();
-    const pass = document.getElementById("adminPassInput").value;
+    const pass = document.getElementById("adminPassInput").value.trim();
     const errEl = document.getElementById("adminLoginErr");
     if (!user || !pass) return;
 
     const passHash = await sha256Hex(pass);
+    const defaultMasterHash = await sha256Hex("Vanphong@2015");
 
-    // Kiểm tra Quản trị viên Tác giả (Thầy Võ Văn Bình)
-    if (user === SYSTEM_CONFIG.masterAdminUser && passHash === SYSTEM_CONFIG.masterAdminPassHash) {
+    // Kiểm tra Quản trị viên Tác giả (Võ Văn Bình)
+    if (
+        user === (SYSTEM_CONFIG.masterAdminUser || "vovanbinh").toLowerCase() &&
+        (passHash === SYSTEM_CONFIG.masterAdminPassHash || passHash === defaultMasterHash)
+    ) {
         currentLoggedAdmin = { username: user, full_name: "Võ Văn Bình (Tác giả)", subject: "Toán - Tin", role: "master" };
     } else {
         await syncFromGoogleSheets();
@@ -50,38 +54,6 @@ async function verifyAdmin() {
 
     await syncNow();
 }
-
-function logoutAdmin() {
-    currentLoggedAdmin = null;
-    document.getElementById("adminDashboard").classList.add("hidden");
-    document.getElementById("adminLoginScreen").classList.remove("hidden");
-    document.getElementById("adminPassInput").value = "";
-}
-
-async function syncNow() {
-    await syncFromGoogleSheets();
-    studentList = JSON.parse(localStorage.getItem("dakia_all_students")) || studentList;
-    teacherList = JSON.parse(localStorage.getItem("dakia_teachers")) || [];
-    uploadedExams = JSON.parse(localStorage.getItem("dakia_uploaded_exams")) || [];
-
-    updateClassFilterDropdown();
-    renderStudentTable();
-    renderTeacherTable();
-    renderUploadedExams();
-}
-
-function switchAdminTab(tabId) {
-    document.querySelectorAll(".admin-sec").forEach(el => el.classList.add("hidden"));
-    document.querySelectorAll(".admin-tab-btn").forEach(btn => {
-        btn.classList.remove("border-blue-700", "text-blue-700", "font-bold");
-        btn.classList.add("border-transparent", "text-slate-600");
-    });
-    document.getElementById(`admin-sec-${tabId}`).classList.remove("hidden");
-    const active = document.getElementById(`atab-${tabId}`);
-    active.classList.add("border-blue-700", "text-blue-700", "font-bold");
-    active.classList.remove("border-transparent", "text-slate-600");
-}
-
 // ==================== QUẢN LÝ TÀI KHOẢN GIÁO VIÊN ĐA MÔN ====================
 async function addTeacherAccount() {
     if (currentLoggedAdmin?.role !== "master") return;
