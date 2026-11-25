@@ -3,53 +3,33 @@ const SYSTEM_CONFIG = {
     appName: "HỖ TRỢ GIÁO VIÊN & HỌC SINH THPT – THPT ĐA KIA",
     author: "Võ Văn Bình – Tổ trưởng chuyên môn Tổ Toán – Tin, Trường THPT Đa Kia",
     googleScriptUrl: "https://script.google.com/macros/s/AKfycbxM-soCzU6dcT_xZA8FVG0IVs04Vvk6wy-RIhO167KF6yiM1-x5bVk77AEiv_0y00JYpw/exec",
-    // Mã băm SHA-256 mặc định của mật khẩu quản trị tác giả: Vanphong@2015
+// Tài khoản Quản trị Tác giả: vovanbinh | Mật khẩu mặc định: Vanphong@2015
     masterAdminUser: "vovanbinh",
-    masterAdminPassHash: "8c2f8799f44d0759467e19758d917e640b99e60770922b9694a59d292746233b"
+    masterAdminPassHash: "a1c9a0312143d9859e0d4137a106f69939e17b09d4c2653839a4b7391b742c33"
 };
 
-const SUBJECT_LIST = [
-    { id: "toan", name: "Toán học", icon: "📐" },
-    { id: "vatli", name: "Vật lí", icon: "⚡" },
-    { id: "hoahoc", name: "Hóa học", icon: "🧪" },
-    { id: "sinhhoc", name: "Sinh học", icon: "🧬" },
-    { id: "tinhoc", name: "Tin học", icon: "💻" },
-    { id: "nguvan", name: "Ngữ văn", icon: "📖" },
-    { id: "tienganh", name: "Tiếng Anh", icon: "🌐" },
-    { id: "lichsu", name: "Lịch sử", icon: "🏛️" },
-    { id: "diali", name: "Địa lí", icon: "🌍" },
-    { id: "gdktpl", name: "GDKT & Pháp luật", icon: "⚖️" }
-];
-
-async function sha256Hex(text) {
-    const msgBuffer = new TextEncoder().encode(text);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
-    return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
+async function sha256Hex(str) {
+    if (window.crypto && window.crypto.subtle) {
+        const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+        return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+    return str;
 }
 
 async function syncFromGoogleSheets() {
     if (!SYSTEM_CONFIG.googleScriptUrl || SYSTEM_CONFIG.googleScriptUrl.startsWith("DAN_URL")) return null;
     try {
-        const res = await fetch(SYSTEM_CONFIG.googleScriptUrl);
+        const res = await fetch(SYSTEM_CONFIG.googleScriptUrl + "?action=sync_all");
         if (!res.ok) return null;
         const data = await res.json();
         if (Array.isArray(data.students) && data.students.length > 0) {
-            const normalized = data.students.map(s => ({
-                ...s,
-                is_weak_mode: String(s.is_weak_mode).toUpperCase() === "TRUE"
-            }));
-            localStorage.setItem("dakia_all_students", JSON.stringify(normalized));
+            localStorage.setItem("dakia_all_students", JSON.stringify(data.students));
+        }
+        if (Array.isArray(data.teachers)) {
+            localStorage.setItem("dakia_teachers", JSON.stringify(data.teachers));
         }
         if (Array.isArray(data.exams)) {
-            const parsedExams = data.exams.map(ex => {
-                let qs = [];
-                try { qs = typeof ex.questionsJson === "string" ? JSON.parse(ex.questionsJson) : (ex.questionsJson || []); } catch (_) {}
-                return { ...ex, questions: qs };
-            });
-            localStorage.setItem("dakia_uploaded_exams", JSON.stringify(parsedExams));
-        }
-        if (Array.isArray(data.teachers) && data.teachers.length > 0) {
-            localStorage.setItem("dakia_teachers", JSON.stringify(data.teachers));
+            localStorage.setItem("dakia_uploaded_exams", JSON.stringify(data.exams));
         }
         return data;
     } catch (_) {
