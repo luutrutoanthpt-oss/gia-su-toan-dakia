@@ -1,149 +1,222 @@
-// Dữ liệu mẫu khởi tạo ban đầu
 let studentList = JSON.parse(localStorage.getItem("dakia_all_students")) || [
     { student_code: "10A801", full_name: "Nguyễn Văn An", class_name: "10A8", grade: "10", is_weak_mode: true },
     { student_code: "10A802", full_name: "Trần Thị Bích", class_name: "10A8", grade: "10", is_weak_mode: false },
     { student_code: "10A803", full_name: "Lê Hoàng Nam", class_name: "10A8", grade: "10", is_weak_mode: true }
 ];
 
-function verifyAdmin() {
-    const pass = document.getElementById("adminPassInput").value;
-    if (pass === TEACHER_ADMIN_PASS) {
-        document.getElementById("adminLoginScreen").classList.add("hidden");
-        document.getElementById("adminDashboard").classList.remove("hidden");
-        loadAdminData();
-    } else {
-        document.getElementById("adminLoginErr").classList.remove("hidden");
-    }
+let teacherList = JSON.parse(localStorage.getItem("dakia_teachers")) || [];
+let uploadedExams = JSON.parse(localStorage.getItem("dakia_uploaded_exams")) || [];
+let currentLoggedAdmin = null;
+let pendingParsedExam = null;
+
+if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 }
 
-async function loadAdminData() {
-    if (supabaseClient) {
-        const { data } = await supabaseClient.from("students").select("*").order("student_code");
-        if (data && data.length > 0) {
-            studentList = data;
-            localStorage.setItem("dakia_all_students", JSON.stringify(studentList));
+// ==================== ĐĂNG NHẬP PHÂN QUYỀN SHA-256 ====================
+async function verifyAdmin() {
+    const user = document.getElementById("adminUserInput").value.trim().toLowerCase();
+    const pass = document.getElementById("adminPassInput").value;
+    const errEl = document.getElementById("adminLoginErr");
+    if (!user || !pass) return;
+
+    const passHash = await sha256Hex(pass);
+
+    // Kiểm tra Quản trị viên Tác giả (Thầy Võ Văn Bình)
+    if (user === SYSTEM_CONFIG.masterAdminUser && passHash === SYSTEM_CONFIG.masterAdminPassHash) {
+        currentLoggedAdmin = { username: user, full_name: "Võ Văn Bình (Tác giả)", subject: "Toán - Tin", role: "master" };
+    } else {
+        await syncFromGoogleSheets();
+        teacherList = JSON.parse(localStorage.getItem("dakia_teachers")) || [];
+        const found = teacherList.find(t => t.username.toLowerCase() === user && t.pass_hash === passHash);
+        if (found) {
+            currentLoggedAdmin = { ...found, role: "teacher" };
         }
     }
-    updateClassFilterDropdown();
-    renderStudentTable();
+
+    if (!currentLoggedAdmin) {
+        errEl.classList.remove("hidden");
+        return;
+    }
+
+    errEl.classList.add("hidden");
+    document.getElementById("adminLoginScreen").classList.add("hidden");
+    document.getElementById("adminDashboard").classList.remove("hidden");
+    document.getElementById("loggedTeacherBadge").textContent = `Đang đăng nhập: ${currentLoggedAdmin.full_name} • Bộ môn: ${currentLoggedAdmin.subject}`;
+
+    if (currentLoggedAdmin.role === "master") {
+        document.getElementById("masterTeacherManager").classList.remove("hidden");
+    }
+
+    await syncNow();
 }
 
-// Tự động cập nhật danh sách các lớp vào ô chọn lọc
+function logoutAdmin() {
+    currentLoggedAdmin = null;
+    document.getElementById("adminDashboard").classList.add("hidden");
+    document.getElementById("adminLoginScreen").classList.remove("hidden");
+    document.getElementById("adminPassInput").value = "";
+}
+
+async function syncNow() {
+    await syncFromGoogleSheets();
+    studentList = JSON.parse(localStorage.getItem("dakia_all_students")) || studentList;
+    teacherList = JSON.parse(localStorage.getItem("dakia_teachers")) || [];
+    uploadedExams = JSON.parse(localStorage.getItem("dakia_uploaded_exams")) || [];
+
+    updateClassFilterDropdown();
+    renderStudentTable();
+    renderTeacherTable();
+    renderUploadedExams();
+}
+
+function switchAdminTab(tabId) {
+    document.querySelectorAll(".admin-sec").forEach(el => el.classList.add("hidden"));
+    document.querySelectorAll(".admin-tab-btn").forEach(btn => {
+        btn.classList.remove("border-blue-700", "text-blue-700", "font-bold");
+        btn.classList.add("border-transparent", "text-slate-600");
+    });
+    document.getElementById(`admin-sec-${tabId}`).classList.remove("hidden");
+    const active = document.getElementById(`atab-${tabId}`);
+    active.classList.add("border-blue-700", "text-blue-700", "font-bold");
+    active.classList.remove("border-transparent", "text-slate-600");
+}
+
+// ==================== QUẢN LÝ TÀI KHOẢN GIÁO VIÊN ĐA MÔN ====================
+async function addTeacherAccount() {
+    if (currentLoggedAdmin?.role !== "master") return;
+    const username = document.getElementById("newTeaUser").value.trim().toLowerCase();
+    const full_name = document.getElementById("newTeaName").value.trim();
+    const subject = document.getElementById("newTeaSubject").value;
+    const pass = document.getElementById("newTeaPass").value;
+
+    if (!username || !full_name || !pass) {
+        alert("Thầy vui lòng nhập đủ tên đăng nhập, họ tên và mật khẩu cấp cho giáo viên!");
+        return;
+    }
+    if (teacherList.some(t => t.username === username) || username === SYSTEM_CONFIG.masterAdminUser) {
+        alert("Tên đăng nhập này đã tồn tại!");
+        return;
+    }
+
+    const pass_hash = await sha256Hex(pass);
+    teacherList.push({ username, full_name, subject, role: "teacher", pass_hash });
+    localStorage.setItem("dakia_teachers", JSON.stringify(teacherList));
+    await postToGoogleSheets({ action: "save_teachers", teachers: teacherList });
+
+    document.getElementById("newTeaUser").value = "";
+    document.getElementById("newTeaName").value = "";
+    document.getElementById("newTeaPass").value = "";
+    renderTeacherTable();
+    alert(`Đã cấp tài khoản cho giáo viên ${full_name} thành công!`);
+}
+
+function renderTeacherTable() {
+    const tbody = document.getElementById("teacherTableBody");
+    if (!tbody) return;
+    if (teacherList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-3 px-3 text-center text-slate-400">Chưa có tài khoản giáo viên nào được cấp thêm.</td></tr>`;
+        return;
+    }
+    tbody.innerHTML = teacherList.map((t, idx) => `
+        <tr>
+            <td class="py-2 px-3 font-bold text-blue-700">${t.username}</td>
+            <td class="py-2 px-3 font-medium">${t.full_name}</td>
+            <td class="py-2 px-3">${t.subject}</td>
+            <td class="py-2 px-3"><span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">Giáo viên</span></td>
+            <td class="py-2 px-3 text-right">
+                <button onclick="removeTeacher(${idx})" class="text-xs text-red-600 hover:underline">Thu hồi</button>
+            </td>
+        </tr>
+    `).join("");
+}
+
+async function removeTeacher(idx) {
+    if (!confirm(`Thu hồi quyền truy cập của giáo viên ${teacherList[idx].full_name}?`)) return;
+    teacherList.splice(idx, 1);
+    localStorage.setItem("dakia_teachers", JSON.stringify(teacherList));
+    await postToGoogleSheets({ action: "save_teachers", teachers: teacherList });
+    renderTeacherTable();
+}
+
+async function postToGoogleSheets(payload) {
+    if (!SYSTEM_CONFIG.googleScriptUrl || SYSTEM_CONFIG.googleScriptUrl.startsWith("DAN_URL")) return null;
+    try {
+        const res = await fetch(SYSTEM_CONFIG.googleScriptUrl, {
+            method: "POST",
+            body: JSON.stringify(payload)
+        });
+        return await res.json().catch(() => ({ ok: true }));
+    } catch (_) {
+        return null;
+    }
+}
+
+// ==================== QUẢN LÝ HỌC SINH ====================
 function updateClassFilterDropdown() {
     const selectEl = document.getElementById("classFilterSelect");
-    const currentSelected = selectEl.value;
-    const uniqueClasses = [...new Set(studentList.map(s => s.class_name.toUpperCase()))].sort();
-
+    const uniqueClasses = [...new Set(studentList.map(s => String(s.class_name).toUpperCase()))].sort();
     selectEl.innerHTML = `<option value="ALL">Tất cả các lớp (${studentList.length} HS)</option>` +
-        uniqueClasses.map(cls => {
-            const count = studentList.filter(s => s.class_name.toUpperCase() === cls).length;
-            return `<option value="${cls}">Lớp ${cls} (${count} HS)</option>`;
-        }).join("");
-
-    // Giữ nguyên lớp đang chọn nếu lớp đó vẫn còn trong danh sách
-    if (uniqueClasses.includes(currentSelected)) {
-        selectEl.value = currentSelected;
-    }
+        uniqueClasses.map(cls => `<option value="${cls}">Lớp ${cls}</option>`).join("");
 }
 
 function renderStudentTable() {
     const logs = JSON.parse(localStorage.getItem("dakia_learning_logs")) || [];
     const tbody = document.getElementById("studentTableBody");
-
     const selectedClass = document.getElementById("classFilterSelect").value;
     const searchKeyword = document.getElementById("searchStudentInput").value.trim().toLowerCase();
 
-    // Thống kê tổng quan toàn trường
-    let weakCount = 0;
-    const classesSet = new Set();
-    studentList.forEach(s => {
-        if (s.is_weak_mode) weakCount++;
-        classesSet.add(s.class_name.toUpperCase());
-    });
-
     document.getElementById("statTotalStudents").textContent = studentList.length;
-    document.getElementById("statWeakStudents").textContent = weakCount;
+    document.getElementById("statWeakStudents").textContent = studentList.filter(s => s.is_weak_mode).length;
     document.getElementById("statTotalLogs").textContent = logs.length;
-    document.getElementById("statClasses").textContent = [...classesSet].sort().join(", ") || "Chưa có";
 
-    // Lọc danh sách hiển thị theo lớp và từ khóa tìm kiếm
-    const filteredList = studentList
-        .map((stu, originalIndex) => ({ ...stu, originalIndex }))
+    const filtered = studentList
+        .map((stu, idx) => ({ ...stu, originalIndex: idx }))
         .filter(stu => {
-            const matchClass = selectedClass === "ALL" || stu.class_name.toUpperCase() === selectedClass;
-            const matchKeyword = !searchKeyword ||
-                stu.student_code.toLowerCase().includes(searchKeyword) ||
-                stu.full_name.toLowerCase().includes(searchKeyword);
-            return matchClass && matchKeyword;
+            const matchClass = selectedClass === "ALL" || String(stu.class_name).toUpperCase() === selectedClass;
+            const matchKey = !searchKeyword || String(stu.student_code).toLowerCase().includes(searchKeyword) || String(stu.full_name).toLowerCase().includes(searchKeyword);
+            return matchClass && matchKey;
         });
 
-    if (filteredList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" class="py-6 text-center text-slate-400 text-sm">Không tìm thấy học sinh nào phù hợp với bộ lọc hiện tại.</td></tr>`;
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="py-6 text-center text-slate-400 text-sm">Không có dữ liệu học sinh phù hợp.</td></tr>`;
         return;
     }
 
-    tbody.innerHTML = filteredList.map((stu, displayIdx) => {
+    tbody.innerHTML = filtered.map((stu, i) => {
         const stuLogs = logs.filter(l => l.student_code === stu.student_code);
         const scored = stuLogs.filter(l => l.score !== null);
-        const avgScore = scored.length > 0
-            ? (scored.reduce((a, b) => a + b.score, 0) / scored.length).toFixed(1)
-            : "--";
-
-        const weakPoints = [...new Set(stuLogs.map(l => l.weak_points).filter(Boolean))].join(", ") || "Chưa ghi nhận";
-
+        const avg = scored.length > 0 ? (scored.reduce((a, b) => a + b.score, 0) / scored.length).toFixed(1) : "--";
         return `
             <tr class="hover:bg-slate-50">
-                <td class="py-3 px-4 text-slate-400 text-xs">${displayIdx + 1}</td>
+                <td class="py-3 px-4 text-xs text-slate-400">${i + 1}</td>
                 <td class="py-3 px-4 font-bold text-blue-700">${stu.student_code}</td>
                 <td class="py-3 px-4 font-medium text-slate-800">${stu.full_name}</td>
-                <td class="py-3 px-4"><span class="bg-slate-100 px-2 py-0.5 rounded font-semibold text-xs text-slate-700">${stu.class_name}</span></td>
+                <td class="py-3 px-4"><span class="bg-slate-100 px-2 py-0.5 rounded font-semibold text-xs">${stu.class_name}</span></td>
                 <td class="py-3 px-4">
-                    <button onclick="toggleStudentWeakMode(${stu.originalIndex})" class="px-2.5 py-1 rounded-full text-xs font-semibold transition ${stu.is_weak_mode ? 'bg-amber-100 text-amber-800 hover:bg-amber-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+                    <button onclick="toggleStudentWeakMode(${stu.originalIndex})" class="px-2.5 py-1 rounded-full text-xs font-semibold ${stu.is_weak_mode ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}">
                         ${stu.is_weak_mode ? '⚠️ Hỗ trợ HS yếu' : 'Tiêu chuẩn'}
                     </button>
                 </td>
                 <td class="py-3 px-4">${stuLogs.length}</td>
-                <td class="py-3 px-4 font-bold text-teal-700">${avgScore}</td>
-                <td class="py-3 px-4 text-xs text-red-600 max-w-xs truncate" title="${weakPoints}">${weakPoints}</td>
-                <td class="py-3 px-4 text-right">
-                    <button onclick="deleteStudent(${stu.originalIndex})" class="text-xs text-red-500 hover:underline">Xóa</button>
-                </td>
+                <td class="py-3 px-4 font-bold text-teal-700">${avg}</td>
+                <td class="py-3 px-4 text-right"><button onclick="deleteStudent(${stu.originalIndex})" class="text-xs text-red-500 hover:underline">Xóa</button></td>
             </tr>
         `;
     }).join("");
 }
 
-// ==================== THÊM LẺ 1 HỌC SINH ====================
 async function addStudent() {
     const code = document.getElementById("newStuCode").value.trim().toUpperCase();
     const name = document.getElementById("newStuName").value.trim();
     const cls = document.getElementById("newStuClass").value.trim().toUpperCase();
     const isWeak = document.getElementById("newStuWeak").checked;
+    if (!code || !name || !cls) return alert("Vui lòng nhập đủ Mã HS, Họ tên và Lớp!");
+    if (studentList.some(s => s.student_code === code)) return alert("Mã học sinh đã tồn tại!");
 
-    if (!code || !name || !cls) {
-        alert("Thầy/Cô vui lòng nhập đủ Mã học sinh, Họ tên và Lớp!");
-        return;
-    }
-
-    if (studentList.some(s => s.student_code === code)) {
-        alert(`Mã học sinh "${code}" đã tồn tại trong danh sách!`);
-        return;
-    }
-
-    const newStu = {
-        student_code: code,
-        full_name: name,
-        class_name: cls,
-        grade: cls.slice(0, 2) || "10",
-        is_weak_mode: isWeak
-    };
-
-    studentList.push(newStu);
+    studentList.push({ student_code: code, full_name: name, class_name: cls, grade: cls.slice(0, 2) || "10", is_weak_mode: isWeak });
     localStorage.setItem("dakia_all_students", JSON.stringify(studentList));
-
-    if (supabaseClient) {
-        await supabaseClient.from("students").upsert([newStu]);
-    }
+    await postToGoogleSheets({ action: "save_students", students: studentList });
 
     document.getElementById("newStuCode").value = "";
     document.getElementById("newStuName").value = "";
@@ -151,91 +224,41 @@ async function addStudent() {
     renderStudentTable();
 }
 
-// ==================== TẢI FILE EXCEL MẪU ====================
 function downloadSampleExcel() {
     const sampleData = [
         { MaHS: "10A801", HoTen: "Nguyễn Văn An", Lop: "10A8", HoTroYeu: "Có" },
-        { MaHS: "10A802", HoTen: "Trần Thị Bích", Lop: "10A8", HoTroYeu: "Không" },
-        { MaHS: "11A101", HoTen: "Phạm Minh Tuấn", Lop: "11A1", HoTroYeu: "Có" }
+        { MaHS: "10A802", HoTen: "Trần Thị Bích", Lop: "10A8", HoTroYeu: "Không" }
     ];
     const ws = XLSX.utils.json_to_sheet(sampleData);
-    ws["!cols"] = [{ wch: 12 }, { wch: 25 }, { wch: 10 }, { wch: 14 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "DanhSachHocSinh");
-    XLSX.writeFile(wb, "Mau_Nhap_Danh_Sach_Hoc_Sinh_THPT_DaKia.xlsx");
+    XLSX.writeFile(wb, "Mau_Danh_Sach_HS_THPT_DaKia.xlsx");
 }
 
-// ==================== NHẬP DANH SÁCH TỪ FILE EXCEL ====================
 function handleExcelImport(event) {
     const file = event.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = async function(e) {
-        try {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: "array" });
-            const firstSheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[firstSheetName];
-            const rows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-
-            if (rows.length === 0) {
-                alert("File Excel trống, không có dữ liệu học sinh!");
-                return;
-            }
-
-            let addedCount = 0;
-            let updatedCount = 0;
-            const recordsToSync = [];
-
-            rows.forEach(row => {
-                // Hỗ trợ linh hoạt nhiều cách đặt tên cột trong Excel của Giáo viên
-                const rawCode = row.MaHS || row["Mã HS"] || row["Mã học sinh"] || row.student_code || "";
-                const rawName = row.HoTen || row["Họ và tên"] || row["Họ tên"] || row.full_name || "";
-                const rawClass = row.Lop || row["Lớp"] || row.class_name || "";
-                const rawWeak = String(row.HoTroYeu || row["Hỗ trợ yếu"] || row["HS yếu"] || "").trim().toLowerCase();
-
-                const code = String(rawCode).trim().toUpperCase();
-                const name = String(rawName).trim();
-                const cls = String(rawClass).trim().toUpperCase();
-
-                if (!code || !name || !cls) return; // Bỏ qua dòng thiếu thông tin
-
-                const isWeak = ["có", "co", "yes", "true", "1", "x"].includes(rawWeak);
-                const stuObj = {
-                    student_code: code,
-                    full_name: name,
-                    class_name: cls,
-                    grade: cls.slice(0, 2) || "10",
-                    is_weak_mode: isWeak
-                };
-
-                const existingIdx = studentList.findIndex(s => s.student_code === code);
-                if (existingIdx >= 0) {
-                    studentList[existingIdx] = { ...studentList[existingIdx], ...stuObj };
-                    updatedCount++;
-                } else {
-                    studentList.push(stuObj);
-                    addedCount++;
-                }
-                recordsToSync.push(stuObj);
-            });
-
-            localStorage.setItem("dakia_all_students", JSON.stringify(studentList));
-
-            // Đồng bộ hàng loạt lên Supabase nếu đã kết nối
-            if (supabaseClient && recordsToSync.length > 0) {
-                await supabaseClient.from("students").upsert(recordsToSync, { onConflict: "student_code" });
-            }
-
-            updateClassFilterDropdown();
-            renderStudentTable();
-            alert(`Nhập Excel thành công!\n- Thêm mới: ${addedCount} học sinh\n- Cập nhật: ${updatedCount} học sinh`);
-        } catch (err) {
-            alert("Lỗi đọc file Excel: " + err.message + "\nThầy/Cô hãy tải 'File Excel mẫu' để xem định dạng chuẩn nhé.");
-        } finally {
-            event.target.value = ""; // Reset ô chọn file để có thể nhập tiếp file khác
-        }
+        const workbook = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
+        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
+        let added = 0;
+        rows.forEach(row => {
+            const code = String(row.MaHS || row["Mã HS"] || "").trim().toUpperCase();
+            const name = String(row.HoTen || row["Họ và tên"] || "").trim();
+            const cls = String(row.Lop || row["Lớp"] || "").trim().toUpperCase();
+            const isWeak = ["có", "co", "yes", "true", "1", "x"].includes(String(row.HoTroYeu || "").trim().toLowerCase());
+            if (!code || !name || !cls) return;
+            const idx = studentList.findIndex(s => s.student_code === code);
+            const obj = { student_code: code, full_name: name, class_name: cls, grade: cls.slice(0, 2) || "10", is_weak_mode: isWeak };
+            if (idx >= 0) studentList[idx] = obj;
+            else { studentList.push(obj); added++; }
+        });
+        localStorage.setItem("dakia_all_students", JSON.stringify(studentList));
+        await postToGoogleSheets({ action: "save_students", students: studentList });
+        updateClassFilterDropdown();
+        renderStudentTable();
+        alert(`Đã nhập xong danh sách! Thêm mới ${added} học sinh và đồng bộ lên Google Sheets.`);
     };
     reader.readAsArrayBuffer(file);
 }
@@ -243,25 +266,15 @@ function handleExcelImport(event) {
 async function toggleStudentWeakMode(index) {
     studentList[index].is_weak_mode = !studentList[index].is_weak_mode;
     localStorage.setItem("dakia_all_students", JSON.stringify(studentList));
-
-    if (supabaseClient) {
-        await supabaseClient
-            .from("students")
-            .update({ is_weak_mode: studentList[index].is_weak_mode })
-            .eq("student_code", studentList[index].student_code);
-    }
+    await postToGoogleSheets({ action: "save_students", students: studentList });
     renderStudentTable();
 }
 
 async function deleteStudent(index) {
-    if (!confirm(`Xóa học sinh ${studentList[index].full_name} (${studentList[index].class_name})?`)) return;
-    const code = studentList[index].student_code;
+    if (!confirm(`Xóa học sinh ${studentList[index].full_name}?`)) return;
     studentList.splice(index, 1);
     localStorage.setItem("dakia_all_students", JSON.stringify(studentList));
-
-    if (supabaseClient) {
-        await supabaseClient.from("students").delete().eq("student_code", code);
-    }
+    await postToGoogleSheets({ action: "save_students", students: studentList });
     updateClassFilterDropdown();
     renderStudentTable();
 }
@@ -270,46 +283,375 @@ function assignHomework() {
     const cls = document.getElementById("assignClass").value.trim().toUpperCase();
     const title = document.getElementById("assignTitle").value.trim();
     const content = document.getElementById("assignContent").value.trim();
-    if (!title || !content) {
-        alert("Vui lòng nhập tiêu đề và nội dung bài tập!");
-        return;
-    }
-    alert(`Đã giao bài tập "${title}" cho lớp ${cls} thành công!`);
+    if (!title || !content) return alert("Vui lòng nhập tiêu đề và nội dung bài tập!");
+    alert(`Đã giao bài tập "${title}" cho lớp ${cls}!`);
     document.getElementById("assignTitle").value = "";
     document.getElementById("assignContent").value = "";
 }
 
-// Xuất báo cáo kết quả học tập ra file Excel (.xlsx) - Xuất theo lớp đang lọc hoặc toàn bộ
 function exportReportToExcel() {
     const logs = JSON.parse(localStorage.getItem("dakia_learning_logs")) || [];
-    const selectedClass = document.getElementById("classFilterSelect").value;
-
-    const listToExport = selectedClass === "ALL"
-        ? studentList
-        : studentList.filter(s => s.class_name.toUpperCase() === selectedClass);
-
-    const rows = listToExport.map((stu, i) => {
+    const rows = studentList.map((stu, i) => {
         const stuLogs = logs.filter(l => l.student_code === stu.student_code);
-        const scored = stuLogs.filter(l => l.score !== null);
-        const avg = scored.length > 0
-            ? (scored.reduce((a, b) => a + b.score, 0) / scored.length).toFixed(1)
-            : "Chưa kiểm tra";
-
         return {
             "STT": i + 1,
-            "Mã học sinh": stu.student_code,
+            "Mã HS": stu.student_code,
             "Họ và tên": stu.full_name,
             "Lớp": stu.class_name,
-            "Chế độ hỗ trợ": stu.is_weak_mode ? "Hỗ trợ học sinh yếu" : "Tiêu chuẩn",
-            "Số lượt học & làm bài": stuLogs.length,
-            "Điểm trung bình": avg,
-            "Kiến thức cần củng cố": [...new Set(stuLogs.map(l => l.weak_points).filter(Boolean))].join("; ") || "Tốt"
+            "Hỗ trợ yếu": stu.is_weak_mode ? "Có" : "Không",
+            "Số lượt học": stuLogs.length
+        };
+    });
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "BaoCao");
+    XLSX.writeFile(wb, `BaoCao_THPT_DaKia_${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
+// ==================== NGÂN HÀNG ĐỀ WORD MATHTYPE & MÃ QR ====================
+async function handleWordExamUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const arrayBuffer = await file.arrayBuffer();
+    const base64String = btoa(new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ""));
+
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    const rawText = result.value || "";
+
+    // Bóc tách tự động các câu hỏi dạng: Câu 1. ... A. ... B. ... C. ... D. ... Đáp án: A
+    const blocks = rawText.split(/(?=Câu\s+\d+[\.\:])/i).map(b => b.trim()).filter(b => /^Câu\s+\d+/i.test(b));
+    const parsedQuestions = blocks.map((blk, i) => {
+        const ansMatch = blk.match(/Đáp\s*án\s*[:\-]?\s*([A-D])/i);
+        const correctLetter = ansMatch ? ansMatch[1].toUpperCase() : "A";
+        const cleanBlock = blk.replace(/Đáp\s*án\s*[:\-]?\s*[A-D].*/i, "").trim();
+
+        const optAMatch = cleanBlock.match(/A[\.\)]\s*([\s\S]*?)(?=B[\.\)])/);
+        const optBMatch = cleanBlock.match(/B[\.\)]\s*([\s\S]*?)(?=C[\.\)])/);
+        const optCMatch = cleanBlock.match(/C[\.\)]\s*([\s\S]*?)(?=D[\.\)])/);
+        const optDMatch = cleanBlock.match(/D[\.\)]\s*([\s\S]*)$/);
+
+        const questionText = optAMatch ? cleanBlock.slice(0, optAMatch.index).trim() : cleanBlock;
+        const options = [
+            optAMatch ? optAMatch[1].trim() : "Phương án A",
+            optBMatch ? optBMatch[1].trim() : "Phương án B",
+            optCMatch ? optCMatch[1].trim() : "Phương án C",
+            optDMatch ? optDMatch[1].trim() : "Phương án D"
+        ];
+        return {
+            id: `word_q_${Date.now()}_${i}`,
+            content: questionText,
+            options,
+            correct: ["A", "B", "C", "D"].indexOf(correctLetter)
         };
     });
 
-    const worksheet = XLSX.utils.json_to_sheet(rows);
-    const workbook = XLSX.utils.book_new();
-    const sheetName = selectedClass === "ALL" ? "TatCaCacLop" : `Lop_${selectedClass}`;
-    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
-    XLSX.writeFile(workbook, `BaoCao_ToanAI_${sheetName}_${new Date().toISOString().slice(0,10)}.xlsx`);
+    pendingParsedExam = {
+        id: "EXAM_" + Date.now(),
+        title: document.getElementById("examTitleInput").value.trim() || file.name.replace(/\.docx$/i, ""),
+        subject: document.getElementById("examSubjectInput").value,
+        grade: document.getElementById("examGradeInput").value,
+        teacher: currentLoggedAdmin?.full_name || "Giáo viên THPT Đa Kia",
+        fileName: file.name,
+        fileBase64: base64String,
+        questions: parsedQuestions
+    };
+
+    document.getElementById("examPreviewBox").classList.remove("hidden");
+    document.getElementById("examParseSummary").textContent = `Đã đọc file "${file.name}": Nhận diện được ${parsedQuestions.length} câu hỏi trắc nghiệm.`;
+    document.getElementById("examParsedList").innerHTML = parsedQuestions.slice(0, 5).map(q =>
+        `<div class="p-2 bg-white rounded border border-slate-200"><strong>${q.content}</strong> (Đáp án đúng: ${String.fromCharCode(65 + q.correct)})</div>`
+    ).join("");
+}
+
+async function publishUploadedExam() {
+    if (!pendingParsedExam) return;
+    const btn = document.getElementById("btnPublishExam");
+    btn.disabled = true;
+    btn.textContent = "⏳ Đang lưu lên Google Drive & Sheets...";
+
+    const res = await postToGoogleSheets({
+        action: "upload_exam",
+        ...pendingParsedExam
+    });
+
+    const savedExam = {
+        ...pendingParsedExam,
+        fileUrl: res?.fileUrl || "",
+        createdAt: new Date().toLocaleDateString("vi-VN")
+    };
+    delete savedExam.fileBase64;
+
+    uploadedExams.unshift(savedExam);
+    localStorage.setItem("dakia_uploaded_exams", JSON.stringify(uploadedExams));
+
+    btn.disabled = false;
+    btn.textContent = "🚀 Lưu lên Kho Đề & Tạo Mã QR";
+    document.getElementById("examPreviewBox").classList.add("hidden");
+    pendingParsedExam = null;
+    renderUploadedExams();
+    alert("Đã lưu đề thi lên hệ thống và tự động tạo mã QR cho học sinh truy cập!");
+}
+
+function renderUploadedExams() {
+    const grid = document.getElementById("uploadedExamsGrid");
+    if (!grid) return;
+    if (uploadedExams.length === 0) {
+        grid.innerHTML = `<p class="text-xs text-slate-400 col-span-3">Chưa có đề thi Word nào được tải lên.</p>`;
+        return;
+    }
+
+    grid.innerHTML = uploadedExams.map((ex, idx) => `
+        <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/70 space-y-2.5 flex flex-col justify-between">
+            <div>
+                <div class="flex justify-between items-start gap-2">
+                    <span class="bg-blue-100 text-blue-800 text-[11px] font-bold px-2 py-0.5 rounded uppercase">${ex.subject} • Lớp ${ex.grade}</span>
+                    <span class="text-[11px] text-slate-400">${ex.createdAt || ""}</span>
+                </div>
+                <h4 class="font-bold text-sm text-slate-900 mt-1.5">${ex.title}</h4>
+                <p class="text-xs text-slate-500">GV: ${ex.teacher} • ${(ex.questions || []).length} câu</p>
+            </div>
+            <div class="flex items-center justify-between pt-2 border-t border-slate-200">
+                <div id="qr_exam_${idx}" class="bg-white p-1 border rounded"></div>
+                <div class="flex flex-col gap-1.5 text-right">
+                    ${ex.fileUrl ? `<a href="${ex.fileUrl}" target="_blank" class="text-xs bg-emerald-600 text-white px-2.5 py-1 rounded font-semibold">📥 Tải file Word gốc</a>` : `<span class="text-[11px] text-slate-400">Lưu nội bộ</span>`}
+                    <button onclick="copyExamShareLink('${ex.id}')" class="text-xs bg-blue-700 text-white px-2.5 py-1 rounded font-semibold">🔗 Copy link thi</button>
+                </div>
+            </div>
+        </div>
+    `).join("");
+
+    uploadedExams.forEach((ex, idx) => {
+        const el = document.getElementById(`qr_exam_${idx}`);
+        if (el && window.QRCode) {
+            const shareUrl = `${window.location.origin}/index.html?exam=${ex.id}`;
+            new QRCode(el, { text: shareUrl, width: 68, height: 68 });
+        }
+    });
+}
+
+function copyExamShareLink(examId) {
+    const url = `${window.location.origin}/index.html?exam=${examId}`;
+    navigator.clipboard.writeText(url);
+    alert("Đã sao chép đường link làm bài trực tuyến:\n" + url);
+}
+
+// ==================== SOẠN KHBD 5512, SLIDE POWERPOINT & E-LEARNING ====================
+async function generateLessonPlan5512() {
+    const subject = document.getElementById("lpSubject").value;
+    const grade = document.getElementById("lpGrade").value;
+    const periods = document.getElementById("lpPeriods").value;
+    const level = document.getElementById("lpDigitalLevel").value;
+    const title = document.getElementById("lpTitle").value.trim();
+
+    if (!title) return alert("Thầy/Cô vui lòng nhập tên bài học!");
+
+    const btn = document.getElementById("btnGen5512");
+    const editor = document.getElementById("lpResultEditor");
+    btn.disabled = true;
+    btn.textContent = "⏳ AI đang soạn KHBD 5512...";
+    editor.value = "";
+
+    const prompt = `Hãy soạn Kế hoạch bài dạy (KHBD) chuẩn Công văn 5512 cho:
+- Môn học: ${subject} - Lớp ${grade} (Bộ sách Kết nối tri thức với cuộc sống)
+- Tên bài học: ${title}
+- Thời lượng: ${periods}
+- Yêu cầu tích hợp: ${level}
+Trình bày rõ ràng đầy đủ 4 phần: I. MỤC TIÊU (Kiến thức, Năng lực đặc thù, Năng lực chung, Năng lực số theo Thông tư 02/2025/TT-BGDĐT, Phẩm chất); II. THIẾT BỊ DẠY HỌC VÀ HỌC LIỆU; III. TIẾN TRÌNH DẠY HỌC (đủ 4 hoạt động: 1. Mở đầu, 2. Hình thành kiến thức mới, 3. Luyện tập, 4. Vận dụng; mỗi hoạt động có đủ a) Mục tiêu, b) Nội dung, c) Sản phẩm, d) Tổ chức thực hiện); IV. PHIẾU HỌC TẬP & CÂU HỎI TỰ HỌC VỚI AI.`;
+
+    try {
+        const res = await fetch("/api/tutor", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: prompt, grade, mode: "teacher_5512" })
+        });
+        const reader = responseBodyReader(res);
+        for await (const chunk of reader) {
+            editor.value += chunk;
+        }
+        document.getElementById("lpExportToolbar").classList.remove("hidden");
+    } catch (err) {
+        alert("Lỗi khi soạn KHBD: " + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "✨ Soạn KHBD 5512 Bằng AI";
+    }
+}
+
+async function* responseBodyReader(res) {
+    if (!res.ok) throw new Error("Không kết nối được máy chủ AI");
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let buffer = "";
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop();
+        for (const line of lines) {
+            if (line.startsWith("data: ")) {
+                const jsonStr = line.slice(6).trim();
+                if (!jsonStr || jsonStr === "[DONE]") continue;
+                try {
+                    const parsed = JSON.parse(jsonStr);
+                    const text = (parsed.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
+                    if (text) yield text;
+                } catch (_) {}
+            }
+        }
+    }
+}
+
+async function exportLessonPlanToDocx() {
+    const content = document.getElementById("lpResultEditor").value.trim();
+    const title = document.getElementById("lpTitle").value.trim() || "KeHoachBaiDay_5512";
+    if (!content) return alert("Chưa có nội dung KHBD để xuất!");
+
+    const { Document, Packer, Paragraph, TextRun, HeadingLevel } = docx;
+    const lines = content.split("\n");
+    const paragraphs = [
+        new Paragraph({
+            children: [new TextRun({ text: "TRƯỜNG THPT ĐA KIA – KẾ HOẠCH BÀI DẠY (CÔNG VĂN 5512)", bold: true, size: 28 })],
+            spacing: { after: 200 }
+        }),
+        ...lines.map(line => {
+            const isHeader = /^(I+|IV|Hoạt động\s+\d+)/i.test(line.trim());
+            return new Paragraph({
+                children: [new TextRun({ text: line, bold: isHeader, size: 26, font: "Times New Roman" })],
+                spacing: { after: 100 }
+            });
+        })
+    ];
+
+    const doc = new Document({ sections: [{ children: paragraphs }] });
+    const blob = await Packer.toBlob(doc);
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `KHBD_5512_${title.replace(/\s+/g, "_")}.docx`;
+    a.click();
+}
+
+async function generateSlidesFromLesson() {
+    const content = document.getElementById("lpResultEditor").value.trim();
+    const title = document.getElementById("lpTitle").value.trim() || "BaiGiang_THPT_DaKia";
+    if (!content) return alert("Vui lòng soạn nội dung bài dạy trước!");
+
+    const btn = document.getElementById("btnGenSlides");
+    btn.disabled = true;
+    btn.textContent = "⏳ Đang tạo Slide PowerPoint 16:9...";
+
+    try {
+        const res = await fetch("/api/tutor", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                message: `Chuyển giáo án sau thành 6-8 slide trình chiếu lớp học (dùng cho TV/máy chiếu, không yêu cầu HS dùng điện thoại, có hoạt động giơ thẻ màu/bảng con ở phần Luyện tập):\n${content.slice(0, 3500)}`,
+                mode: "teacher_slides"
+            })
+        });
+        let rawJson = "";
+        for await (const chunk of responseBodyReader(res)) rawJson += chunk;
+        const cleanJson = rawJson.replace(/```json|```/g, "").trim();
+        const data = JSON.parse(cleanJson);
+
+        const pptx = new PptxGenJS();
+        pptx.layout = "LAYOUT_16x9";
+
+        const cover = pptx.addSlide();
+        cover.background = { color: "1E3A8A" };
+        cover.addText("TRƯỜNG THPT ĐA KIA", { x: 0.8, y: 1.2, w: 11.5, fontSize: 18, color: "93C5FD", bold: true });
+        cover.addText(data.title || title, { x: 0.8, y: 2.2, w: 11.5, fontSize: 34, color: "FFFFFF", bold: true });
+        cover.addText(`Giáo viên: ${currentLoggedAdmin?.full_name || "Trường THPT Đa Kia"}`, { x: 0.8, y: 4.2, w: 11.5, fontSize: 16, color: "FDE047" });
+
+        (data.slides || []).forEach(s => {
+            const slide = pptx.addSlide();
+            slide.addText(s.heading || "Nội dung bài học", { x: 0.6, y: 0.4, w: 12, h: 0.7, fontSize: 24, bold: true, color: "1D4ED8" });
+            const bullets = (s.bullets || []).map(b => ({ text: b, options: { bullet: true, fontSize: 18, color: "1E293B", breakLine: true } }));
+            slide.addText(bullets, { x: 0.8, y: 1.4, w: 11.5, h: 4.8 });
+            if (s.note) slide.addNotes(s.note);
+        });
+
+        await pptx.writeFile({ fileName: `Slide_16x9_${title.replace(/\s+/g, "_")}.pptx` });
+    } catch (err) {
+        alert("Lỗi tạo PowerPoint: " + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "📊 Xuất Slide PowerPoint 16:9 (.pptx)";
+    }
+}
+
+async function exportElearningScorm() {
+    const content = document.getElementById("lpResultEditor").value.trim();
+    const title = document.getElementById("lpTitle").value.trim() || "BaiGiang_Elearning";
+    if (!content) return alert("Chưa có nội dung để đóng gói E-learning!");
+
+    const zip = new JSZip();
+    const manifestXml = `<?xml version="1.0" encoding="UTF-8"?>
+<manifest identifier="THPT_DAKIA_SCORM" version="1.0" xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2">
+  <organizations default="ORG1"><organization identifier="ORG1"><title>${title}</title><item identifier="ITEM1" identifierref="RES1"><title>${title}</title></item></organization></organizations>
+  <resources><resource identifier="RES1" type="webcontent" href="index.html"><file href="index.html"/></resource></resources>
+</manifest>`;
+
+    const htmlLesson = `<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"><title>${title}</title></head><body style="font-family:sans-serif;max-width:900px;margin:20px auto;line-height:1.6;"><h1>${title} – Trường THPT Đa Kia</h1><pre style="white-space:pre-wrap;font-family:inherit;">${content}</pre></body></html>`;
+
+    zip.file("imsmanifest.xml", manifestXml);
+    zip.file("index.html", htmlLesson);
+    const blob = await zip.generateAsync({ type: "blob" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `SCORM_Elearning_${title.replace(/\s+/g, "_")}.zip`;
+    a.click();
+}
+
+// ==================== TIỆN ÍCH TẠO MÃ QR & PDF SANG WORD ====================
+function generateCustomQR() {
+    const text = document.getElementById("qrCustomText").value.trim();
+    if (!text) return alert("Vui lòng nhập đường dẫn hoặc nội dung cần tạo mã QR!");
+    const box = document.getElementById("customQrBox");
+    box.innerHTML = "";
+    new QRCode(box, { text, width: 180, height: 180 });
+}
+
+function downloadCustomQR() {
+    const canvas = document.querySelector("#customQrBox canvas");
+    if (!canvas) return alert("Vui lòng bấm 'Tạo Mã QR' trước!");
+    const a = document.createElement("a");
+    a.href = canvas.toDataURL("image/png");
+    a.download = "MaQR_THPT_DaKia.png";
+    a.click();
+}
+
+async function convertPdfToDocx(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const statusEl = document.getElementById("pdfConvertStatus");
+    statusEl.textContent = "⏳ Đang đọc các trang PDF và chuyển sang định dạng Word...";
+
+    try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const { Document, Packer, Paragraph, TextRun } = docx;
+        const paragraphs = [];
+
+        for (let p = 1; p <= pdf.numPages; p++) {
+            const page = await pdf.getPage(p);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items.map(item => item.str).join(" ");
+            paragraphs.push(new Paragraph({
+                children: [new TextRun({ text: pageText, size: 26, font: "Times New Roman" })],
+                spacing: { after: 160 }
+            }));
+        }
+
+        const doc = new Document({ sections: [{ children: paragraphs }] });
+        const blob = await Packer.toBlob(doc);
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = file.name.replace(/\.pdf$/i, "") + "_DaChuyenWord.docx";
+        a.click();
+        statusEl.textContent = `✅ Đã chuyển đổi xong ${pdf.numPages} trang sang file Word (.docx)!`;
+    } catch (err) {
+        statusEl.textContent = "❌ Lỗi chuyển đổi PDF: " + err.message;
+    }
 }
