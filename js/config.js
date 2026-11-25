@@ -2,7 +2,7 @@
 const SYSTEM_CONFIG = {
     appName: "HỖ TRỢ GIÁO VIÊN & HỌC SINH THPT – THPT ĐA KIA",
     author: "Võ Văn Bình – Tổ trưởng chuyên môn Tổ Toán – Tin, Trường THPT Đa Kia",
-    googleScriptUrl: "DAN_URL_GOOGLE_APPS_SCRIPT_CUA_THAY_VAO_DAY",
+    googleScriptUrl: "https://script.google.com/macros/s/AKfycbxM-soCzU6dcT_xZA8FVG0IVs04Vvk6wy-RIhO167KF6yiM1-x5bVk77AEiv_0y00JYpw/exec",
     // Mã băm SHA-256 mặc định của mật khẩu quản trị tác giả: Vanphong@2015
     masterAdminUser: "vovanbinh",
     masterAdminPassHash: "8c2f8799f44d0759467e19758d917e640b99e60770922b9694a59d292746233b"
