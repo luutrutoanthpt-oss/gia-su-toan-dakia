@@ -1,48 +1,58 @@
-// Cấu hình kết nối Cơ sở dữ liệu Supabase (Miễn phí)
-// Thầy/Cô sẽ dán URL và ANON_KEY từ Supabase vào đây ở Giai đoạn 4
-const SUPABASE_CONFIG = {
-    url: "YOUR_SUPABASE_URL",
-    anonKey: "YOUR_SUPABASE_ANON_KEY"
+// Cấu hình hệ thống Hỗ trợ Giáo viên & Học sinh THPT – Trường THPT Đa Kia
+const SYSTEM_CONFIG = {
+    appName: "HỖ TRỢ GIÁO VIÊN & HỌC SINH THPT – THPT ĐA KIA",
+    author: "Võ Văn Bình – Tổ trưởng chuyên môn Tổ Toán – Tin, Trường THPT Đa Kia",
+    googleScriptUrl: "DAN_URL_GOOGLE_APPS_SCRIPT_CUA_THAY_VAO_DAY",
+    // Mã băm SHA-256 mặc định của mật khẩu quản trị tác giả: Vanphong@2015
+    masterAdminUser: "vovanbinh",
+    masterAdminPassHash: "8c2f8799f44d0759467e19758d917e640b99e60770922b9694a59d292746233b"
 };
 
-// Mật khẩu đăng nhập trang Quản trị Giáo viên (admin.html) - Có thể đổi tùy ý
-const TEACHER_ADMIN_PASS = "Vanphong@2015";
+const SUBJECT_LIST = [
+    { id: "toan", name: "Toán học", icon: "📐" },
+    { id: "vatli", name: "Vật lí", icon: "⚡" },
+    { id: "hoahoc", name: "Hóa học", icon: "🧪" },
+    { id: "sinhhoc", name: "Sinh học", icon: "🧬" },
+    { id: "tinhoc", name: "Tin học", icon: "💻" },
+    { id: "nguvan", name: "Ngữ văn", icon: "📖" },
+    { id: "tienganh", name: "Tiếng Anh", icon: "🌐" },
+    { id: "lichsu", name: "Lịch sử", icon: "🏛️" },
+    { id: "diali", name: "Địa lí", icon: "🌍" },
+    { id: "gdktpl", name: "GDKT & Pháp luật", icon: "⚖️" }
+];
 
-// Khởi tạo kết nối Supabase nếu đã cấu hình
-let supabaseClient = null;
-if (window.supabase && SUPABASE_CONFIG.url !== "YOUR_SUPABASE_URL") {
-    supabaseClient = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+async function sha256Hex(text) {
+    const msgBuffer = new TextEncoder().encode(text);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
+    return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
-// Hỗ trợ dán ảnh trực tiếp từ Clipboard (Ctrl + V) vào ô chat
-document.addEventListener('DOMContentLoaded', () => {
-    const chatInput = document.getElementById('chatInput');
-    if (!chatInput) return;
 
-    chatInput.addEventListener('paste', function (event) {
-        const items = (event.clipboardData || event.originalEvent?.clipboardData)?.items;
-        if (!items) return;
-
-        for (let i = 0; i < items.length; i++) {
-            if (items[i].type.indexOf('image') !== -1) {
-                event.preventDefault(); // Ngăn dán tên file rác vào ô chữ
-                const file = items[i].getAsFile();
-                if (!file) return;
-
-                // Nạp file ảnh vào input file hiện có và kích hoạt hàm xem trước ảnh của hệ thống
-                const imageInput = document.getElementById('imageInput');
-                if (imageInput) {
-                    const dataTransfer = new DataTransfer();
-                    dataTransfer.items.add(file);
-                    imageInput.files = dataTransfer.files;
-
-                    if (typeof window.handleImageUpload === 'function') {
-                        window.handleImageUpload({ target: imageInput });
-                    } else {
-                        imageInput.dispatchEvent(new Event('change', { bubbles: true }));
-                    }
-                }
-                break;
-            }
+async function syncFromGoogleSheets() {
+    if (!SYSTEM_CONFIG.googleScriptUrl || SYSTEM_CONFIG.googleScriptUrl.startsWith("DAN_URL")) return null;
+    try {
+        const res = await fetch(SYSTEM_CONFIG.googleScriptUrl);
+        if (!res.ok) return null;
+        const data = await res.json();
+        if (Array.isArray(data.students) && data.students.length > 0) {
+            const normalized = data.students.map(s => ({
+                ...s,
+                is_weak_mode: String(s.is_weak_mode).toUpperCase() === "TRUE"
+            }));
+            localStorage.setItem("dakia_all_students", JSON.stringify(normalized));
         }
-    });
-});
+        if (Array.isArray(data.exams)) {
+            const parsedExams = data.exams.map(ex => {
+                let qs = [];
+                try { qs = typeof ex.questionsJson === "string" ? JSON.parse(ex.questionsJson) : (ex.questionsJson || []); } catch (_) {}
+                return { ...ex, questions: qs };
+            });
+            localStorage.setItem("dakia_uploaded_exams", JSON.stringify(parsedExams));
+        }
+        if (Array.isArray(data.teachers) && data.teachers.length > 0) {
+            localStorage.setItem("dakia_teachers", JSON.stringify(data.teachers));
+        }
+        return data;
+    } catch (_) {
+        return null;
+    }
+}
