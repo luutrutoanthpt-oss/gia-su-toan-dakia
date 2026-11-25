@@ -12,15 +12,20 @@ export async function onRequestPost(context) {
       });
     }
 
-    const apiKey = env.GEMINI_API_KEY;
-    if (!apiKey) {
+    const rawKeys = (env.GEMINI_API_KEY || "")
+      .split(",")
+      .map(k => k.trim())
+      .filter(Boolean);
+
+    if (rawKeys.length === 0) {
       return new Response(JSON.stringify({ error: "Chưa cấu hình GEMINI_API_KEY trên Cloudflare Pages" }), {
         status: 500,
         headers: { "Content-Type": "application/json" }
       });
     }
 
-    // 1. Xác định System Instruction theo từng vai trò (Học sinh vs Giáo viên)
+    const apiKeys = [...rawKeys].sort(() => Math.random() - 0.5);
+
     let systemInstruction = "";
     let maxTokens = 4096;
     let temperature = 0.4;
@@ -59,14 +64,12 @@ Hãy trích xuất TOÀN BỘ nội dung từ tệp PDF được đính kèm the
 - Giữ nguyên mọi công thức Toán, Vật lí, Hóa học dưới dạng ký hiệu LaTeX $...$ (ví dụ: $A(1;2;3)$, $\\vec{u}=(1;-2;3)$, $\\frac{a}{b}$, $\\sqrt{x}$) để phần mềm MathType nhận diện được.
 - Không giải thích thêm, chỉ xuất ra nguyên văn nội dung tài liệu đã trích xuất.`;
     } else {
-      // Chế độ Gia sư học sinh
       maxTokens = 4096;
       systemInstruction = isWeakMode
         ? `Bạn là Gia sư AI hỗ trợ học sinh lớp ${grade} (Trường THPT Đa Kia, bộ sách Kết nối tri thức). Học sinh đang bật CHẾ ĐỘ HỖ TRỢ CƠ BẢN: hãy chia lời giải thành từng bước rất nhỏ, giải thích chậm rãi, nhắc lại công thức cơ bản trước khi thay số, dùng ngôn ngữ gần gũi, khích lệ. Công thức đặt trong $...$.`
         : `Bạn là Gia sư AI hỗ trợ học sinh lớp ${grade} (Trường THPT Đa Kia, bộ sách Kết nối tri thức). Hãy gợi mở tư duy, nêu phương pháp giải rõ ràng, trình bày từng bước mạch lạc và có câu hỏi kiểm tra mức độ hiểu bài ở cuối. Công thức đặt trong $...$.`;
     }
 
-    // 2. Xây dựng parts gửi lên Gemini API
     const parts = [];
     if (pdfBase64) {
       parts.push({
@@ -78,35 +81,39 @@ Hãy trích xuất TOÀN BỘ nội dung từ tệp PDF được đính kèm the
     }
     parts.push({ text: message || "Hãy trích xuất toàn bộ nội dung." });
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
-
-    const geminiRes = await fetch(geminiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemInstruction }] },
-        contents: [{ role: "user", parts }],
-        generationConfig: {
-          temperature,
-          maxOutputTokens: maxTokens
-        }
-      })
+    const requestBody = JSON.stringify({
+      systemInstruction: { parts: [{ text: systemInstruction }] },
+      contents: [{ role: "user", parts }],
+      generationConfig: {
+        temperature,
+        maxOutputTokens: maxTokens
+      }
     });
 
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      return new Response(JSON.stringify({ error: "Lỗi từ Gemini API: " + errText }), {
-        status: geminiRes.status,
-        headers: { "Content-Type": "application/json" }
+    let lastError = "";
+    for (const apiKey of apiKeys) {
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
+      const geminiRes = await fetch(geminiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: requestBody
       });
+
+      if (geminiRes.ok) {
+        return new Response(geminiRes.body, {
+          headers: {
+            "Content-Type": "text/event-stream; charset=utf-8",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive"
+          }
+        });
+      }
+      lastError = await geminiRes.text();
     }
 
-    return new Response(geminiRes.body, {
-      headers: {
-        "Content-Type": "text/event-stream; charset=utf-8",
-        "Cache-Control": "no-cache",
-        "Connection": "keep-alive"
-      }
+    return new Response(JSON.stringify({ error: "Cả 4 API Key đều gặp lỗi: " + lastError }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
     });
   } catch (err) {
     return new Response(JSON.stringify({ error: err.message }), {
