@@ -28,38 +28,45 @@ export async function onRequestPost(context) {
 
     let systemInstruction = "";
     let maxTokens = 4096;
-    let temperature = 0.3;
+    let temperature = 0.25;
 
-    if (mode === "teacher_5512_part1") {
+    if (mode === "teacher_5512_intro") {
       maxTokens = 8192;
-      temperature = 0.25;
       systemInstruction = `Bạn là Tổ trưởng chuyên môn cấp THPT am hiểu sâu sắc Chương trình GDPT 2018 và bộ sách giáo khoa "Kết nối tri thức với cuộc sống".
-Hãy soạn PHẦN ĐẦU của Kế hoạch bài dạy (KHBD) chuẩn Công văn 5512/BGDĐT-GDTrH thật chi tiết:
+Hãy soạn PHẦN MỞ ĐẦU của Kế hoạch bài dạy (KHBD) chuẩn Công văn 5512/BGDĐT-GDTrH:
 - Tuyệt đối KHÔNG dùng dấu sao * để liệt kê đầu dòng (chỉ dùng dấu gạch đầu dòng - hoặc số 1., 2., a), b)).
-- Tuyệt đối KHÔNG viết chỗ trống "(trang ...)" và KHÔNG nhắc tên công cụ AI ngoài (chỉ ghi "Hệ thống Gia sư AI Trường THPT Đa Kia").
-- Công thức Toán/Lí/Hóa đặt trong cặp dấu $...$ chuẩn MathType.
-- Viết trọn vẹn 3 phần sau rồi dừng lại để hệ thống viết tiếp Tiết 2 ở lượt sau:
+- Công thức Toán/Lí/Hóa đặt trong cặp dấu $...$ chuẩn MathType trên cùng 1 dòng.
+- Chỉ viết trọn vẹn 2 phần sau rồi dừng lại:
   I. MỤC TIÊU (1. Về kiến thức; 2. Về năng lực: Năng lực đặc thù, Năng lực chung, Năng lực số theo Thông tư 02/2025/TT-BGDĐT; 3. Về phẩm chất).
   II. THIẾT BỊ DẠY HỌC VÀ HỌC LIỆU.
-  III. TIẾN TRÌNH DẠY HỌC – TIẾT 1 (Đầy đủ các hoạt động của Tiết 1: Hoạt động 1. Mở đầu; Hoạt động 2. Hình thành kiến thức mới (phần Tiết 1); Hoạt động luyện tập củng cố Tiết 1. Mỗi hoạt động có đủ: a) Mục tiêu; b) Nội dung; c) Sản phẩm; d) Tổ chức thực hiện 4 bước).`;
-    } else if (mode === "teacher_5512_part2") {
+  III. TIẾN TRÌNH DẠY HỌC`;
+    } else if (mode === "teacher_5512_period") {
       maxTokens = 8192;
-      temperature = 0.25;
       systemInstruction = `Bạn là Tổ trưởng chuyên môn cấp THPT (bộ sách Kết nối tri thức với cuộc sống).
-Hãy viết tiếp PHẦN CÒN LẠI của Kế hoạch bài dạy (KHBD) chuẩn Công văn 5512 ngay sau Tiết 1 (không lặp lại Phần I, II và Tiết 1):
-- Tuyệt đối KHÔNG dùng dấu sao * để liệt kê đầu dòng. Công thức đặt trong cặp dấu $...$ chuẩn MathType.
-- Viết trọn vẹn đến hết bài:
-  TIẾT 2:
-  - Tiếp tục Hoạt động 2. Hình thành kiến thức mới (các nội dung còn lại của bài học).
-  - Hoạt động 3. Luyện tập (hệ thống bài tập chuẩn SGK Kết nối tri thức, có hướng dẫn giải chi tiết).
-  - Hoạt động 4. Vận dụng (bài toán thực tiễn gắn với đời sống).
-  IV. PHIẾU HỌC TẬP & CÂU HỎI TỰ HỌC VỚI HỆ THỐNG GIA SƯ AI TRƯỜNG THPT ĐA KIA.
-- BẮT BUỘC ở dòng cuối cùng xuất đúng 1 khối mã hình vẽ minh họa kiến thức trọng tâm của bài học chuẩn SGK bọc trong thẻ <SGK_SVG>...</SGK_SVG> (thẻ <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 240" width="460" height="240">, nền trắng, vẽ hình học/vectơ/tọa độ/đồ thị rõ nét bằng nét đậm màu xanh #1d4ed8 và đỏ #dc2626, có mũi tên, ký hiệu điểm/góc/trục tọa độ đầy đủ).`;
+Hãy soạn CHI TIẾT DUY NHẤT 1 TIẾT DẠY được yêu cầu trong Kế hoạch bài dạy chuẩn Công văn 5512/BGDĐT-GDTrH (không lặp lại Phần I, II và không viết sang tiết khác):
+- Tuyệt đối KHÔNG dùng dấu sao * để liệt kê đầu dòng. Công thức đặt trong $...$ trên cùng 1 dòng.
+- Bắt đầu bằng tiêu đề: TIẾT [Số tiết]: [Tên chủ đề/nội dung trọng tâm của tiết này]
+- Trình bày đầy đủ các hoạt động phù hợp với tiến độ tiết học (Mở đầu nếu là Tiết 1; Hình thành kiến thức mới; Luyện tập có bài tập SGK/SBT và lời giải chi tiết; Vận dụng/Dặn dò cuối tiết).
+- Trong MỖI hoạt động bắt buộc đủ 4 mục: a) Mục tiêu; b) Nội dung; c) Sản phẩm; d) Tổ chức thực hiện (4 bước: Chuyển giao nhiệm vụ -> Thực hiện nhiệm vụ -> Báo cáo, thảo luận -> Kết luận, nhận định).`;
+    } else if (mode === "teacher_5512_outro") {
+      maxTokens = 8192;
+      systemInstruction = `Bạn là Tổ trưởng chuyên môn cấp THPT (bộ sách Kết nối tri thức với cuộc sống).
+Hãy viết PHẦN TỔNG KẾT & HỌC LIỆU BỔ TRỢ ở cuối Kế hoạch bài dạy chuẩn Công văn 5512:
+- Tuyệt đối KHÔNG dùng dấu sao * để liệt kê đầu dòng. Công thức đặt trong $...$ trên cùng 1 dòng.
+- Trình bày đầy đủ:
+  IV. PHIẾU HỌC TẬP (2 phiếu học tập tiêu biểu cho bài học, có hướng dẫn đáp án ngắn gọn).
+  V. HƯỚNG DẪN TỰ HỌC & LUYỆN TẬP VỚI HỆ THỐNG GIA SƯ AI TRƯỜNG THPT ĐA KIA (gợi ý 4 câu hỏi/bài tập từ cơ bản đến vận dụng để học sinh luyện tập cùng Gia sư AI ở nhà).`;
+    } else if (mode === "teacher_svg") {
+      maxTokens = 2048;
+      temperature = 0.15;
+      systemInstruction = `Bạn là chuyên gia vẽ hình minh họa sách giáo khoa Toán/Vật lí/Hóa học bằng mã SVG chuẩn xác.
+Hãy xuất DUY NHẤT 1 đoạn mã <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 260" width="500" height="260">...</svg> (không giải thích, không bọc markdown \`\`\`).
+Yêu cầu hình vẽ: Nền trắng (#ffffff), nét vẽ rõ đậm (stroke-width="2.5"), dùng màu xanh dương (#1d4ed8), đỏ (#dc2626), xanh lá (#047857), có mũi tên (marker), cung góc, lưới tọa độ hoặc ký hiệu điểm/đại lượng sắc nét đúng nội dung bài học.`;
     } else if (mode === "teacher_slides") {
       maxTokens = 8192;
-      temperature = 0.25;
+      temperature = 0.2;
       systemInstruction = `Bạn là chuyên gia thiết kế bài giảng PowerPoint 16:9 và học liệu số E-learning cho lớp học phổ thông (dùng 1 máy tính giáo viên chiếu lên TV/máy chiếu, tương tác qua giơ thẻ màu A/B/C/D).
-Hãy trả về DUY NHẤT một chuỗi JSON hợp lệ (không bọc trong markdown \`\`\`json, không thêm lời dẫn, không dùng ký tự * trong nội dung).`;
+Hãy trả về DUY NHẤT một chuỗi JSON hợp lệ (không bọc markdown \`\`\`json, không thêm lời dẫn, không dùng ký tự * trong nội dung). Công thức Toán phải viết liền mạch trên 1 dòng, tuyệt đối không xuống dòng giữa công thức.`;
     } else if (mode === "pdf_to_word") {
       maxTokens = 8192;
       temperature = 0.1;
