@@ -32,30 +32,21 @@ export async function onRequestPost(context) {
 
     if (mode === "teacher_5512") {
       maxTokens = 8192;
-      temperature = 0.35;
-      systemInstruction = `Bạn là Chuyên gia sư phạm và Tổ trưởng chuyên môn cấp THPT (bộ sách Kết nối tri thức với cuộc sống).
-Hãy soạn Kế hoạch bài dạy (KHBD) chuẩn Công văn 5512/BGDĐT-GDTrH thật chi tiết, đầy đủ từ đầu đến cuối, KHÔNG được tóm tắt hay cắt bớt:
+      temperature = 0.3;
+      systemInstruction = `Bạn là Tổ trưởng chuyên môn cấp THPT am hiểu sâu sắc Chương trình GDPT 2018 và bộ sách giáo khoa "Kết nối tri thức với cuộc sống" (NXB Giáo dục Việt Nam).
+Hãy soạn Kế hoạch bài dạy (KHBD) chuẩn Công văn 5512/BGDĐT-GDTrH bám sát CHÍNH XÁC nội dung, tên bài, thuật ngữ và thí nghiệm trong SGK Kết nối tri thức với cuộc sống:
+- Lưu ý thuật ngữ chuẩn GDPT 2018: ví dụ Vật lí 12 dùng "Định luật I của nhiệt động lực học" (không dùng "Nguyên lí I"), Toán học dùng đúng ký hiệu và cấu trúc của bộ sách Kết nối tri thức. Tuyệt đối KHÔNG viết dấu ba chấm kiểu "(trang ...)" và KHÔNG nhắc tên các công cụ AI ngoài như ChatGPT hay Bard (chỉ ghi "Hệ thống Gia sư AI Trường THPT Đa Kia").
 - Phải viết trọn vẹn cả 4 phần:
   I. MỤC TIÊU (1. Về kiến thức; 2. Về năng lực: Năng lực đặc thù, Năng lực chung, Năng lực số theo Thông tư 02/2025/TT-BGDĐT; 3. Về phẩm chất).
-  II. THIẾT BỊ DẠY HỌC VÀ HỌC LIỆU (Giáo viên: máy chiếu/TV, phiếu học tập, phần mềm/AI; Học sinh: SGK Kết nối tri thức, bảng con/thẻ màu).
-  III. TIẾN TRÌNH DẠY HỌC (Đủ 4 hoạt động: Hoạt động 1. Mở đầu; Hoạt động 2. Hình thành kiến thức mới; Hoạt động 3. Luyện tập; Hoạt động 4. Vận dụng. Trong MỖI hoạt động bắt buộc trình bày rõ 4 mục: a) Mục tiêu; b) Nội dung; c) Sản phẩm; d) Tổ chức thực hiện theo 4 bước: Chuyển giao nhiệm vụ -> Thực hiện nhiệm vụ -> Báo cáo, thảo luận -> Kết luận, nhận định).
-  IV. PHIẾU HỌC TẬP & CÂU HỎI TỰ HỌC VỚI AI Ở NHÀ.
-- Công thức Toán/Lí/Hóa viết bằng ký hiệu $...$ chuẩn MathType. Trình bày văn bản sạch đẹp, không dùng ký tự thừa.`;
+  II. THIẾT BỊ DẠY HỌC VÀ HỌC LIỆU (Giáo viên: 1 máy tính kết nối TV/máy chiếu, thí nghiệm trực quan/mô phỏng, phiếu học tập; Học sinh: SGK Kết nối tri thức với cuộc sống, bảng con, bộ thẻ màu A/B/C/D).
+  III. TIẾN TRÌNH DẠY HỌC (Đủ 4 hoạt động: Hoạt động 1. Mở đầu; Hoạt động 2. Hình thành kiến thức mới; Hoạt động 3. Luyện tập; Hoạt động 4. Vận dụng. Trong MỖI hoạt động bắt buộc trình bày đủ 4 mục: a) Mục tiêu; b) Nội dung; c) Sản phẩm; d) Tổ chức thực hiện theo 4 bước: Chuyển giao nhiệm vụ -> Thực hiện nhiệm vụ -> Báo cáo, thảo luận -> Kết luận, nhận định).
+  IV. PHIẾU HỌC TẬP & CÂU HỎI TỰ HỌC VỚI GIA SƯ AI Ở NHÀ.
+- Công thức đặt trong cặp dấu $...$ chuẩn MathType.`;
     } else if (mode === "teacher_slides") {
       maxTokens = 8192;
       temperature = 0.3;
-      systemInstruction = `Bạn là chuyên gia thiết kế bài giảng PowerPoint 16:9 cho lớp học phổ thông sử dụng 1 máy tính giáo viên chiếu lên TV/máy chiếu (học sinh không dùng điện thoại trên lớp, tương tác qua giơ thẻ màu A/B/C/D hoặc bảng con).
-Hãy trả về DUY NHẤT một chuỗi JSON hợp lệ (không bọc trong markdown \`\`\`json) theo đúng cấu trúc:
-{
-  "title": "Tên bài giảng",
-  "slides": [
-    {
-      "heading": "Tiêu đề slide 1",
-      "bullets": ["Ý ngắn gọn 1", "Ý ngắn gọn 2", "Ý ngắn gọn 3"],
-      "note": "Ghi chú hoạt động sư phạm cho giáo viên"
-    }
-  ]
-}`;
+      systemInstruction = `Bạn là chuyên gia thiết kế bài giảng PowerPoint 16:9 và học liệu số E-learning cho lớp học phổ thông sử dụng 1 máy tính giáo viên chiếu lên TV/máy chiếu (học sinh không dùng điện thoại trên lớp, tương tác qua giơ thẻ màu A/B/C/D hoặc bảng con).
+Hãy trả về DUY NHẤT một chuỗi JSON hợp lệ (không bọc trong markdown \`\`\`json, không thêm lời dẫn bên ngoài).`;
     } else if (mode === "pdf_to_word") {
       maxTokens = 8192;
       temperature = 0.1;
