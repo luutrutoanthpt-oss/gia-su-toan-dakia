@@ -20,17 +20,15 @@ async function verifyAdmin() {
     const errEl = document.getElementById("adminLoginErr");
     if (!user || !pass) return;
 
-    const passHash = await sha256Hex(pass);
-    const defaultMasterHash = await sha256Hex("Vanphong@2015");
+    const passHash = typeof sha256Hex === "function" ? await sha256Hex(pass) : pass;
+    const defaultMasterHash = typeof sha256Hex === "function" ? await sha256Hex("Vanphong@2015") : "Vanphong@2015";
+    const masterUser = (typeof SYSTEM_CONFIG !== "undefined" && SYSTEM_CONFIG.masterAdminUser) ? SYSTEM_CONFIG.masterAdminUser.toLowerCase() : "vovanbinh";
+    const masterHash = (typeof SYSTEM_CONFIG !== "undefined" && SYSTEM_CONFIG.masterAdminPassHash) ? SYSTEM_CONFIG.masterAdminPassHash : defaultMasterHash;
 
-    // Kiểm tra Quản trị viên Tác giả (Võ Văn Bình)
-    if (
-        user === (SYSTEM_CONFIG.masterAdminUser || "vovanbinh").toLowerCase() &&
-        (passHash === SYSTEM_CONFIG.masterAdminPassHash || passHash === defaultMasterHash)
-    ) {
+    if (user === masterUser && (passHash === masterHash || passHash === defaultMasterHash)) {
         currentLoggedAdmin = { username: user, full_name: "Võ Văn Bình (Tác giả)", subject: "Toán - Tin", role: "master" };
     } else {
-        await syncFromGoogleSheets();
+        if (typeof syncFromGoogleSheets === "function") await syncFromGoogleSheets();
         teacherList = JSON.parse(localStorage.getItem("dakia_teachers")) || [];
         const found = teacherList.find(t => t.username.toLowerCase() === user && t.pass_hash === passHash);
         if (found) {
@@ -54,6 +52,44 @@ async function verifyAdmin() {
 
     await syncNow();
 }
+
+function logoutAdmin() {
+    currentLoggedAdmin = null;
+    document.getElementById("adminDashboard").classList.add("hidden");
+    document.getElementById("adminLoginScreen").classList.remove("hidden");
+    document.getElementById("adminPassInput").value = "";
+}
+
+async function syncNow() {
+    if (typeof syncFromGoogleSheets === "function") {
+        await syncFromGoogleSheets();
+    }
+    studentList = JSON.parse(localStorage.getItem("dakia_all_students")) || studentList;
+    teacherList = JSON.parse(localStorage.getItem("dakia_teachers")) || [];
+    uploadedExams = JSON.parse(localStorage.getItem("dakia_uploaded_exams")) || [];
+
+    updateClassFilterDropdown();
+    renderStudentTable();
+    renderTeacherTable();
+    renderUploadedExams();
+}
+
+function switchAdminTab(tabId) {
+    document.querySelectorAll(".admin-sec").forEach(el => el.classList.add("hidden"));
+    document.querySelectorAll(".admin-tab-btn").forEach(btn => {
+        btn.classList.remove("border-blue-700", "text-blue-700", "font-bold");
+        btn.classList.add("border-transparent", "text-slate-600");
+    });
+    const targetSec = document.getElementById(`admin-sec-${tabId}`);
+    if (targetSec) targetSec.classList.remove("hidden");
+
+    const active = document.getElementById(`atab-${tabId}`);
+    if (active) {
+        active.classList.add("border-blue-700", "text-blue-700", "font-bold");
+        active.classList.remove("border-transparent", "text-slate-600");
+    }
+}
+
 // ==================== QUẢN LÝ TÀI KHOẢN GIÁO VIÊN ĐA MÔN ====================
 async function addTeacherAccount() {
     if (currentLoggedAdmin?.role !== "master") return;
@@ -66,12 +102,12 @@ async function addTeacherAccount() {
         alert("Thầy vui lòng nhập đủ tên đăng nhập, họ tên và mật khẩu cấp cho giáo viên!");
         return;
     }
-    if (teacherList.some(t => t.username === username) || username === SYSTEM_CONFIG.masterAdminUser) {
+    if (teacherList.some(t => t.username === username) || username === "vovanbinh") {
         alert("Tên đăng nhập này đã tồn tại!");
         return;
     }
 
-    const pass_hash = await sha256Hex(pass);
+    const pass_hash = typeof sha256Hex === "function" ? await sha256Hex(pass) : pass;
     teacherList.push({ username, full_name, subject, role: "teacher", pass_hash });
     localStorage.setItem("dakia_teachers", JSON.stringify(teacherList));
     await postToGoogleSheets({ action: "save_teachers", teachers: teacherList });
@@ -112,7 +148,7 @@ async function removeTeacher(idx) {
 }
 
 async function postToGoogleSheets(payload) {
-    if (!SYSTEM_CONFIG.googleScriptUrl || SYSTEM_CONFIG.googleScriptUrl.startsWith("DAN_URL")) return null;
+    if (typeof SYSTEM_CONFIG === "undefined" || !SYSTEM_CONFIG.googleScriptUrl || SYSTEM_CONFIG.googleScriptUrl.startsWith("DAN_URL")) return null;
     try {
         const res = await fetch(SYSTEM_CONFIG.googleScriptUrl, {
             method: "POST",
@@ -127,6 +163,7 @@ async function postToGoogleSheets(payload) {
 // ==================== QUẢN LÝ HỌC SINH ====================
 function updateClassFilterDropdown() {
     const selectEl = document.getElementById("classFilterSelect");
+    if (!selectEl) return;
     const uniqueClasses = [...new Set(studentList.map(s => String(s.class_name).toUpperCase()))].sort();
     selectEl.innerHTML = `<option value="ALL">Tất cả các lớp (${studentList.length} HS)</option>` +
         uniqueClasses.map(cls => `<option value="${cls}">Lớp ${cls}</option>`).join("");
@@ -135,6 +172,7 @@ function updateClassFilterDropdown() {
 function renderStudentTable() {
     const logs = JSON.parse(localStorage.getItem("dakia_learning_logs")) || [];
     const tbody = document.getElementById("studentTableBody");
+    if (!tbody) return;
     const selectedClass = document.getElementById("classFilterSelect").value;
     const searchKeyword = document.getElementById("searchStudentInput").value.trim().toLowerCase();
 
@@ -291,7 +329,6 @@ async function handleWordExamUpload(event) {
     const result = await mammoth.extractRawText({ arrayBuffer });
     const rawText = result.value || "";
 
-    // Bóc tách tự động các câu hỏi dạng: Câu 1. ... A. ... B. ... C. ... D. ... Đáp án: A
     const blocks = rawText.split(/(?=Câu\s+\d+[\.\:])/i).map(b => b.trim()).filter(b => /^Câu\s+\d+/i.test(b));
     const parsedQuestions = blocks.map((blk, i) => {
         const ansMatch = blk.match(/Đáp\s*án\s*[:\-]?\s*([A-D])/i);
@@ -480,7 +517,7 @@ async function exportLessonPlanToDocx() {
     const title = document.getElementById("lpTitle").value.trim() || "KeHoachBaiDay_5512";
     if (!content) return alert("Chưa có nội dung KHBD để xuất!");
 
-    const { Document, Packer, Paragraph, TextRun, HeadingLevel } = docx;
+    const { Document, Packer, Paragraph, TextRun } = docx;
     const lines = content.split("\n");
     const paragraphs = [
         new Paragraph({
