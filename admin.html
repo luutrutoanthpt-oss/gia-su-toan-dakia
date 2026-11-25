@@ -17,7 +17,7 @@
 </head>
 <body class="bg-slate-100 min-h-screen flex flex-col">
 
-    <!-- MÀN HÌNH ĐĂNG NHẬP GIÁO VIÊN (PHÂN QUYỀN SHA-256) -->
+    <!-- MÀN HÌNH ĐĂNG NHẬP GIÁO VIÊN -->
     <div id="adminLoginScreen" class="min-h-screen flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-lg max-w-md w-full p-6 space-y-4 border border-slate-200">
             <div class="text-center">
@@ -26,15 +26,15 @@
                 <p class="text-xs text-slate-500">Hỗ trợ Giáo viên & Học sinh THPT – Trường THPT Đa Kia</p>
             </div>
             <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Tên đăng nhập</label>
+                <input type="text" id="adminUserInput" value="vovanbinh" placeholder="Nhập tài khoản (VD: vovanbinh)..." class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm">
+            </div>
+            <div>
                 <label class="block text-xs font-semibold text-slate-700 mb-1">Mật khẩu</label>
                 <div class="relative">
                     <input type="password" id="adminPassInput" placeholder="Nhập mật khẩu..." class="w-full border border-slate-300 rounded-xl pl-3.5 pr-11 py-2.5 text-sm" onkeydown="if(event.key==='Enter') verifyAdmin()">
                     <button type="button" onclick="const inp=document.getElementById('adminPassInput'); const show=inp.type==='password'; inp.type=show?'text':'password'; this.textContent=show?'🙈':'👁️';" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-blue-700 text-base select-none" title="Hiện/Ẩn mật khẩu">👁️</button>
                 </div>
-            </div>
-            <div>
-                <label class="block text-xs font-semibold text-slate-700 mb-1">Mật khẩu</label>
-                <input type="password" id="adminPassInput" placeholder="Nhập mật khẩu..." class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm" onkeydown="if(event.key==='Enter') verifyAdmin()">
             </div>
             <p id="adminLoginErr" class="text-xs text-red-600 hidden">Tài khoản hoặc mật khẩu không chính xác!</p>
             <button onclick="verifyAdmin()" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2.5 rounded-xl text-sm">Đăng nhập hệ thống</button>
@@ -74,7 +74,6 @@
 
             <!-- ==================== TAB 1: QUẢN LÝ HỌC SINH & GIÁO VIÊN ==================== -->
             <section id="admin-sec-students" class="admin-sec space-y-6">
-                <!-- Thống kê tổng quan -->
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                         <span class="text-xs text-slate-500">Tổng số học sinh</span>
@@ -97,12 +96,12 @@
                     </div>
                 </div>
 
-                <!-- Khu vực Phân quyền Tài khoản Giáo viên (Chỉ Quản trị viên Tác giả mới thấy) -->
+                <!-- Khu vực Phân quyền Tài khoản Giáo viên -->
                 <div id="masterTeacherManager" class="hidden bg-amber-50/70 p-5 rounded-xl border border-amber-300 shadow-sm space-y-4">
                     <div class="flex flex-wrap items-center justify-between gap-2 border-b border-amber-200 pb-2">
                         <div>
                             <h2 class="font-bold text-base text-amber-950">🔐 Phân Quyền Tài Khoản Giáo Viên Các Tổ Chuyên Môn</h2>
-                            <p class="text-xs text-amber-800">Chỉ tài khoản Quản trị tác giả (Thầy Võ Văn Bình) mới có quyền cấp hoặc thu hồi tài khoản giáo viên.</p>
+                            <p class="text-xs text-amber-800">Chỉ tài khoản Quản trị tác giả (Võ Văn Bình) mới có quyền cấp hoặc thu hồi tài khoản giáo viên.</p>
                         </div>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
@@ -263,7 +262,6 @@
                     </div>
                 </div>
 
-                <!-- Danh sách đề đã tải lên kèm Mã QR & Link tải file gốc -->
                 <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
                     <h3 class="font-bold text-base text-slate-800">Danh Sách Đề Thi Đã Lưu Trên Hệ Thống</h3>
                     <div id="uploadedExamsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
@@ -308,7 +306,6 @@
                         <button onclick="generateLessonPlan5512()" id="btnGen5512" class="bg-blue-700 hover:bg-blue-800 text-white font-bold px-4 py-2.5 rounded-lg text-sm">✨ Soạn KHBD 5512 Bằng AI</button>
                     </div>
 
-                    <!-- Thanh nút xuất sản phẩm sau khi soạn -->
                     <div id="lpExportToolbar" class="hidden flex flex-wrap items-center gap-2.5 pt-2 border-t border-slate-100">
                         <button onclick="exportLessonPlanToDocx()" class="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-4 py-2 rounded-lg text-xs sm:text-sm">📥 Tải File Word (.docx) Chuẩn 5512</button>
                         <button onclick="generateSlidesFromLesson()" id="btnGenSlides" class="bg-orange-600 hover:bg-orange-700 text-white font-semibold px-4 py-2 rounded-lg text-xs sm:text-sm">📊 Xuất Slide PowerPoint 16:9 (.pptx)</button>
@@ -321,7 +318,6 @@
 
             <!-- ==================== TAB 4: TIỆN ÍCH TẠO MÃ QR & CHUYỂN PDF SANG WORD ==================== -->
             <section id="admin-sec-tools" class="admin-sec hidden grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Tạo mã QR tức thì -->
                 <div class="bg-white p-5 sm:p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
                     <h2 class="font-bold text-base text-slate-800 border-b border-slate-100 pb-2.5">1. Tạo Mã QR Đa Năng Cho Bài Giảng & Phiếu Học Tập</h2>
                     <input type="text" id="qrCustomText" placeholder="Dán đường link (Google Form, Azota, YouTube, Link đề thi)..." class="w-full border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm">
@@ -334,7 +330,6 @@
                     </div>
                 </div>
 
-                <!-- Chuyển PDF sang Word -->
                 <div class="bg-white p-5 sm:p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
                     <h2 class="font-bold text-base text-slate-800 border-b border-slate-100 pb-2.5">2. Chuyển Đổi Nhanh Tệp PDF Sang Word (.docx)</h2>
                     <p class="text-xs text-slate-500">Trích xuất văn bản từ tài liệu PDF sang định dạng Microsoft Word (.docx) để giáo viên dễ dàng chỉnh sửa và biên tập giáo án.</p>
