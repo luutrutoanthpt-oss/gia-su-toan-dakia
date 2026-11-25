@@ -445,7 +445,7 @@ function copyExamShareLink(examId) {
     alert("Đã sao chép đường link làm bài trực tuyến:\n" + url);
 }
 
-// ==================== SOẠN KHBD 5512, SLIDE POWERPOINT HIỆU ỨNG & E-LEARNING TƯƠNG TÁC ====================
+// ==================== SOẠN KHBD 5512 TRỌN VẸN 2 TIẾT + HÌNH VẼ SGK ====================
 async function generateLessonPlan5512() {
     const subject = document.getElementById("lpSubject").value;
     const grade = document.getElementById("lpGrade").value;
@@ -458,25 +458,45 @@ async function generateLessonPlan5512() {
     const btn = document.getElementById("btnGen5512");
     const editor = document.getElementById("lpResultEditor");
     btn.disabled = true;
-    btn.textContent = "⏳ AI đang soạn KHBD 5512 & Hình vẽ SGK...";
     editor.value = "";
 
-    const prompt = `Hãy soạn Kế hoạch bài dạy (KHBD) chuẩn Công văn 5512 bám sát chương trình GDPT 2018 và SGK Kết nối tri thức với cuộc sống:
+    try {
+        // Lượt 1: Soạn Mục tiêu, Thiết bị & Trọn vẹn Tiết 1
+        btn.textContent = "⏳ Bước 1/2: Đang soạn Mục tiêu & Tiết 1...";
+        const promptPart1 = `Soạn PHẦN 1 (I. Mục tiêu, II. Thiết bị dạy học, III. Tiến trình dạy học - Trọn vẹn TIẾT 1) cho Kế hoạch bài dạy chuẩn Công văn 5512 bám sát SGK Kết nối tri thức với cuộc sống:
 - Môn học: ${subject} - Lớp ${grade}
 - Tên bài học: ${title}
-- Thời lượng: ${periods}
-- Yêu cầu tích hợp: ${level}
-Lưu ý: Dùng đúng thuật ngữ chuẩn của SGK Kết nối tri thức với cuộc sống (GDPT 2018), tuyệt đối KHÔNG dùng ký tự dấu sao * ở đầu dòng, không để chỗ trống kiểu (trang ...), viết trọn vẹn cả 4 phần I, II, III (đủ 4 hoạt động), IV (Phiếu học tập & Câu hỏi tự học với Gia sư AI), và kèm 1 hình vẽ minh họa SGK bọc trong thẻ <SGK_SVG>...</SGK_SVG>.`;
+- Tổng thời lượng: ${periods}
+- Mức độ tích hợp: ${level}
+Lưu ý: Không dùng dấu sao * ở đầu dòng, công thức đặt trong $...$.`;
 
-    try {
-        const res = await fetch("/api/tutor", {
+        const res1 = await fetch("/api/tutor", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: prompt, grade, mode: "teacher_5512" })
+            body: JSON.stringify({ message: promptPart1, grade, mode: "teacher_5512_part1" })
         });
-        for await (const chunk of responseBodyReader(res)) {
+        for await (const chunk of responseBodyReader(res1)) {
             editor.value += chunk;
         }
+
+        // Lượt 2: Soạn tiếp trọn vẹn Tiết 2, Phiếu học tập & Hình vẽ minh họa SGK
+        btn.textContent = "⏳ Bước 2/2: Đang soạn tiếp Tiết 2, Phiếu học tập & Hình vẽ SGK...";
+        editor.value += "\n\n";
+        const promptPart2 = `Tiếp nối giáo án bài "${title}" (Môn ${subject} Lớp ${grade} - Kết nối tri thức), hãy viết tiếp đầy đủ:
+- TIẾT 2 (phần hình thành kiến thức tiếp theo, Hoạt động 3. Luyện tập có lời giải chi tiết, Hoạt động 4. Vận dụng thực tiễn).
+- IV. PHIẾU HỌC TẬP & CÂU HỎI TỰ HỌC VỚI HỆ THỐNG GIA SƯ AI TRƯỜNG THPT ĐA KIA.
+- Cuối cùng xuất đúng 1 hình vẽ minh họa trọng tâm chuẩn SGK trong thẻ <SGK_SVG>...</SGK_SVG>.
+Tóm tắt phần đã viết trước đó để nối mạch tự nhiên: ${editor.value.slice(-1000)}`;
+
+        const res2 = await fetch("/api/tutor", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: promptPart2, grade, mode: "teacher_5512_part2" })
+        });
+        for await (const chunk of responseBodyReader(res2)) {
+            editor.value += chunk;
+        }
+
         document.getElementById("lpExportToolbar").classList.remove("hidden");
     } catch (err) {
         alert("Lỗi khi soạn KHBD: " + err.message);
@@ -514,11 +534,48 @@ async function* responseBodyReader(res) {
     }
 }
 
-// Chuyển chuỗi SVG thành ảnh PNG Base64 để nhúng trực tiếp vào file Word & PowerPoint
+// Chuyển đổi ký hiệu Toán LaTeX sang chữ Toán Unicode đẹp cho PowerPoint (không bị lỗi font/tràn chữ)
+function formatMathUnicode(str) {
+    return String(str || "")
+        .replace(/\*/g, "")
+        .replace(/\$/g, "")
+        .replace(/\\vec\{([A-Za-z0-9]+)\}/g, "$1⃗")
+        .replace(/\\overrightarrow\{([A-Za-z0-9]+)\}/g, "$1⃗")
+        .replace(/\\sqrt\{([^}]+)\}/g, "√($1)")
+        .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, "($1)/($2)")
+        .replace(/\\cdot/g, " · ")
+        .replace(/\\times/g, " × ")
+        .replace(/\\perp/g, " ⊥ ")
+        .replace(/\\parallel/g, " // ")
+        .replace(/\\Leftrightarrow/g, " ⇔ ")
+        .replace(/\\Rightarrow/g, " ⇒ ")
+        .replace(/\\le/g, " ≤ ")
+        .replace(/\\ge/g, " ≥ ")
+        .replace(/\\ne/g, " ≠ ")
+        .replace(/\\alpha/g, "α")
+        .replace(/\\beta/g, "β")
+        .replace(/\\gamma/g, "γ")
+        .replace(/\\Delta/g, "Δ")
+        .replace(/\\pi/g, "π")
+        .replace(/\^2/g, "²")
+        .replace(/\^3/g, "³")
+        .replace(/_1/g, "₁")
+        .replace(/_2/g, "₂")
+        .replace(/_0/g, "₀")
+        .replace(/\\angle\s*/g, "∠")
+        .replace(/\^\\circ/g, "°")
+        .replace(/\\/g, "")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+}
+
 function svgToPngDataUrl(svgString) {
     return new Promise((resolve) => {
         try {
-            const cleanSvg = svgString.trim();
+            let cleanSvg = svgString.trim();
+            if (!cleanSvg.includes("xmlns=")) {
+                cleanSvg = cleanSvg.replace("<svg", '<svg xmlns="http://www.w3.org/2000/svg"');
+            }
             const svgBlob = new Blob([cleanSvg], { type: "image/svg+xml;charset=utf-8" });
             const url = URL.createObjectURL(svgBlob);
             const img = new Image();
@@ -552,16 +609,15 @@ function base64ToUint8Array(dataUrl) {
     return bytes;
 }
 
+// ==================== XUẤT WORD SẠCH DẤU * + HÌNH VẼ MINH HỌA SGK ====================
 async function exportLessonPlanToDocx() {
     const rawContent = document.getElementById("lpResultEditor").value.trim();
     const title = document.getElementById("lpTitle").value.trim() || "KeHoachBaiDay_5512";
     if (!rawContent) return alert("Chưa có nội dung KHBD để xuất!");
 
-    // Tách khối hình vẽ SVG SGK nếu có
     const svgMatch = rawContent.match(/<SGK_SVG>([\s\S]*?)<\/SGK_SVG>/i);
     const svgCode = svgMatch ? svgMatch[1].trim() : "";
     const textOnly = rawContent.replace(/<SGK_SVG>[\s\S]*?<\/SGK_SVG>/gi, "").trim();
-
     const pngDataUrl = svgCode ? await svgToPngDataUrl(svgCode) : null;
 
     const { Document, Packer, Paragraph, TextRun, ImageRun, AlignmentType } = docx;
@@ -576,7 +632,6 @@ async function exportLessonPlanToDocx() {
     ];
 
     lines.forEach(line => {
-        // Làm sạch triệt để mọi dấu * thừa (dấu đậm **, dấu nghiêng *...*, dấu * đầu dòng)
         let cleanLine = line
             .replace(/^\s*[\*\•]+\s+/g, "   - ")
             .replace(/\*\*(.*?)\*\*/g, "$1")
@@ -587,7 +642,7 @@ async function exportLessonPlanToDocx() {
         if (!trimmed || trimmed === "---") return;
 
         const isMainHeader = /^(I+|IV|V)\.\s+|^(KẾ HOẠCH BÀI DẠY|TIẾT\s+\d+)/i.test(trimmed);
-        const isSubHeader = /^(Hoạt động\s+\d+|Phần\s+\d+|[1-4]\.\s+Về|[a-d]\)\s+|Bước\s+[1-4]:)/i.test(trimmed);
+        const isSubHeader = /^(Hoạt động\s+\d+|Phần\s+\d+|Nội dung\s+\d+|[1-4]\.\s+Về|[a-d]\)\s+|Bước\s+[1-4]:)/i.test(trimmed);
 
         paragraphs.push(new Paragraph({
             children: [new TextRun({
@@ -600,7 +655,6 @@ async function exportLessonPlanToDocx() {
         }));
     });
 
-    // Chèn hình vẽ minh họa SGK vào tài liệu Word
     if (pngDataUrl && ImageRun) {
         paragraphs.push(new Paragraph({
             alignment: AlignmentType.CENTER,
@@ -627,6 +681,7 @@ async function exportLessonPlanToDocx() {
     a.click();
 }
 
+// ==================== XUẤT SLIDE POWERPOINT 16:9 CHỐNG TRÀN + CÔNG THỨC TOÁN ĐẸP + HIỆU ỨNG TỪNG KHUNG ====================
 async function generateSlidesFromLesson() {
     const rawContent = document.getElementById("lpResultEditor").value.trim();
     const title = document.getElementById("lpTitle").value.trim() || "BaiGiang_THPT_DaKia";
@@ -634,7 +689,7 @@ async function generateSlidesFromLesson() {
 
     const btn = document.getElementById("btnGenSlides");
     btn.disabled = true;
-    btn.textContent = "⏳ Đang thiết kế PowerPoint 16:9 hiệu ứng từng khung...";
+    btn.textContent = "⏳ Đang thiết kế PowerPoint 16:9 chuẩn bố cục & hiệu ứng...";
 
     const svgMatch = rawContent.match(/<SGK_SVG>([\s\S]*?)<\/SGK_SVG>/i);
     const pngDataUrl = svgMatch ? await svgToPngDataUrl(svgMatch[1]) : null;
@@ -645,9 +700,13 @@ async function generateSlidesFromLesson() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                message: `Chuyển giáo án sau thành 6 chủ đề trình chiếu lớp học đẹp mắt bám sát SGK Kết nối tri thức với cuộc sống (dùng cho 1 máy tính giáo viên chiếu lên TV/máy chiếu, tương tác giơ thẻ màu A/B/C/D). Mỗi chủ đề gồm 3-4 khung thẻ nội dung ngắn gọn, súc tích để hệ thống tạo hiệu ứng xuất hiện từng khung khi bấm chuột. Trả về DUY NHẤT JSON hợp lệ theo mẫu:
-{"title":"Tên bài học","topics":[{"heading":"Tiêu đề mục","cards":["Khung ý 1...","Khung ý 2...","Khung ý 3..."],"hasDiagram":true,"note":"Ghi chú sư phạm"}]}
-Tuyệt đối KHÔNG dùng dấu * trong JSON:\n${cleanContent.slice(0, 4800)}`,
+                message: `Tóm tắt giáo án sau thành đúng 6 chủ đề trình chiếu lớp học súc tích bám sát SGK Kết nối tri thức với cuộc sống (dùng cho 1 máy tính giáo viên chiếu lên TV/máy chiếu, tương tác giơ thẻ màu A/B/C/D).
+QUY TẮC BẮT BUỘC ĐỂ KHÔNG TRÀN CHỮ:
+- Mỗi chủ đề có tối đa 3 khung thẻ (cards).
+- Mỗi khung thẻ viết CỰC KỲ CÔ ĐỌNG, tối đa 15-20 từ (dưới 105 ký tự), nêu thẳng công thức/định nghĩa/câu hỏi chính.
+Trả về DUY NHẤT JSON hợp lệ theo mẫu:
+{"title":"Tên bài học","topics":[{"heading":"Tiêu đề mục","cards":["Khung 1 ngắn gọn","Khung 2 ngắn gọn","Khung 3 ngắn gọn"],"hasDiagram":true,"note":"Ghi chú giáo viên"}]}
+Nội dung:\n${cleanContent.slice(0, 4800)}`,
                 mode: "teacher_slides"
             })
         });
@@ -659,48 +718,45 @@ Tuyệt đối KHÔNG dùng dấu * trong JSON:\n${cleanContent.slice(0, 4800)}`
         const pptx = new PptxGenJS();
         pptx.layout = "LAYOUT_16x9";
 
-        // Slide bìa thiết kế hiện đại
+        // Slide bìa
         const cover = pptx.addSlide();
         cover.transition = { type: "fade", duration: 600 };
         cover.background = { color: "0F172A" };
         cover.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 0.35, h: 7.5, fill: { color: "3B82F6" } });
         cover.addShape(pptx.ShapeType.rect, { x: 0.8, y: 1.0, w: 11.7, h: 5.5, fill: { color: "1E293B" }, line: { color: "38BDF8", width: 1.5 } });
         cover.addText("TRƯỜNG THPT ĐA KIA • BỘ SÁCH KẾT NỐI TRI THỨC VỚI CUỘC SỐNG", { x: 1.2, y: 1.5, w: 10.9, fontSize: 15, color: "38BDF8", bold: true });
-        cover.addText((data.title || title).replace(/\*/g, ""), { x: 1.2, y: 2.3, w: 10.9, fontSize: 34, color: "FFFFFF", bold: true });
+        cover.addText(formatMathUnicode(data.title || title), { x: 1.2, y: 2.3, w: 10.9, fontSize: 32, color: "FFFFFF", bold: true });
         cover.addShape(pptx.ShapeType.rect, { x: 1.2, y: 4.1, w: 3.2, h: 0.06, fill: { color: "FACC15" } });
         cover.addText(`Giáo viên giảng dạy: ${currentLoggedAdmin?.full_name || "Trường THPT Đa Kia"}`, { x: 1.2, y: 4.5, w: 10.9, fontSize: 18, color: "FDE047", bold: true });
 
-        const cardAccents = ["1D4ED8", "047857", "B45309", "6D28D9"];
-        const cardBgColors = ["EFF6FF", "ECFDF5", "FFFBEB", "F5F3FF"];
+        const cardAccents = ["1D4ED8", "047857", "B45309"];
+        const cardBgColors = ["EFF6FF", "ECFDF5", "FFFBEB"];
         let slideCounter = 2;
 
-        // Kỹ thuật Progressive Build: Tạo hiệu ứng xuất hiện từng khung thẻ màu khi bấm chuột trình chiếu
         (data.topics || []).forEach((topic, tIdx) => {
-            const cards = (topic.cards || []).slice(0, 4);
+            const cards = (topic.cards || []).slice(0, 3);
             const showImg = (topic.hasDiagram || tIdx === 1) && pngDataUrl;
 
             for (let step = 1; step <= cards.length; step++) {
                 const slide = pptx.addSlide();
-                slide.transition = step === 1 ? { type: "push", duration: 450 } : { type: "fade", duration: 250 };
+                slide.transition = step === 1 ? { type: "push", duration: 400 } : { type: "none" };
                 slide.background = { color: "F1F5F9" };
 
-                // Header thanh điều hướng đẹp
-                slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 13.33, h: 1.05, fill: { color: "1E3A8A" } });
-                slide.addShape(pptx.ShapeType.rect, { x: 0, y: 1.05, w: 13.33, h: 0.06, fill: { color: "F59E0B" } });
-                slide.addText((topic.heading || `Hoạt động ${tIdx + 1}`).replace(/\*/g, ""), {
-                    x: 0.6, y: 0.2, w: 12.1, h: 0.65, fontSize: 22, bold: true, color: "FFFFFF"
+                slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 13.33, h: 1.0, fill: { color: "1E3A8A" } });
+                slide.addShape(pptx.ShapeType.rect, { x: 0, y: 1.0, w: 13.33, h: 0.06, fill: { color: "F59E0B" } });
+                slide.addText(formatMathUnicode(topic.heading || `Hoạt động ${tIdx + 1}`), {
+                    x: 0.6, y: 0.18, w: 12.1, h: 0.65, fontSize: 21, bold: true, color: "FFFFFF", fit: "shrink"
                 });
 
-                const contentWidth = showImg ? 7.4 : 12.1;
-                const cardHeight = cards.length <= 3 ? 1.55 : 1.18;
-                const gap = 0.16;
+                const contentWidth = showImg ? 7.45 : 12.1;
+                const cardHeight = 1.62;
+                const gap = 0.22;
 
-                // Vẽ từng khung thẻ màu xuất hiện lần lượt theo từng bước bấm chuột
                 for (let c = 0; c < step; c++) {
-                    const yPos = 1.35 + c * (cardHeight + gap);
+                    const yPos = 1.32 + c * (cardHeight + gap);
                     const accent = cardAccents[c % cardAccents.length];
                     const bg = cardBgColors[c % cardBgColors.length];
-                    const cleanText = String(cards[c]).replace(/\*/g, "").replace(/\$/g, "");
+                    const formattedMathText = formatMathUnicode(cards[c]);
 
                     slide.addShape(pptx.ShapeType.rect, {
                         x: 0.6, y: yPos, w: contentWidth, h: cardHeight,
@@ -711,19 +767,18 @@ Tuyệt đối KHÔNG dùng dấu * trong JSON:\n${cleanContent.slice(0, 4800)}`
                         fill: { color: accent }
                     });
                     slide.addText(`0${c + 1}`, {
-                        x: 0.85, y: yPos + 0.12, w: 0.55, h: 0.45,
+                        x: 0.85, y: yPos + 0.15, w: 0.55, h: 0.45,
                         fontSize: 16, bold: true, color: accent
                     });
-                    slide.addText(cleanText, {
-                        x: 1.45, y: yPos + 0.1, w: contentWidth - 1.0, h: cardHeight - 0.2,
-                        fontSize: 17, color: "0F172A", valign: "middle"
+                    slide.addText(formattedMathText, {
+                        x: 1.45, y: yPos + 0.12, w: contentWidth - 1.05, h: cardHeight - 0.24,
+                        fontSize: 17, color: "0F172A", valign: "middle", fit: "shrink", wrap: true
                     });
                 }
 
-                // Khung hình vẽ minh họa SGK bên phải
                 if (showImg) {
                     slide.addShape(pptx.ShapeType.rect, {
-                        x: 8.25, y: 1.35, w: 4.5, h: 5.3,
+                        x: 8.25, y: 1.32, w: 4.5, h: 5.3,
                         fill: { color: "FFFFFF" }, line: { color: "CBD5E1", width: 1 }
                     });
                     slide.addText("HÌNH MINH HỌA SGK", {
@@ -732,7 +787,7 @@ Tuyệt đối KHÔNG dùng dấu * trong JSON:\n${cleanContent.slice(0, 4800)}`
                     });
                     slide.addImage({
                         data: pngDataUrl,
-                        x: 8.4, y: 2.1, w: 4.2, h: 2.2
+                        x: 8.4, y: 2.15, w: 4.2, h: 2.2
                     });
                 }
 
@@ -752,6 +807,7 @@ Tuyệt đối KHÔNG dùng dấu * trong JSON:\n${cleanContent.slice(0, 4800)}`
     }
 }
 
+// ==================== XUẤT E-LEARNING SCORM: TRANG LÝ THUYẾT -> TRANG TỪNG BÀI TẬP ĐA DẠNG ====================
 async function exportElearningScorm() {
     const rawContent = document.getElementById("lpResultEditor").value.trim();
     const title = document.getElementById("lpTitle").value.trim() || "BaiGiang_Elearning";
@@ -760,7 +816,7 @@ async function exportElearningScorm() {
     const btn = typeof event !== "undefined" ? event.target : null;
     if (btn) {
         btn.disabled = true;
-        btn.textContent = "⏳ Đang đóng gói E-learning tương tác đa chặng...";
+        btn.textContent = "⏳ Đang đóng gói E-learning vừa học vừa chơi...";
     }
 
     const svgMatch = rawContent.match(/<SGK_SVG>([\s\S]*?)<\/SGK_SVG>/i);
@@ -772,8 +828,12 @@ async function exportElearningScorm() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                message: `Chuyển giáo án sau thành bài giảng E-learning tương tác gồm 4 chặng học tập. MỖI chặng gồm phần lý thuyết trọng tâm ngắn gọn (có công thức $...$) VÀ lồng ghép ngay 2 câu hỏi trắc nghiệm tương tác để học sinh luyện tập tại chỗ (có giải thích chi tiết và lời khích lệ). Trả về DUY NHẤT JSON hợp lệ theo mẫu:
-{"stages":[{"title":"Chặng 1: ...","theory":"Nội dung lý thuyết súc tích...","questions":[{"question":"Câu hỏi...","options":["A. ...","B. ...","C. ...","D. ..."],"answer":0,"explain":"Lời giải ngắn gọn..."}]}]}
+                message: `Chuyển giáo án sau thành bài giảng E-learning gồm 4 chặng học tập. MỖI chặng gồm phần lý thuyết súc tích (công thức đặt trong $...$) VÀ 3 câu hỏi tương tác ĐA DẠNG DẠNG BÀI ("mcq": trắc nghiệm 4 lựa chọn, "tf": Đúng/Sai nhanh, "fill": Điền số/kết quả ngắn) để học sinh luyện tập từng câu một. Trả về DUY NHẤT JSON hợp lệ theo mẫu:
+{"stages":[{"title":"Chặng 1: ...","theory":"Nội dung lý thuyết súc tích...","questions":[
+  {"type":"mcq","question":"Câu trắc nghiệm...","options":["A. ...","B. ...","C. ...","D. ..."],"answer":0,"explain":"Giải thích ngắn..."},
+  {"type":"tf","question":"Khẳng định sau Đúng hay Sai: ...","options":["Đúng","Sai"],"answer":0,"explain":"Giải thích ngắn..."},
+  {"type":"fill","question":"Tính giá trị (nhập số ngắn gọn): ...","answerText":"3","explain":"Giải thích ngắn..."}
+]}]}
 Tuyệt đối KHÔNG dùng dấu * trong nội dung:\n${cleanContent.slice(0, 4800)}`,
                 mode: "teacher_slides"
             })
@@ -815,32 +875,36 @@ Tuyệt đối KHÔNG dùng dấu * trong nội dung:\n${cleanContent.slice(0, 4
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMath();"></script>
 <style>
   *{box-sizing:border-box}
-  body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135deg,#e0e7ff 0%,#f8fafc 100%);margin:0;color:#0f172a;min-height:100vh}
-  header{background:linear-gradient(90deg,#1e3a8a,#1d4ed8);color:#fff;padding:18px 32px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 4px 12px rgba(30,58,138,.2)}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135deg,#dbeafe 0%,#f8fafc 100%);margin:0;color:#0f172a;min-height:100vh}
+  header{background:linear-gradient(90deg,#1e3a8a,#2563eb);color:#fff;padding:18px 32px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 4px 12px rgba(30,58,138,.2)}
   .badge-group{display:flex;gap:12px;align-items:center}
-  .pill{background:rgba(255,255,255,.16);padding:7px 14px;border-radius:999px;font-weight:700;font-size:13px}
+  .pill{background:rgba(255,255,255,.18);padding:7px 14px;border-radius:999px;font-weight:700;font-size:13px}
   .pill-gold{background:#facc15;color:#1e293b}
-  .wrap{max-width:960px;margin:26px auto;padding:0 16px}
+  .wrap{max-width:940px;margin:26px auto;padding:0 16px}
   .stepper{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:20px}
   .step-btn{padding:12px 14px;border:2px solid #cbd5e1;border-radius:12px;background:#fff;font-weight:700;color:#475569;cursor:pointer;transition:.2s;text-align:left}
   .step-btn.active{border-color:#1d4ed8;background:#1d4ed8;color:#fff;box-shadow:0 6px 14px rgba(29,78,216,.25)}
-  .panel{background:#fff;border-radius:18px;padding:28px;box-shadow:0 10px 28px rgba(15,23,42,.08);border:1px solid #e2e8f0}
-  .theory-box{background:#f8fafc;border-left:5px solid #2563eb;padding:18px 20px;border-radius:10px;line-height:1.75;font-size:16px;white-space:pre-line;margin-bottom:22px}
-  .svg-box{text-align:center;margin:16px 0;padding:12px;background:#fff;border:1px dashed #94a3b8;border-radius:12px}
-  .quiz-zone{border-top:2px dashed #e2e8f0;padding-top:20px;margin-top:10px}
-  .q-card{background:#f8fafc;border:1.5px solid #cbd5e1;border-radius:14px;padding:18px;margin-bottom:16px;animation:fadeIn .35s ease}
+  .panel{background:#fff;border-radius:18px;padding:30px;box-shadow:0 10px 28px rgba(15,23,42,.08);border:1px solid #e2e8f0;animation:fadeIn .3s ease}
   @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-  .opt-btn{display:block;width:100%;text-align:left;padding:11px 15px;margin:8px 0;border:1.5px solid #cbd5e1;border-radius:10px;background:#fff;font-size:15px;cursor:pointer;transition:.15s}
-  .opt-btn:hover:not(:disabled){border-color:#2563eb;background:#eff6ff}
+  .theory-box{background:#f8fafc;border-left:5px solid #2563eb;padding:20px 22px;border-radius:12px;line-height:1.8;font-size:16.5px;white-space:pre-line;margin-bottom:22px}
+  .svg-box{text-align:center;margin:18px 0;padding:14px;background:#fff;border:1px dashed #94a3b8;border-radius:12px}
+  .q-type-tag{display:inline-block;background:#e0e7ff;color:#1e40af;font-weight:800;font-size:12px;padding:5px 12px;border-radius:999px;margin-bottom:10px;text-transform:uppercase}
+  .opt-btn{display:block;width:100%;text-align:left;padding:13px 16px;margin:10px 0;border:2px solid #cbd5e1;border-radius:12px;background:#fff;font-size:16px;cursor:pointer;transition:.15s}
+  .opt-btn:hover:not(:disabled){border-color:#2563eb;background:#eff6ff;transform:translateX(4px)}
   .opt-btn.correct{border-color:#059669;background:#d1fae5;color:#065f46;font-weight:700}
   .opt-btn.wrong{border-color:#dc2626;background:#fee2e2;color:#991b1b}
-  .feedback{margin-top:10px;padding:12px 14px;border-radius:10px;font-size:14.5px;line-height:1.55}
-  .fb-ok{background:#ecfdf5;border:1px solid #6ee7b7;color:#065f46}
-  .fb-no{background:#fef2f2;border:1px solid #fca5a5;color:#991b1b}
-  .controls{display:flex;justify-content:space-between;align-items:center;margin-top:20px;gap:12px;flex-wrap:wrap}
-  .btn-main{background:#1d4ed8;color:#fff;border:none;padding:12px 22px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer}
-  .btn-next-q{background:#059669;color:#fff;border:none;padding:11px 20px;border-radius:10px;font-size:14.5px;font-weight:700;cursor:pointer}
-  .btn-sub{background:#e2e8f0;color:#1e293b;border:none;padding:12px 20px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer}
+  .tf-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
+  .tf-btn{padding:18px;font-size:18px;font-weight:800;border-radius:14px;border:2px solid #cbd5e1;background:#fff;cursor:pointer;text-align:center}
+  .tf-btn:hover:not(:disabled){border-color:#2563eb;background:#eff6ff}
+  .fill-box{display:flex;gap:10px;margin:14px 0;flex-wrap:wrap}
+  .fill-input{flex:1;min-width:200px;padding:12px 16px;font-size:16px;border:2px solid #94a3b8;border-radius:10px}
+  .feedback{margin-top:14px;padding:15px 18px;border-radius:12px;font-size:15px;line-height:1.6}
+  .fb-ok{background:#ecfdf5;border:1.5px solid #34d399;color:#065f46}
+  .fb-no{background:#fef2f2;border:1.5px solid #f87171;color:#991b1b}
+  .controls{display:flex;justify-content:space-between;align-items:center;margin-top:26px;padding-top:18px;border-top:1px solid #e2e8f0;gap:12px;flex-wrap:wrap}
+  .btn-main{background:#1d4ed8;color:#fff;border:none;padding:13px 24px;border-radius:12px;font-size:15.5px;font-weight:700;cursor:pointer;box-shadow:0 4px 10px rgba(29,78,216,.25)}
+  .btn-play{background:linear-gradient(90deg,#059669,#10b981);color:#fff;border:none;padding:14px 26px;border-radius:12px;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 4px 12px rgba(5,150,105,.3)}
+  .btn-sub{background:#e2e8f0;color:#1e293b;border:none;padding:12px 20px;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer}
 </style>
 </head>
 <body>
@@ -862,15 +926,15 @@ Tuyệt đối KHÔNG dùng dấu * trong nội dung:\n${cleanContent.slice(0, 4
 const data = ${JSON.stringify(eData)};
 const svgDiagram = ${JSON.stringify(svgRaw)};
 const praises = [
-  "🌟 Tuyệt vời! Em nắm chắc kiến thức trọng tâm rồi đấy!",
-  "👏 Chính xác! Tư duy vận dụng của em rất tốt, tiếp tục phát huy nhé!",
-  "🎯 Xuất sắc! Em đã vượt qua câu hỏi này một cách dễ dàng!"
+  "🌟 Tuyệt vời! Em nắm chắc kiến thức rồi đấy, nhận ngay +10 điểm thưởng!",
+  "👏 Chính xác! Tư duy giải toán của em rất sắc bén, tiếp tục chinh phục câu sau nhé!",
+  "🎯 Xuất sắc! Em đã vượt qua thử thách này một cách ngoạn mục!"
 ];
 let stageIdx = 0;
-let visibleQCount = [1, 1, 1, 1];
+let viewMode = "theory"; // "theory" hoặc "quiz"
+let currentQIdx = 0;
 let answeredMap = {};
 let totalRight = 0;
-let totalAnswered = 0;
 
 function renderMath(){
   if(window.renderMathInElement){
@@ -902,7 +966,7 @@ function render(){
   const stages = data.stages || [];
   const totalQ = stages.reduce((acc, s) => acc + (s.questions || []).length, 0);
   const pctScore = totalQ ? Math.round((totalRight / totalQ) * 100) : 100;
-  document.getElementById("scoreBadge").textContent = \`Đúng: \${totalRight}/\${totalQ} câu (\${pctScore} điểm)\`;
+  document.getElementById("scoreBadge").textContent = \`🏆 Điểm: \${pctScore}/100 (\${totalRight}/\${totalQ} câu)\`;
   document.getElementById("progBadge").textContent = \`Chặng \${stageIdx + 1}/\${stages.length}\`;
 
   document.getElementById("stepper").innerHTML = stages.map((st, idx) =>
@@ -912,83 +976,167 @@ function render(){
   const st = stages[stageIdx];
   if(!st) return;
   const qs = st.questions || [];
-  const shown = Math.min(visibleQCount[stageIdx] || 1, qs.length);
+  const panel = document.getElementById("mainPanel");
 
-  let qHtml = "";
-  for(let qi = 0; qi < shown; qi++){
-    const q = qs[qi];
-    const key = \`\${stageIdx}_\${qi}\`;
-    const userPick = answeredMap[key];
-    const isDone = userPick !== undefined;
+  // TRANG 1: NỘI DUNG LÝ THUYẾT CỦA CHẶNG
+  if(viewMode === "theory"){
+    const diagramHtml = (stageIdx === 0 && svgDiagram)
+      ? \`<div class="svg-box"><div style="font-size:13px;font-weight:700;color:#1d4ed8;margin-bottom:6px">HÌNH MINH HỌA KIẾN THỨC SGK</div>\${svgDiagram}</div>\`
+      : "";
 
-    qHtml += \`<div class="q-card">
-      <div style="font-weight:700;color:#1e3a8a;margin-bottom:8px">Câu hỏi tương tác \${qi + 1}/\${qs.length}:</div>
-      <div style="font-size:16px;font-weight:600;margin-bottom:10px">\${q.question}</div>
-      \${(q.options || []).map((opt, oi) => {
-        let cls = "opt-btn";
-        if(isDone){
-          if(oi === Number(q.answer)) cls += " correct";
-          else if(oi === userPick) cls += " wrong";
-        }
-        return \`<button class="\${cls}" \${isDone ? "disabled" : ""} onclick="checkAns(\${qi}, \${oi})">\${opt}</button>\`;
-      }).join("")}
-      \${isDone ? (userPick === Number(q.answer)
-        ? \`<div class="feedback fb-ok"><strong>\${praises[qi % praises.length]}</strong><br>💡 Giải thích: \${q.explain || "Đáp án hoàn toàn chính xác."}</div>\`
-        : \`<div class="feedback fb-no"><strong>💪 Chưa chính xác rồi, em đừng nản nhé!</strong><br>👉 Đáp án đúng là: <strong>\${q.options[q.answer]}</strong>.<br>💡 Hướng dẫn: \${q.explain || "Em xem lại phần kiến thức phía trên và thử câu tiếp theo nhé!"}</div>\`
-      ) : ""}
-    </div>\`;
+    panel.innerHTML = \`
+      <span class="q-type-tag">📖 Phần Kiến Thức Trọng Tâm • \${st.title}</span>
+      <h2 style="margin-top:4px;color:#1e3a8a">\${st.title}</h2>
+      <div class="theory-box">\${st.theory}</div>
+      \${diagramHtml}
+      <div class="controls">
+        <button class="btn-sub" \${stageIdx === 0 ? "disabled" : ""} onclick="goStage(\${stageIdx - 1})">⬅ Chặng trước</button>
+        <button class="btn-play" onclick="startStageQuiz()">🎮 Bắt đầu luyện tập tương tác (\${qs.length} câu) ➔</button>
+      </div>
+    \`;
+    renderMath();
+    return;
   }
 
-  const canRevealNextQ = shown < qs.length;
-  const diagramHtml = (stageIdx === 0 && svgDiagram) ? \`<div class="svg-box"><div style="font-size:13px;font-weight:700;color:#1d4ed8;margin-bottom:6px">HÌNH MINH HỌA KIẾN THỨC SGK</div>\${svgDiagram}</div>\` : "";
+  // TRANG 2: MỖI BÀI TẬP TƯƠNG TÁC NẰM ĐỘC LẬP TRÊN 1 TRANG
+  const q = qs[currentQIdx];
+  if(!q) return;
+  const key = \`\${stageIdx}_\${currentQIdx}\`;
+  const userAns = answeredMap[key];
+  const isDone = userAns !== undefined;
 
-  document.getElementById("mainPanel").innerHTML = \`
-    <h2 style="margin-top:0;color:#1e3a8a">\${st.title}</h2>
-    <div class="theory-box">\${st.theory}</div>
-    \${diagramHtml}
-    <div class="quiz-zone">
-      <h3 style="margin-top:0;color:#0f172a">🎯 Luyện tập tương tác tại chỗ</h3>
-      \${qHtml}
-      \${canRevealNextQ ? \`<button class="btn-next-q" onclick="revealNextQ()">➕ Hiện câu hỏi tiếp theo (\${shown}/\${qs.length})</button>\` : ""}
-    </div>
-    <div class="controls">
-      <button class="btn-sub" \${stageIdx === 0 ? "disabled" : ""} onclick="goStage(\${stageIdx - 1})">⬅ Chặng trước</button>
-      \${stageIdx < stages.length - 1
-        ? \`<button class="btn-main" onclick="goStage(\${stageIdx + 1})">Sang chặng tiếp theo ➔</button>\`
-        : \`<button class="btn-next-q" onclick="completeLesson(\${pctScore})">🏆 Hoàn thành bài học & Lưu điểm SCORM</button>\`
+  let typeLabel = "🎯 Thử thách Trắc nghiệm 4 lựa chọn";
+  if(q.type === "tf") typeLabel = "⚡ Thử thách Phản xạ Đúng / Sai";
+  if(q.type === "fill") typeLabel = "✍️ Thử thách Điền đáp số chính xác";
+
+  let interactionHtml = "";
+  let isCorrectPick = false;
+
+  if(q.type === "fill"){
+    const normUser = String(userAns || "").replace(/\\s+/g, "").replace(",", ".").toLowerCase();
+    const normAns = String(q.answerText || "").replace(/\\s+/g, "").replace(",", ".").toLowerCase();
+    isCorrectPick = isDone && normUser === normAns;
+    interactionHtml = \`
+      <div class="fill-box">
+        <input id="fillInput" class="fill-input" placeholder="Nhập đáp số của em..." value="\${isDone ? userAns : ""}" \${isDone ? "disabled" : ""}>
+        <button class="btn-main" \${isDone ? "disabled" : ""} onclick="submitFill()">Kiểm tra đáp án</button>
+      </div>
+    \`;
+  } else if(q.type === "tf"){
+    isCorrectPick = isDone && Number(userAns) === Number(q.answer);
+    const opts = q.options && q.options.length === 2 ? q.options : ["Đúng", "Sai"];
+    interactionHtml = \`<div class="tf-grid">\` + opts.map((opt, oi) => {
+      let cls = "tf-btn";
+      if(isDone){
+        if(oi === Number(q.answer)) cls += " opt-btn correct";
+        else if(oi === Number(userAns)) cls += " opt-btn wrong";
       }
+      return \`<button class="\${cls}" \${isDone ? "disabled" : ""} onclick="submitChoice(\${oi})">\${oi === 0 ? "✅ " : "❌ "}\${opt}</button>\`;
+    }).join("") + \`</div>\`;
+  } else {
+    isCorrectPick = isDone && Number(userAns) === Number(q.answer);
+    interactionHtml = (q.options || []).map((opt, oi) => {
+      let cls = "opt-btn";
+      if(isDone){
+        if(oi === Number(q.answer)) cls += " correct";
+        else if(oi === Number(userAns)) cls += " wrong";
+      }
+      return \`<button class="\${cls}" \${isDone ? "disabled" : ""} onclick="submitChoice(\${oi})">\${opt}</button>\`;
+    }).join("");
+  }
+
+  const rightDisplay = q.type === "fill" ? q.answerText : (q.options || [])[q.answer];
+  const feedbackHtml = isDone ? (isCorrectPick
+    ? \`<div class="feedback fb-ok"><strong>\${praises[currentQIdx % praises.length]}</strong><br>💡 Giải thích chi tiết: \${q.explain || "Hoàn toàn chính xác!"}</div>\`
+    : \`<div class="feedback fb-no"><strong>💪 Chưa chính xác rồi, cố gắng lên em nhé!</strong><br>👉 Đáp án đúng là: <strong>\${rightDisplay}</strong>.<br>💡 Lời giải gợi ý: \${q.explain || "Em xem lại phần lý thuyết chặng này nhé!"}</div>\`
+  ) : "";
+
+  const isLastQInStage = currentQIdx >= qs.length - 1;
+  const isLastStage = stageIdx >= stages.length - 1;
+
+  let nextActionBtn = "";
+  if(!isLastQInStage){
+    nextActionBtn = \`<button class="btn-play" onclick="nextQuestion()">Câu tiếp theo (\${currentQIdx + 2}/\${qs.length}) ➔</button>\`;
+  } else if(!isLastStage){
+    nextActionBtn = \`<button class="btn-main" onclick="goStage(\${stageIdx + 1})">Hoàn thành chặng • Sang Chặng \${stageIdx + 2} ➔</button>\`;
+  } else {
+    nextActionBtn = \`<button class="btn-play" onclick="finishAll(\${pctScore})">🏆 Hoàn thành bài học & Lưu điểm SCORM</button>\`;
+  }
+
+  panel.innerHTML = \`
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <span class="q-type-tag">\${typeLabel}</span>
+      <span style="font-weight:700;color:#64748b;font-size:14px">\${st.title} • Câu \${currentQIdx + 1}/\${qs.length}</span>
+    </div>
+    <h3 style="font-size:19px;color:#0f172a;margin:10px 0 14px;line-height:1.5">\${q.question}</h3>
+    \${interactionHtml}
+    \${feedbackHtml}
+    <div class="controls">
+      <button class="btn-sub" onclick="backToTheory()">📖 Xem lại lý thuyết chặng này</button>
+      \${nextActionBtn}
     </div>
   \`;
   renderMath();
 }
 
-function checkAns(qi, oi){
-  const key = \`\${stageIdx}_\${qi}\`;
+function startStageQuiz(){
+  viewMode = "quiz";
+  currentQIdx = 0;
+  render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function backToTheory(){
+  viewMode = "theory";
+  render();
+}
+
+function nextQuestion(){
+  currentQIdx++;
+  render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function submitChoice(oi){
+  const key = \`\${stageIdx}_\${currentQIdx}\`;
   if(answeredMap[key] !== undefined) return;
   answeredMap[key] = oi;
-  totalAnswered++;
-  const q = data.stages[stageIdx].questions[qi];
-  if(oi === Number(q.answer)) totalRight++;
+  const q = data.stages[stageIdx].questions[currentQIdx];
+  if(Number(oi) === Number(q.answer)) totalRight++;
+  updateAndRender();
+}
+
+function submitFill(){
+  const val = document.getElementById("fillInput").value.trim();
+  if(!val) return alert("Em hãy nhập câu trả lời trước khi bấm kiểm tra nhé!");
+  const key = \`\${stageIdx}_\${currentQIdx}\`;
+  if(answeredMap[key] !== undefined) return;
+  answeredMap[key] = val;
+  const q = data.stages[stageIdx].questions[currentQIdx];
+  const normUser = val.replace(/\\s+/g, "").replace(",", ".").toLowerCase();
+  const normAns = String(q.answerText || "").replace(/\\s+/g, "").replace(",", ".").toLowerCase();
+  if(normUser === normAns) totalRight++;
+  updateAndRender();
+}
+
+function updateAndRender(){
   const totalQ = (data.stages || []).reduce((acc, s) => acc + (s.questions || []).length, 0);
   const pct = totalQ ? Math.round((totalRight / totalQ) * 100) : 100;
   syncScorm(pct);
   render();
 }
 
-function revealNextQ(){
-  visibleQCount[stageIdx] = (visibleQCount[stageIdx] || 1) + 1;
-  render();
-}
-
 function goStage(idx){
   stageIdx = idx;
+  viewMode = "theory";
+  currentQIdx = 0;
   render();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-function completeLesson(score){
+function finishAll(score){
   syncScorm(score);
-  alert(\`🎉 Chúc mừng em đã hoàn thành toàn bộ bài giảng "\${"${title}"}" với điểm số \${score}/100! Kết quả đã được ghi nhận vào hệ thống.\`);
+  alert(\`🎉 Xuất sắc! Em đã hoàn thành toàn bộ bài học với số điểm \${score}/100. Kết quả đã được lưu vào hệ thống!\`);
 }
 
 initScorm();
