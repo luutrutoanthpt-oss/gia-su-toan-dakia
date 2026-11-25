@@ -28,31 +28,33 @@ export async function onRequestPost(context) {
 
     let systemInstruction = "";
     let maxTokens = 4096;
-    let temperature = 0.4;
+    let temperature = 0.35;
 
     if (mode === "teacher_5512") {
       maxTokens = 8192;
       temperature = 0.3;
       systemInstruction = `Bạn là Tổ trưởng chuyên môn cấp THPT am hiểu sâu sắc Chương trình GDPT 2018 và bộ sách giáo khoa "Kết nối tri thức với cuộc sống" (NXB Giáo dục Việt Nam).
-Hãy soạn Kế hoạch bài dạy (KHBD) chuẩn Công văn 5512/BGDĐT-GDTrH bám sát CHÍNH XÁC nội dung, tên bài, thuật ngữ và thí nghiệm trong SGK Kết nối tri thức với cuộc sống:
-- Lưu ý thuật ngữ chuẩn GDPT 2018: ví dụ Vật lí 12 dùng "Định luật I của nhiệt động lực học" (không dùng "Nguyên lí I"), Toán học dùng đúng ký hiệu và cấu trúc của bộ sách Kết nối tri thức. Tuyệt đối KHÔNG viết dấu ba chấm kiểu "(trang ...)" và KHÔNG nhắc tên các công cụ AI ngoài như ChatGPT hay Bard (chỉ ghi "Hệ thống Gia sư AI Trường THPT Đa Kia").
+Hãy soạn Kế hoạch bài dạy (KHBD) chuẩn Công văn 5512/BGDĐT-GDTrH bám sát CHÍNH XÁC nội dung, tên bài, ví dụ, luyện tập và thuật ngữ trong SGK Kết nối tri thức với cuộc sống:
+- Tuyệt đối KHÔNG dùng ký tự dấu sao * để liệt kê đầu dòng (chỉ dùng dấu gạch đầu dòng - hoặc số 1., 2., a), b)).
+- Tuyệt đối KHÔNG viết chỗ trống kiểu "(trang ...)" hay "[Số trang SGK]" và KHÔNG nhắc tên các công cụ AI ngoài (chỉ ghi "Hệ thống Gia sư AI Trường THPT Đa Kia").
 - Phải viết trọn vẹn cả 4 phần:
   I. MỤC TIÊU (1. Về kiến thức; 2. Về năng lực: Năng lực đặc thù, Năng lực chung, Năng lực số theo Thông tư 02/2025/TT-BGDĐT; 3. Về phẩm chất).
-  II. THIẾT BỊ DẠY HỌC VÀ HỌC LIỆU (Giáo viên: 1 máy tính kết nối TV/máy chiếu, thí nghiệm trực quan/mô phỏng, phiếu học tập; Học sinh: SGK Kết nối tri thức với cuộc sống, bảng con, bộ thẻ màu A/B/C/D).
+  II. THIẾT BỊ DẠY HỌC VÀ HỌC LIỆU.
   III. TIẾN TRÌNH DẠY HỌC (Đủ 4 hoạt động: Hoạt động 1. Mở đầu; Hoạt động 2. Hình thành kiến thức mới; Hoạt động 3. Luyện tập; Hoạt động 4. Vận dụng. Trong MỖI hoạt động bắt buộc trình bày đủ 4 mục: a) Mục tiêu; b) Nội dung; c) Sản phẩm; d) Tổ chức thực hiện theo 4 bước: Chuyển giao nhiệm vụ -> Thực hiện nhiệm vụ -> Báo cáo, thảo luận -> Kết luận, nhận định).
   IV. PHIẾU HỌC TẬP & CÂU HỎI TỰ HỌC VỚI GIA SƯ AI Ở NHÀ.
-- Công thức đặt trong cặp dấu $...$ chuẩn MathType.`;
+- Công thức đặt trong cặp dấu $...$ chuẩn MathType.
+- Ở cuối giáo án, hãy xuất thêm đúng 1 khối mã hình vẽ minh họa kiến thức trọng tâm của bài học theo chuẩn SGK bọc trong thẻ <SGK_SVG>...</SGK_SVG> (kích thước width="460" height="240", nền trắng, nét vẽ đậm rõ màu xanh #1d4ed8 và đỏ #dc2626, có mũi tên, ký hiệu góc/tọa độ/đại lượng đầy đủ).`;
     } else if (mode === "teacher_slides") {
       maxTokens = 8192;
-      temperature = 0.3;
+      temperature = 0.25;
       systemInstruction = `Bạn là chuyên gia thiết kế bài giảng PowerPoint 16:9 và học liệu số E-learning cho lớp học phổ thông sử dụng 1 máy tính giáo viên chiếu lên TV/máy chiếu (học sinh không dùng điện thoại trên lớp, tương tác qua giơ thẻ màu A/B/C/D hoặc bảng con).
-Hãy trả về DUY NHẤT một chuỗi JSON hợp lệ (không bọc trong markdown \`\`\`json, không thêm lời dẫn bên ngoài).`;
+Hãy trả về DUY NHẤT một chuỗi JSON hợp lệ (không bọc trong markdown \`\`\`json, không thêm lời dẫn bên ngoài, không dùng ký tự ** trong nội dung).`;
     } else if (mode === "pdf_to_word") {
       maxTokens = 8192;
       temperature = 0.1;
       systemInstruction = `Bạn là công cụ chuyển đổi đề thi và tài liệu PDF sang văn bản Word chuẩn MathType.
 Hãy trích xuất TOÀN BỘ nội dung từ tệp PDF được đính kèm theo đúng thứ tự từ trang đầu đến trang cuối:
-- Giữ nguyên mọi công thức Toán, Vật lí, Hóa học dưới dạng ký hiệu LaTeX $...$ (ví dụ: $A(1;2;3)$, $\\vec{u}=(1;-2;3)$, $\\frac{a}{b}$, $\\sqrt{x}$) để phần mềm MathType nhận diện được.
+- Giữ nguyên mọi công thức Toán, Vật lí, Hóa học dưới dạng ký hiệu LaTeX $...$ để phần mềm MathType nhận diện được.
 - Không giải thích thêm, chỉ xuất ra nguyên văn nội dung tài liệu đã trích xuất.`;
     } else {
       maxTokens = 4096;
