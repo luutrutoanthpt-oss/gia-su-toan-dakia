@@ -44,6 +44,15 @@ if (window.pdfjsLib) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 }
 
+// Tải ngầm danh sách giáo viên ngay khi mở trang đăng nhập để bấm Đăng nhập là vào ngay
+window.addEventListener("DOMContentLoaded", () => {
+    if (typeof syncFromGoogleSheets === "function") {
+        syncFromGoogleSheets().then(() => {
+            teacherList = JSON.parse(localStorage.getItem("dakia_teachers")) || teacherList;
+        }).catch(() => {});
+    }
+});
+
 // Đóng dropdown khi bấm ra ngoài
 document.addEventListener("click", function (e) {
     const wrapper = document.getElementById("userMenuWrapper");
@@ -111,13 +120,13 @@ async function submitChangePassword() {
         teacherList[idx].pass_hash = newHash;
         currentLoggedAdmin.pass_hash = newHash;
         localStorage.setItem("dakia_teachers", JSON.stringify(teacherList));
-        await postToGoogleSheets({ action: "save_teachers", teachers: teacherList });
+        postToGoogleSheets({ action: "save_teachers", teachers: teacherList });
         closeChangePasswordModal();
         alert("Đã đổi mật khẩu và đồng bộ lên hệ thống thành công!");
     }
 }
 
-// ==================== ĐĂNG NHẬP & PHÂN QUYỀN GIAO DIỆN ====================
+// ==================== ĐĂNG NHẬP NHANH & PHÂN QUYỀN GIAO DIỆN ====================
 async function verifyAdmin() {
     const user = document.getElementById("adminUserInput").value.trim().toLowerCase();
     const pass = document.getElementById("adminPassInput").value.trim();
@@ -133,9 +142,30 @@ async function verifyAdmin() {
     if (user === masterUser && (passHash === masterHash || (!customMasterHash && passHash === defaultMasterHash))) {
         currentLoggedAdmin = { username: user, full_name: "Võ Văn Bình", display_title: "Võ Văn Bình (Tác giả)", subject: "Toán - Tin", role: "master" };
     } else {
-        if (typeof syncFromGoogleSheets === "function") await syncFromGoogleSheets();
+        // 1. Kiểm tra ngay trong cache cục bộ để đăng nhập tức thì (< 0.2s)
         teacherList = JSON.parse(localStorage.getItem("dakia_teachers")) || [];
-        const found = teacherList.find(t => t.username.toLowerCase() === user && t.pass_hash === passHash);
+        let found = teacherList.find(t => t.username.toLowerCase() === user && t.pass_hash === passHash);
+
+        // 2. Chỉ gọi mạng tải từ Google Sheets nếu máy này chưa có cache của giáo viên đó
+        if (!found && typeof syncFromGoogleSheets === "function") {
+            const loginBtn = document.querySelector("#adminLoginScreen button");
+            const oldBtnText = loginBtn ? loginBtn.textContent : "";
+            if (loginBtn) {
+                loginBtn.disabled = true;
+                loginBtn.textContent = "⏳ Đang kiểm tra tài khoản trên máy chủ...";
+            }
+            try {
+                await syncFromGoogleSheets();
+                teacherList = JSON.parse(localStorage.getItem("dakia_teachers")) || [];
+                found = teacherList.find(t => t.username.toLowerCase() === user && t.pass_hash === passHash);
+            } finally {
+                if (loginBtn) {
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = oldBtnText;
+                }
+            }
+        }
+
         if (found) {
             currentLoggedAdmin = { ...found, display_title: found.full_name, role: "teacher" };
         }
@@ -156,8 +186,26 @@ async function verifyAdmin() {
         nameMenuEl.textContent = currentLoggedAdmin.full_name;
     }
 
+    // Hiển thị ngay dữ liệu đang có trong máy rồi mới đồng bộ ngầm với Google Sheets
+    renderAllViewsFromLocal();
     applyRoleBasedUI();
-    await syncNow();
+    syncNow();
+}
+
+function renderAllViewsFromLocal() {
+    studentList = JSON.parse(localStorage.getItem("dakia_all_students")) || studentList;
+    teacherList = JSON.parse(localStorage.getItem("dakia_teachers")) || [];
+    uploadedExams = JSON.parse(localStorage.getItem("dakia_uploaded_exams")) || [];
+    const storedBank = JSON.parse(localStorage.getItem("dakia_question_bank"));
+    if (Array.isArray(storedBank) && storedBank.length > 0) {
+        questionBank = storedBank;
+    }
+
+    updateClassFilterDropdown();
+    renderStudentTable();
+    renderTeacherTable();
+    renderUploadedExams();
+    renderQuestionBank();
 }
 
 function applyRoleBasedUI() {
@@ -212,19 +260,7 @@ async function syncNow() {
     if (typeof syncFromGoogleSheets === "function") {
         await syncFromGoogleSheets();
     }
-    studentList = JSON.parse(localStorage.getItem("dakia_all_students")) || studentList;
-    teacherList = JSON.parse(localStorage.getItem("dakia_teachers")) || [];
-    uploadedExams = JSON.parse(localStorage.getItem("dakia_uploaded_exams")) || [];
-    const storedBank = JSON.parse(localStorage.getItem("dakia_question_bank"));
-    if (Array.isArray(storedBank) && storedBank.length > 0) {
-        questionBank = storedBank;
-    }
-
-    updateClassFilterDropdown();
-    renderStudentTable();
-    renderTeacherTable();
-    renderUploadedExams();
-    renderQuestionBank();
+    renderAllViewsFromLocal();
 }
 
 function switchAdminTab(tabId) {
