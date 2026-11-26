@@ -3,576 +3,614 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản Trị & Trợ Lý Giảng Dạy – Trường THPT Đa Kia</title>
+    <title>Quản Trị & Chuyên Môn Giáo Viên - Trường THPT Đa Kia</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Be Vietnam Pro', sans-serif; }
-    </style>
 </head>
-<body class="bg-slate-100 text-slate-800 min-h-screen">
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen">
 
-    <!-- MÀN HÌNH ĐĂNG NHẬP GIÁO VIÊN / QUẢN TRỊ VIÊN -->
-    <div id="adminLoginScreen" class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900">
-        <div class="bg-white rounded-2xl max-w-md w-full p-7 shadow-2xl space-y-5">
-            <div class="text-center space-y-1">
-                <span class="inline-block bg-blue-100 text-blue-800 text-xs font-extrabold px-3 py-1 rounded-full uppercase">Trường THPT Đa Kia</span>
-                <h1 class="text-xl font-extrabold text-slate-900 pt-1">Cổng Giáo Viên & Quản Trị</h1>
-                <p class="text-xs text-slate-500">Đăng nhập bằng tài khoản được cấp để soạn giảng, trộn đề & quản lý học liệu</p>
-            </div>
-
-            <div class="space-y-3">
+    <!-- MÀN HÌNH ĐĂNG NHẬP -->
+    <div id="adminLoginScreen" class="min-h-screen flex items-center justify-center p-4">
+        <div class="bg-white max-w-md w-full rounded-2xl shadow-lg border border-slate-200 p-8 text-center">
+            <div class="w-14 h-14 bg-blue-700 text-white rounded-2xl flex items-center justify-center text-2xl font-bold mx-auto mb-4">GV</div>
+            <h1 class="text-xl font-bold text-slate-900">Cổng Chuyên Môn & Quản Trị</h1>
+            <p class="text-xs text-slate-500 mt-1">Trường THPT Đa Kia • Hệ thống hỗ trợ dạy học & kiểm tra 2018</p>
+            <div class="mt-6 space-y-3 text-left">
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Tên đăng nhập</label>
-                    <input type="text" id="adminUserInput" placeholder="Nhập tên đăng nhập..." class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-blue-600" onkeydown="if(event.key==='Enter') verifyAdmin()">
+                    <label class="text-xs font-semibold text-slate-600">Tên đăng nhập</label>
+                    <input type="text" id="adminUserInput" placeholder="Nhập tên đăng nhập..." class="w-full mt-1 border border-slate-300 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-600">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Mật khẩu</label>
-                    <input type="password" id="adminPassInput" placeholder="Nhập mật khẩu..." class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-blue-600" onkeydown="if(event.key==='Enter') verifyAdmin()">
+                    <label class="text-xs font-semibold text-slate-600">Mật khẩu</label>
+                    <input type="password" id="adminPassInput" placeholder="••••••••" onkeydown="if(event.key==='Enter') verifyAdmin()" class="w-full mt-1 border border-slate-300 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-600">
                 </div>
-                <p id="adminLoginErr" class="hidden text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                    Tên đăng nhập hoặc mật khẩu không chính xác!
-                </p>
-                <button onclick="verifyAdmin()" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-2.5 rounded-xl text-sm shadow-md transition">
-                    🔐 Đăng nhập hệ thống
-                </button>
-            </div>
-
-            <div class="text-center pt-2 border-t border-slate-100">
-                <a href="index.html" class="text-xs font-semibold text-blue-700 hover:underline">← Quay lại Trang Học sinh (Gia sư AI)</a>
+                <button onclick="verifyAdmin()" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2.5 rounded-xl text-sm shadow mt-2 transition">Đăng nhập hệ thống</button>
+                <p id="adminLoginErr" class="text-xs text-red-600 hidden text-center mt-2">Sai tên đăng nhập hoặc mật khẩu!</p>
             </div>
         </div>
     </div>
 
-    <!-- GIAO DIỆN LÀM VIỆC CHÍNH -->
+    <!-- BẢNG ĐIỀU KHIỂN CHÍNH -->
     <div id="adminDashboard" class="hidden">
-        <!-- HEADER -->
-        <header class="bg-slate-900 text-white px-5 py-3.5 shadow-md">
-            <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
-                <div>
-                    <h1 class="text-base md:text-lg font-extrabold tracking-wide text-white">HỖ TRỢ GIÁO VIÊN & HỌC SINH THPT – THPT ĐA KIA</h1>
-                    <p id="loggedTeacherBadge" class="text-xs text-blue-300 font-medium mt-0.5">Đang đăng nhập...</p>
-                </div>
+        <header class="bg-white border-b border-slate-200 px-6 py-3 flex flex-wrap justify-between items-center gap-4 sticky top-0 z-30 shadow-sm">
+            <div>
+                <h1 class="text-lg font-bold text-blue-900">Hệ Thống Chuyên Môn Giáo Viên – THPT Đa Kia</h1>
+                <p id="loggedTeacherBadge" class="text-xs text-slate-500 font-medium"></p>
+            </div>
+            <div class="flex items-center gap-3">
+                <a href="index.html" target="_blank" class="text-xs bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-lg font-medium text-slate-700">↗ Trang Học Sinh</a>
+                <button onclick="syncNow()" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg font-medium">🔄 Đồng bộ dữ liệu</button>
 
-                <div class="flex items-center gap-2.5">
-                    <button onclick="syncNow()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition">
-                        <span>🔄</span> Đồng bộ Sheets
+                <!-- MENU HỌ TÊN THẢ XUỐNG -->
+                <div class="relative" id="userMenuWrapper">
+                    <button onclick="toggleUserDropdown()" class="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-900 px-3.5 py-2 rounded-xl text-xs font-bold transition">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span id="userMenuFullName">Tài khoản</span>
+                        <span>▾</span>
                     </button>
-                    <a href="index.html" target="_blank" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 px-3 py-1.5 rounded-lg text-xs font-semibold transition">
-                        Trang Học sinh
-                    </a>
-
-                    <!-- MENU HỌ TÊN ĐẦY ĐỦ: ĐỔI MẬT KHẨU & ĐĂNG XUẤT -->
-                    <div class="relative inline-block text-left" id="userMenuWrapper">
-                        <button onclick="toggleUserDropdown()" id="userProfileMenuBtn" class="bg-emerald-700 hover:bg-emerald-600 border border-emerald-500 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
-                            <span>👤 <span id="userMenuFullName">Tài khoản</span></span>
-                            <span>▾</span>
+                    <div id="userProfileDropdown" class="hidden absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50">
+                        <button onclick="openChangePasswordModal()" class="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 flex items-center gap-2">
+                            🔑 Đổi mật khẩu
                         </button>
-                        <div id="userProfileDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 text-slate-800">
-                            <button onclick="openChangePasswordModal()" class="w-full text-left px-4 py-2 text-xs font-semibold hover:bg-blue-50 text-slate-700 flex items-center gap-2">
-                                <span>🔑</span> Đổi mật khẩu
-                            </button>
-                            <div class="border-t border-slate-100 my-1"></div>
-                            <button onclick="logoutAdmin()" class="w-full text-left px-4 py-2 text-xs font-bold hover:bg-red-50 text-red-600 flex items-center gap-2">
-                                <span>🚪</span> Đăng xuất
-                            </button>
-                        </div>
+                        <div class="border-t border-slate-100 my-1"></div>
+                        <button onclick="logoutAdmin()" class="w-full text-left px-4 py-2.5 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2">
+                            🚪 Đăng xuất
+                        </button>
                     </div>
                 </div>
             </div>
         </header>
 
-        <!-- THANH ĐIỀU HƯỚNG TAB -->
-        <nav class="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-30">
-            <div class="max-w-7xl mx-auto px-4 flex overflow-x-auto gap-2">
-                <button id="atab-1" onclick="switchAdminTab(1)" class="admin-tab-btn py-3.5 px-3.5 text-xs md:text-sm border-b-2 border-blue-700 text-blue-700 font-bold whitespace-nowrap">
-                    👥 1. Lớp học & Phân quyền GV
-                </button>
-                <button id="atab-2" onclick="switchAdminTab(2)" class="admin-tab-btn py-3.5 px-3.5 text-xs md:text-sm border-b-2 border-transparent text-slate-600 hover:text-blue-700 whitespace-nowrap">
-                    📝 2. Ngân hàng Đề Word & QR
-                </button>
-                <button id="atab-5" onclick="switchAdminTab(5)" class="admin-tab-btn py-3.5 px-3.5 text-xs md:text-sm border-b-2 border-transparent text-slate-600 hover:text-blue-700 whitespace-nowrap">
-                    🎲 3. Trộn Đề & Ngân Hàng Câu Hỏi
-                </button>
-                <button id="atab-3" onclick="switchAdminTab(3)" class="admin-tab-btn py-3.5 px-3.5 text-xs md:text-sm border-b-2 border-transparent text-slate-600 hover:text-blue-700 whitespace-nowrap">
-                    ✨ 4. Soạn KHBD 5512, Slide & E-learning
-                </button>
-                <button id="atab-4" onclick="switchAdminTab(4)" class="admin-tab-btn py-3.5 px-3.5 text-xs md:text-sm border-b-2 border-transparent text-slate-600 hover:text-blue-700 whitespace-nowrap">
-                    🔗 5. Tạo Mã QR & PDF sang Word
-                </button>
+        <!-- THANH ĐIỀU HƯỚNG 5 TAB -->
+        <div class="bg-white border-b border-slate-200 px-6 overflow-x-auto">
+            <div class="max-w-7xl mx-auto flex gap-2">
+                <button onclick="switchAdminTab(1)" id="atab-1" class="admin-tab-btn py-3.5 px-4 text-xs sm:text-sm font-bold border-b-2 border-blue-700 text-blue-700 whitespace-nowrap">👥 1. Lớp học & Phân quyền Tổ</button>
+                <button onclick="switchAdminTab(2)" id="atab-2" class="admin-tab-btn py-3.5 px-4 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-600 hover:text-blue-700 whitespace-nowrap">📝 2. Thi Trực Tuyến & Mã QR</button>
+                <button onclick="switchAdminTab(5)" id="atab-5" class="admin-tab-btn py-3.5 px-4 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-600 hover:text-blue-700 whitespace-nowrap">🎲 3. Trộn Đề & QR TNMaker</button>
+                <button onclick="switchAdminTab(3)" id="atab-3" class="admin-tab-btn py-3.5 px-4 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-600 hover:text-blue-700 whitespace-nowrap">✨ 4. Soạn KHBD 5512, Slide & E-learning</button>
+                <button onclick="switchAdminTab(4)" id="atab-4" class="admin-tab-btn py-3.5 px-4 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-600 hover:text-blue-700 whitespace-nowrap">🔗 5. Tạo Mã QR & PDF sang Word</button>
             </div>
-        </nav>
+        </div>
 
-        <main class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
+        <main class="max-w-7xl mx-auto p-6 space-y-6">
 
-            <!-- TAB 1: LỚP HỌC & PHÂN QUYỀN GIÁO VIÊN -->
+            <!-- TAB 1: QUẢN LÝ LỚP HỌC & CẤP TÀI KHOẢN GIÁO VIÊN (CÓ TỔ & CHỨC DANH) -->
             <section id="admin-sec-1" class="admin-sec space-y-6">
-                <div id="masterTeacherManager" class="hidden bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
-                    <div class="flex flex-wrap justify-between items-center gap-2 border-b border-slate-100 pb-3">
+                <div id="masterTeacherManager" class="hidden bg-white p-6 rounded-2xl shadow-sm border-2 border-amber-300 space-y-4">
+                    <div class="flex flex-wrap justify-between items-center gap-2">
                         <div>
-                            <h2 class="text-base font-extrabold text-slate-900">🔑 Cấp Tài Khoản Giáo Viên Đa Môn (Trường THPT Đa Kia)</h2>
-                            <p class="text-xs text-slate-500">Giáo viên được cấp tài khoản sẽ sử dụng bộ công cụ Ngân hàng Đề, Trộn Đề, Soạn KHBD 5512, PowerPoint & E-learning.</p>
+                            <h2 class="font-bold text-base text-amber-900">🔐 Cấp Tài Khoản Giáo Viên & Phân Công Tổ Chuyên Môn</h2>
+                            <p class="text-xs text-slate-500">Chức danh Tổ trưởng / Tổ phó sẽ tự động điền vào phần ký duyệt cuối KHBD 5512 của từng tổ.</p>
                         </div>
+                        <span class="bg-amber-100 text-amber-800 text-xs font-bold px-3 py-1 rounded-full">Quản trị viên cao nhất</span>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
-                        <input type="text" id="newTeaUser" placeholder="Tên đăng nhập (vd: lanly)" class="border border-slate-300 rounded-xl px-3 py-2 text-xs">
-                        <input type="text" id="newTeaName" placeholder="Họ và tên đầy đủ giáo viên" class="border border-slate-300 rounded-xl px-3 py-2 text-xs">
-                        <select id="newTeaSubject" class="border border-slate-300 rounded-xl px-3 py-2 text-xs bg-white">
-                            <option value="Toán học">Môn Toán học</option>
-                            <option value="Vật lí">Môn Vật lí</option>
-                            <option value="Hóa học">Môn Hóa học</option>
-                            <option value="Sinh học">Môn Sinh học</option>
-                            <option value="Tin học">Môn Tin học</option>
-                            <option value="Ngữ văn">Môn Ngữ văn</option>
-                            <option value="Tiếng Anh">Môn Tiếng Anh</option>
-                            <option value="Lịch sử">Môn Lịch sử</option>
-                            <option value="Địa lí">Môn Địa lí</option>
-                            <option value="GDKT & PL">Môn GDKT & PL</option>
+                    <div class="grid grid-cols-1 md:grid-cols-6 gap-3">
+                        <input type="text" id="newTeaUser" placeholder="Tên đăng nhập (vd: nghieptv)" class="border border-slate-300 rounded-xl px-3 py-2 text-sm">
+                        <input type="text" id="newTeaName" placeholder="Họ và tên (vd: Trần Văn Nghiệp)" class="border border-slate-300 rounded-xl px-3 py-2 text-sm">
+                        <select id="newTeaDept" class="border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white">
+                            <option value="Toán - Tin học">Tổ Toán - Tin học</option>
+                            <option value="Vật lí - KTCN">Tổ Vật lí - KTCN</option>
+                            <option value="Hóa học - Sinh học">Tổ Hóa học - Sinh học</option>
+                            <option value="Ngữ văn">Tổ Ngữ văn</option>
+                            <option value="Tiếng Anh">Tổ Tiếng Anh</option>
+                            <option value="Sử - Địa - GDKT&PL">Tổ Sử - Địa - GDKT&PL</option>
+                            <option value="GDTC - QP&AN">Tổ GDTC - QP&AN</option>
                         </select>
-                        <input type="text" id="newTeaPass" placeholder="Mật khẩu khởi tạo" class="border border-slate-300 rounded-xl px-3 py-2 text-xs">
-                        <button onclick="addTeacherAccount()" class="bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl px-4 py-2 text-xs">
-                            ➕ Cấp tài khoản
-                        </button>
+                        <select id="newTeaRoleTitle" class="border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white">
+                            <option value="Giáo viên">Chức danh: Giáo viên</option>
+                            <option value="Tổ trưởng">Chức danh: Tổ trưởng</option>
+                            <option value="Tổ phó">Chức danh: Tổ phó</option>
+                        </select>
+                        <input type="password" id="newTeaPass" placeholder="Mật khẩu cấp" class="border border-slate-300 rounded-xl px-3 py-2 text-sm">
+                        <button onclick="addTeacherAccount()" class="bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl px-4 py-2 text-sm">+ Cấp tài khoản</button>
                     </div>
 
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse text-xs">
-                            <thead>
-                                <tr class="bg-slate-50 text-slate-600 border-b">
-                                    <th class="py-2 px-3">Tên đăng nhập</th>
-                                    <th class="py-2 px-3">Họ và tên</th>
-                                    <th class="py-2 px-3">Bộ môn</th>
-                                    <th class="py-2 px-3">Vai trò</th>
-                                    <th class="py-2 px-3 text-right">Thao tác</th>
+                    <div class="overflow-x-auto border rounded-xl">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-50 text-xs text-slate-600 uppercase border-b">
+                                <tr>
+                                    <th class="py-2.5 px-3">Tên đăng nhập</th>
+                                    <th class="py-2.5 px-3">Họ và tên</th>
+                                    <th class="py-2.5 px-3">Tổ chuyên môn</th>
+                                    <th class="py-2.5 px-3">Chức danh</th>
+                                    <th class="py-2.5 px-3 text-right">Thao tác</th>
                                 </tr>
                             </thead>
-                            <tbody id="teacherTableBody" class="divide-y divide-slate-100"></tbody>
+                            <tbody id="teacherTableBody" class="divide-y"></tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- THỐNG KÊ & QUẢN LÝ HỌC SINH -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                        <p class="text-xs text-slate-500 font-semibold">Tổng số học sinh</p>
-                        <p id="statTotalStudents" class="text-2xl font-extrabold text-blue-700 mt-1">0</p>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                        <p class="text-xs text-slate-500">Tổng học sinh toàn trường</p>
+                        <p id="statTotalStudents" class="text-3xl font-bold text-slate-900 mt-1">0</p>
                     </div>
-                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                        <p class="text-xs text-slate-500 font-semibold">Học sinh chế độ hỗ trợ cơ bản</p>
-                        <p id="statWeakStudents" class="text-2xl font-extrabold text-amber-600 mt-1">0</p>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                        <p class="text-xs text-slate-500">Học sinh cần hỗ trợ nền tảng</p>
+                        <p id="statWeakStudents" class="text-3xl font-bold text-amber-600 mt-1">0</p>
                     </div>
-                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                        <p class="text-xs text-slate-500 font-semibold">Tổng lượt tương tác học tập</p>
-                        <p id="statTotalLogs" class="text-2xl font-extrabold text-emerald-600 mt-1">0</p>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                        <p class="text-xs text-slate-500">Lượt tương tác / Thi trực tuyến</p>
+                        <p id="statTotalLogs" class="text-3xl font-bold text-blue-700 mt-1">0</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-center gap-2">
+                        <button onclick="downloadSampleExcel()" class="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 font-semibold py-2 rounded-xl text-xs">📥 Tải file Excel mẫu danh sách HS</button>
+                        <button onclick="exportReportToExcel()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 rounded-xl text-xs">📊 Xuất Báo Cáo Tiến Độ (.xlsx)</button>
                     </div>
                 </div>
 
-                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
                     <div class="flex flex-wrap justify-between items-center gap-3">
-                        <h2 class="text-base font-extrabold text-slate-900">📋 Danh Sách Học Sinh & Phân Luồng Hỗ Trợ</h2>
+                        <div>
+                            <h2 class="font-bold text-base">Quản Lý Danh Sách Học Sinh Theo Lớp</h2>
+                            <p class="text-xs text-slate-500">Tải file Excel mẫu về điền danh sách lớp (`MaHS`, `HoTen`, `Lop`, `HoTroYeu`) rồi tải ngược lên để cập nhật.</p>
+                        </div>
                         <div class="flex flex-wrap gap-2">
-                            <button onclick="downloadSampleExcel()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold">📥 Tải file Excel mẫu</button>
-                            <label class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer">
-                                📤 Nhập từ Excel (.xlsx)
-                                <input type="file" accept=".xlsx,.xls" class="hidden" onchange="handleExcelImport(event)">
+                            <label class="cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5">
+                                <span>📤 Tải lên danh sách HS (.xlsx)</span>
+                                <input type="file" id="excelFileInput" accept=".xlsx, .xls" class="hidden" onchange="handleExcelImport(event)">
                             </label>
-                            <button onclick="exportReportToExcel()" class="bg-blue-700 hover:bg-blue-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold">📊 Xuất báo cáo</button>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3 bg-slate-50 p-3 rounded-xl">
-                        <input type="text" id="newStuCode" placeholder="Mã HS (vd: 10A801)" class="border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white">
-                        <input type="text" id="newStuName" placeholder="Họ và tên học sinh" class="border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3 pt-2 border-t">
+                        <input type="text" id="newStuCode" placeholder="Mã HS (vd: 10A804)" class="border border-slate-300 rounded-xl px-3 py-2 text-sm">
+                        <input type="text" id="newStuName" placeholder="Họ và tên học sinh" class="border border-slate-300 rounded-xl px-3 py-2 text-sm">
+                        <input type="text" id="newStuClass" placeholder="Lớp (vd: 10A8)" class="border border-slate-300 rounded-xl px-3 py-2 text-sm">
+                        <div class="flex items-center justify-between gap-2">
+                            <label class="flex items-center gap-1.5 text-xs font-medium text-slate-700 cursor-pointer">
+                                <input type="checkbox" id="newStuWeak" checked class="w-4 h-4"> Hỗ trợ HS yếu
+                            </label>
+                            <button onclick="addStudent()" class="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-4 py-2 rounded-xl text-sm">+ Thêm</button>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap justify-between items-center gap-3 pt-2">
                         <div class="flex items-center gap-2">
-                            <input type="text" id="newStuClass" value="10A8" placeholder="Lớp" class="w-24 border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white">
-                            <label class="flex items-center gap-1.5 text-xs font-semibold text-amber-800 cursor-pointer">
-                                <input type="checkbox" id="newStuWeak"> Hỗ trợ yếu
-                            </label>
+                            <select id="classFilterSelect" onchange="renderStudentTable()" class="border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold bg-white"></select>
+                            <input type="text" id="searchStudentInput" oninput="renderStudentTable()" placeholder="Tìm theo mã hoặc tên HS..." class="border border-slate-300 rounded-xl px-3 py-2 text-xs w-56">
                         </div>
-                        <button onclick="addStudent()" class="bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-lg px-4 py-2 text-xs">➕ Thêm học sinh</button>
                     </div>
 
-                    <div class="flex flex-wrap gap-3">
-                        <select id="classFilterSelect" onchange="renderStudentTable()" class="border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white font-semibold"></select>
-                        <input type="text" id="searchStudentInput" oninput="renderStudentTable()" placeholder="Tìm theo mã HS hoặc họ tên..." class="flex-1 min-w-[200px] border border-slate-300 rounded-lg px-3 py-2 text-xs">
-                    </div>
-
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse text-xs">
-                            <thead>
-                                <tr class="bg-slate-100 text-slate-700 border-b">
-                                    <th class="py-2.5 px-4">STT</th>
-                                    <th class="py-2.5 px-4">Mã HS</th>
-                                    <th class="py-2.5 px-4">Họ và tên</th>
-                                    <th class="py-2.5 px-4">Lớp</th>
-                                    <th class="py-2.5 px-4">Chế độ AI</th>
-                                    <th class="py-2.5 px-4">Lượt học</th>
-                                    <th class="py-2.5 px-4">Điểm TB</th>
-                                    <th class="py-2.5 px-4 text-right">Thao tác</th>
+                    <div class="overflow-x-auto border rounded-xl">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-50 text-xs text-slate-600 uppercase border-b">
+                                <tr>
+                                    <th class="py-3 px-4">STT</th>
+                                    <th class="py-3 px-4">Mã HS</th>
+                                    <th class="py-3 px-4">Họ và tên</th>
+                                    <th class="py-3 px-4">Lớp</th>
+                                    <th class="py-3 px-4">Chế độ học</th>
+                                    <th class="py-3 px-4">Lượt học</th>
+                                    <th class="py-3 px-4">Điểm TB</th>
+                                    <th class="py-3 px-4 text-right">Xóa</th>
                                 </tr>
                             </thead>
-                            <tbody id="studentTableBody" class="divide-y divide-slate-100"></tbody>
+                            <tbody id="studentTableBody" class="divide-y"></tbody>
                         </table>
                     </div>
                 </div>
             </section>
 
-            <!-- TAB 2: NGÂN HÀNG ĐỀ WORD & MÃ QR -->
+            <!-- TAB 2: THI TRỰC TUYẾN & MÃ QR (CẤU HÌNH ĐIỂM LINH HOẠT PHẦN I, II, III) -->
             <section id="admin-sec-2" class="admin-sec hidden space-y-6">
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
-                    <div>
-                        <h2 class="text-base font-extrabold text-slate-900">📝 Tải Lên Đề Thi Word (.docx chuẩn MathType) & Tạo Mã QR Làm Bài Trực Tuyến</h2>
-                        <p class="text-xs text-slate-500 mt-0.5">Hệ thống tự động bóc tách câu hỏi trắc nghiệm từ file Word, lưu trữ lên Google Drive và xuất mã QR cho học sinh quét làm bài.</p>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-5">
+                    <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-3">
+                        <div>
+                            <h2 class="font-bold text-base text-blue-900">📝 Tạo Đề Thi Trực Tuyến & Mã QR (Chấm Điểm Tự Động)</h2>
+                            <p class="text-xs text-slate-500">Nạp file Word chuẩn mẫu (`Phần I.`, `Phần II.`, `Phần III.`). Máy tự động chấm điểm theo thang điểm Thầy/Cô cấu hình bên dưới.</p>
+                        </div>
+                        <button onclick="downloadSampleExamDocx()" class="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 px-3 py-2 rounded-xl font-bold">📥 Tải File Word Đề Mẫu Chuẩn</button>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-                        <input type="text" id="examTitleInput" placeholder="Tên đề kiểm tra / phiếu luyện tập..." class="md:col-span-2 border border-slate-300 rounded-xl px-3.5 py-2 text-xs">
-                        <select id="examSubjectInput" class="border border-slate-300 rounded-xl px-3 py-2 text-xs bg-white">
-                            <option value="Toán học">Môn Toán học</option>
-                            <option value="Vật lí">Môn Vật lí</option>
-                            <option value="Hóa học">Môn Hóa học</option>
-                            <option value="Sinh học">Môn Sinh học</option>
-                            <option value="Tin học">Môn Tin học</option>
-                            <option value="Ngữ văn">Môn Ngữ văn</option>
-                            <option value="Tiếng Anh">Môn Tiếng Anh</option>
-                            <option value="Lịch sử">Môn Lịch sử</option>
-                            <option value="Địa lí">Môn Địa lí</option>
-                        </select>
-                        <select id="examGradeInput" class="border border-slate-300 rounded-xl px-3 py-2 text-xs bg-white">
-                            <option value="10">Khối 10</option>
-                            <option value="11">Khối 11</option>
-                            <option value="12">Khối 12</option>
-                        </select>
-                    </div>
-
-                    <label class="block border-2 border-dashed border-blue-300 hover:border-blue-500 bg-blue-50/50 rounded-2xl p-6 text-center cursor-pointer transition">
-                        <span class="text-sm font-bold text-blue-800">📂 Bấm chọn tệp đề thi Word (.docx) từ máy tính</span>
-                        <span class="block text-xs text-slate-500 mt-1">Định dạng hỗ trợ: Câu 1... A. ... B. ... C. ... D. ... Đáp án: A (công thức đặt trong $...$)</span>
-                        <input type="file" accept=".docx" class="hidden" onchange="handleWordExamUpload(event)">
-                    </label>
-
-                    <div id="examPreviewBox" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
-                        <p id="examParseSummary" class="text-xs font-bold text-emerald-700"></p>
-                        <div id="examParsedList" class="space-y-2 text-xs"></div>
-                        <button id="btnPublishExam" onclick="publishUploadedExam()" class="bg-blue-700 hover:bg-blue-800 text-white font-bold px-5 py-2.5 rounded-xl text-xs">
-                            🚀 Lưu lên Kho Đề & Tạo Mã QR
-                        </button>
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
-                    <h3 class="text-sm font-extrabold text-slate-900">📚 Kho Đề Đã Phát Hành & Mã QR Truy Cập Nhanh</h3>
-                    <div id="uploadedExamsGrid" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
-                </div>
-            </section>
-
-            <!-- TAB 5 (MỤC 3): TRỘN ĐỀ & NGÂN HÀNG CÂU HỎI CHUẨN GDPT 2018 -->
-            <section id="admin-sec-5" class="admin-sec hidden space-y-6">
-                <!-- KHỐI 1: TRỘN ĐỀ TỪ FILE WORD GỐC HOẶC TỪ NGÂN HÀNG CÂU HỎI -->
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
-                    <div class="flex flex-wrap justify-between items-center gap-2 border-b border-slate-100 pb-3">
                         <div>
-                            <h2 class="text-base md:text-lg font-extrabold text-slate-900">🎲 Trộn Đề Kiểm Tra Đa Mã Đề (Xuất Word .docx Chuẩn MathType)</h2>
-                            <p class="text-xs text-slate-500 mt-0.5">Hỗ trợ trộn đề cấu trúc 2018 (Phần I: Trắc nghiệm A/B/C/D, Phần II: Đúng/Sai a/b/c/d, Phần III: Trả lời ngắn), tự động hoán vị câu hỏi, hoán vị phương án và xuất bảng đáp án từng mã đề.</p>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
-                        <input type="text" id="mixExamName" value="KIỂM TRA GIỮA HỌC KÌ I" placeholder="Tên kì kiểm tra..." class="md:col-span-2 border border-slate-300 rounded-xl px-3.5 py-2 text-xs font-semibold">
-                        <select id="mixSubject" class="border border-slate-300 rounded-xl px-3 py-2 text-xs bg-white font-semibold">
-                            <option value="TOÁN HỌC">Môn Toán học</option>
-                            <option value="VẬT LÍ">Môn Vật lí</option>
-                            <option value="HÓA HỌC">Môn Hóa học</option>
-                            <option value="SINH HỌC">Môn Sinh học</option>
-                            <option value="TIN HỌC">Môn Tin học</option>
-                            <option value="NGỮ VĂN">Môn Ngữ văn</option>
-                            <option value="TIẾNG ANH">Môn Tiếng Anh</option>
-                            <option value="LỊCH SỬ">Môn Lịch sử</option>
-                            <option value="ĐỊA LÍ">Môn Địa lí</option>
-                        </select>
-                        <select id="mixGrade" class="border border-slate-300 rounded-xl px-3 py-2 text-xs bg-white font-semibold">
-                            <option value="10">Khối 10</option>
-                            <option value="11">Khối 11</option>
-                            <option value="12">Khối 12</option>
-                        </select>
-                        <select id="mixVariantCount" class="border border-slate-300 rounded-xl px-3 py-2 text-xs bg-white font-bold text-blue-800">
-                            <option value="2">Tạo 2 mã đề (101, 102)</option>
-                            <option value="4" selected>Tạo 4 mã đề (101 - 104)</option>
-                            <option value="6">Tạo 6 mã đề (101 - 106)</option>
-                            <option value="8">Tạo 8 mã đề (101 - 108)</option>
-                        </select>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <label class="block border-2 border-dashed border-blue-300 hover:border-blue-500 bg-blue-50/40 rounded-2xl p-5 text-center cursor-pointer transition">
-                            <span class="text-xs md:text-sm font-bold text-blue-800">📂 Nạp đề gốc từ file Word (.docx) để trộn ngay</span>
-                            <span class="block text-[11px] text-slate-500 mt-1">Tự động nhận diện câu hỏi, đáp án đúng & nạp vào Ngân hàng câu hỏi</span>
-                            <input type="file" accept=".docx" class="hidden" onchange="handleMixSourceDocx(event)">
-                        </label>
-
-                        <div class="border-2 border-dashed border-emerald-300 bg-emerald-50/30 rounded-2xl p-5 flex flex-col justify-center items-center text-center space-y-2">
-                            <span class="text-xs md:text-sm font-bold text-emerald-800">🏦 Hoặc lấy câu hỏi đã chọn từ Ngân hàng bên dưới</span>
-                            <button onclick="loadSelectedBankToMix()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-xs">
-                                📥 Nạp các câu đã tích chọn vào bộ trộn
-                            </button>
-                        </div>
-                    </div>
-
-                    <div id="mixReadyBox" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
-                        <div class="flex flex-wrap justify-between items-center gap-2">
-                            <p id="mixSummaryText" class="text-xs font-extrabold text-blue-800"></p>
-                            <div class="flex flex-wrap gap-2">
-                                <button onclick="saveMixPoolToQuestionBank()" class="bg-slate-700 hover:bg-slate-800 text-white font-bold px-3.5 py-2 rounded-xl text-xs">
-                                    💾 Lưu tất cả vào Ngân hàng câu hỏi
-                                </button>
-                                <button onclick="executeShuffleAndExportWord()" class="bg-amber-600 hover:bg-amber-700 text-white font-extrabold px-5 py-2 rounded-xl text-xs shadow">
-                                    ⚡ Trộn Đề & Xuất Word (.docx)
-                                </button>
-                            </div>
-                        </div>
-                        <div id="mixPreviewQuestions" class="max-h-56 overflow-y-auto space-y-1.5 text-xs"></div>
-                    </div>
-                </div>
-
-                <!-- KHỐI 2: NGÂN HÀNG CÂU HỎI THEO CHỦ ĐỀ & MỨC ĐỘ -->
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
-                    <div class="flex flex-wrap justify-between items-center gap-3 border-b border-slate-100 pb-3">
-                        <div>
-                            <h3 class="text-base font-extrabold text-slate-900">🏦 Ngân Hàng Câu Hỏi Dùng Chung (Trường THPT Đa Kia)</h3>
-                            <p class="text-xs text-slate-500">Quản lý câu hỏi theo môn, khối, chuyên đề và mức độ nhận thức (Biết / Hiểu / Vận dụng).</p>
-                        </div>
-                        <button onclick="toggleNewQuestionForm()" class="bg-blue-700 hover:bg-blue-800 text-white font-bold px-3.5 py-2 rounded-xl text-xs">
-                            ➕ Thêm câu hỏi mới
-                        </button>
-                    </div>
-
-                    <!-- FORM THÊM CÂU HỎI THỦ CÔNG -->
-                    <div id="newQuestionForm" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
-                        <div class="grid grid-cols-1 md:grid-cols-5 gap-2.5">
-                            <select id="qbAddSubject" class="border border-slate-300 rounded-lg px-2.5 py-2 text-xs bg-white">
+                            <label class="text-xs font-semibold text-slate-600">Môn học</label>
+                            <select id="examSubjectInput" class="w-full mt-1 border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white">
                                 <option value="Toán học">Toán học</option>
                                 <option value="Vật lí">Vật lí</option>
                                 <option value="Hóa học">Hóa học</option>
                                 <option value="Sinh học">Sinh học</option>
                                 <option value="Tin học">Tin học</option>
                                 <option value="Ngữ văn">Ngữ văn</option>
-                                <option value="Tiếng Anh">Tiếng Anh</option>
                                 <option value="Lịch sử">Lịch sử</option>
                                 <option value="Địa lí">Địa lí</option>
+                                <option value="Tiếng Anh">Tiếng Anh</option>
+                                <option value="GDKT & PL">GDKT & PL</option>
                             </select>
-                            <select id="qbAddGrade" class="border border-slate-300 rounded-lg px-2.5 py-2 text-xs bg-white">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-600">Khối lớp</label>
+                            <select id="examGradeInput" class="w-full mt-1 border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white">
                                 <option value="10">Khối 10</option>
                                 <option value="11">Khối 11</option>
                                 <option value="12">Khối 12</option>
                             </select>
-                            <input type="text" id="qbAddTopic" placeholder="Tên chuyên đề / bài học..." class="border border-slate-300 rounded-lg px-2.5 py-2 text-xs bg-white">
-                            <select id="qbAddType" onchange="toggleQbTypeFields()" class="border border-slate-300 rounded-lg px-2.5 py-2 text-xs bg-white font-semibold">
-                                <option value="NL">Trắc nghiệm (A/B/C/D)</option>
-                                <option value="DS">Trắc nghiệm Đúng/Sai</option>
-                                <option value="TLN">Trả lời ngắn</option>
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-600">Thời gian làm bài (phút)</label>
+                            <input type="number" id="examDurationInput" value="45" min="5" max="180" class="w-full mt-1 border border-slate-300 rounded-xl px-3 py-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-600">Tên kỳ kiểm tra / Đề thi</label>
+                            <input type="text" id="examTitleInput" placeholder="VD: Kiểm tra giữa học kì I - Toán 12" class="w-full mt-1 border border-slate-300 rounded-xl px-3 py-2 text-sm">
+                        </div>
+                    </div>
+
+                    <!-- BẢNG CẤU HÌNH THANG ĐIỂM CHI TIẾT CHO PHẦN I, II, III -->
+                    <div class="bg-blue-50/70 border border-blue-200 rounded-2xl p-4 space-y-3">
+                        <p class="text-xs font-extrabold text-blue-900 uppercase">⚙️ Cấu hình thang điểm chấm tự động (Tổng 10 điểm)</p>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="bg-white p-3.5 rounded-xl border border-slate-200 space-y-1.5">
+                                <label class="text-xs font-bold text-slate-800 block">Phần I. Trắc nghiệm 4 lựa chọn</label>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs text-slate-500">Tổng điểm Phần I:</span>
+                                    <input type="number" step="0.25" id="cfgScoreP1Total" value="3.0" class="w-24 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm font-bold text-blue-700">
+                                </div>
+                                <p class="text-[11px] text-slate-500">Hệ thống tự động chia đều điểm này cho tổng số câu ở Phần I.</p>
+                            </div>
+
+                            <div class="bg-white p-3.5 rounded-xl border border-slate-200 space-y-1.5">
+                                <label class="text-xs font-bold text-slate-800 block">Phần II. Đúng / Sai (Điểm mỗi câu)</label>
+                                <div class="grid grid-cols-4 gap-1.5 text-center">
+                                    <div>
+                                        <span class="text-[10px] text-slate-500 block">Đúng 1 ý</span>
+                                        <input type="number" step="0.05" id="cfgScoreP2_1" value="0.1" class="w-full border border-slate-300 rounded-lg px-1.5 py-1 text-xs font-bold text-center text-emerald-700">
+                                    </div>
+                                    <div>
+                                        <span class="text-[10px] text-slate-500 block">Đúng 2 ý</span>
+                                        <input type="number" step="0.05" id="cfgScoreP2_2" value="0.25" class="w-full border border-slate-300 rounded-lg px-1.5 py-1 text-xs font-bold text-center text-emerald-700">
+                                    </div>
+                                    <div>
+                                        <span class="text-[10px] text-slate-500 block">Đúng 3 ý</span>
+                                        <input type="number" step="0.05" id="cfgScoreP2_3" value="0.5" class="w-full border border-slate-300 rounded-lg px-1.5 py-1 text-xs font-bold text-center text-emerald-700">
+                                    </div>
+                                    <div>
+                                        <span class="text-[10px] text-slate-500 block">Đúng 4 ý</span>
+                                        <input type="number" step="0.05" id="cfgScoreP2_4" value="1.0" class="w-full border border-slate-300 rounded-lg px-1.5 py-1 text-xs font-bold text-center text-emerald-700">
+                                    </div>
+                                </div>
+                                <p class="text-[11px] text-slate-500">Tùy chỉnh linh hoạt theo ma trận từng bài kiểm tra.</p>
+                            </div>
+
+                            <div class="bg-white p-3.5 rounded-xl border border-slate-200 space-y-1.5">
+                                <label class="text-xs font-bold text-slate-800 block">Phần III. Trả lời ngắn</label>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs text-slate-500">Tổng điểm Phần III:</span>
+                                    <input type="number" step="0.25" id="cfgScoreP3Total" value="3.0" class="w-24 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm font-bold text-purple-700">
+                                </div>
+                                <p class="text-[11px] text-slate-500">Mỗi câu trả lời ngắn số điểm bằng nhau (tự chia đều cho số câu).</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border-2 border-dashed border-blue-300 bg-slate-50 rounded-2xl p-6 text-center space-y-2">
+                        <p class="text-sm font-bold text-blue-900">Chọn tệp đề thi Word (.docx) chuẩn mẫu để mở phòng thi trực tuyến</p>
+                        <p class="text-xs text-slate-500">Tự động nhận diện đáp án gạch chân Phần I, chuỗi `a-sai, b-đúng...` Phần II, `Đáp án: ...` Phần III và hình vẽ trong đề.</p>
+                        <label class="inline-block cursor-pointer bg-blue-700 hover:bg-blue-800 text-white font-semibold px-5 py-2.5 rounded-xl text-sm shadow mt-2">
+                            📂 Chọn File Word Đề Thi (.docx)
+                            <input type="file" id="wordExamInput" accept=".docx" class="hidden" onchange="handleWordExamUpload(event)">
+                        </label>
+                    </div>
+
+                    <div id="examPreviewBox" class="hidden bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+                        <div class="flex flex-wrap justify-between items-center gap-2">
+                            <p id="examParseSummary" class="text-sm font-bold text-emerald-700"></p>
+                            <button id="btnPublishExam" onclick="publishUploadedExam()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded-xl text-xs shadow">🚀 Phát Hành Phòng Thi Online & Tạo Mã QR</button>
+                        </div>
+                        <div id="examParsedList" class="max-h-60 overflow-y-auto space-y-2 text-xs"></div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                    <h3 class="font-bold text-base">Danh Sách Đề Thi Trực Tuyến & Mã QR Cho Học Sinh Quét</h3>
+                    <div id="uploadedExamsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                </div>
+            </section>
+
+            <!-- TAB 3: TRỘN ĐỀ CHUẨN MẪU & XUẤT BỘ FILE + QR TNMAKER -->
+            <section id="admin-sec-5" class="admin-sec hidden space-y-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-5">
+                    <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-3">
+                        <div>
+                            <h2 class="font-bold text-base text-blue-900">🎲 Trộn Đề Kiểm Tra Chuẩn Mẫu 2018 & Xuất QR TNMaker</h2>
+                            <p class="text-xs text-slate-500">Hỗ trợ đề gốc 3 hoặc 4 phần (`Phần I.`, `Phần II.`, `Phần III.`, `Phần IV.`), tự động điền số câu `từ câu 1 đến câu ...` và xuất trọn bộ file đề, file lời giải, Excel & QR TNMaker.</p>
+                        </div>
+                        <button onclick="downloadSampleExamDocx()" class="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 px-3 py-2 rounded-xl font-bold">📥 Tải File Word Đề Mẫu</button>
+                    </div>
+
+                    <!-- THÔNG TIN TIÊU ĐỀ ĐỀ THI & SỐ ĐỀ / MÃ ĐỀ -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                        <div>
+                            <label class="text-xs font-semibold text-slate-600">Sở:</label>
+                            <input type="text" id="mixDeptEdu" value="SỞ GD&ĐT ĐỒNG NAI" class="w-full mt-1 border border-slate-300 rounded-xl px-3 py-2 text-sm font-medium">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-600">Trường:</label>
+                            <input type="text" id="mixSchoolName" value="TRƯỜNG THPT ĐA KIA" class="w-full mt-1 border border-slate-300 rounded-xl px-3 py-2 text-sm font-medium">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-600">Tổ:</label>
+                            <input type="text" id="mixGroupInput" value="TOÁN - TIN HỌC" class="w-full mt-1 border border-slate-300 rounded-xl px-3 py-2 text-sm font-medium">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-600">Kiểm tra:</label>
+                            <input type="text" id="mixExamName" value="KIỂM TRA GIỮA HỌC KÌ I" class="w-full mt-1 border border-slate-300 rounded-xl px-3 py-2 text-sm font-medium">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                        <div>
+                            <label class="text-xs font-semibold text-slate-600">Môn học</label>
+                            <select id="mixSubject" class="w-full mt-1 border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white">
+                                <option value="Toán học">Toán học</option>
+                                <option value="Vật lí">Vật lí</option>
+                                <option value="Hóa học">Hóa học</option>
+                                <option value="Sinh học">Sinh học</option>
+                                <option value="Tin học">Tin học</option>
+                                <option value="Tiếng Anh">Tiếng Anh</option>
+                                <option value="Lịch sử">Lịch sử</option>
+                                <option value="Địa lí">Địa lí</option>
+                                <option value="GDKT & PL">GDKT & PL</option>
                             </select>
-                            <select id="qbAddLevel" class="border border-slate-300 rounded-lg px-2.5 py-2 text-xs bg-white">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-600">Khối lớp</label>
+                            <select id="mixGrade" class="w-full mt-1 border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white">
+                                <option value="10">Khối 10</option>
+                                <option value="11">Khối 11</option>
+                                <option value="12">Khối 12</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-600">Thời gian (phút)</label>
+                            <input type="number" id="mixDuration" value="90" class="w-full mt-1 border border-slate-300 rounded-xl px-3 py-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-600">Số đề cần trộn</label>
+                            <input type="number" id="mixVariantCount" value="4" min="1" max="24" class="w-full mt-1 border border-slate-300 rounded-xl px-3 py-2 text-sm font-bold text-blue-700">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-600">Mã đề (để trống = tự sinh 4 số)</label>
+                            <input type="text" id="mixCustomCodes" placeholder="VD: 0011, 0012, 0013, 0014" class="w-full mt-1 border border-slate-300 rounded-xl px-3 py-2 text-sm">
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-3 items-center pt-1">
+                        <label class="cursor-pointer bg-blue-700 hover:bg-blue-800 text-white font-semibold px-4 py-2.5 rounded-xl text-xs shadow">
+                            📂 Nạp File Đề Gốc Word (.docx) Để Trộn
+                            <input type="file" id="mixDocxInput" accept=".docx" class="hidden" onchange="handleMixSourceDocx(event)">
+                        </label>
+                        <button onclick="loadSelectedBankToMix()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl text-xs shadow">
+                            📥 Nạp Các Câu Đã Tích Chọn Từ Ngân Hàng
+                        </button>
+                    </div>
+
+                    <div id="mixReadyBox" class="hidden bg-emerald-50/70 border border-emerald-200 rounded-2xl p-4 space-y-3">
+                        <div class="flex flex-wrap justify-between items-center gap-2">
+                            <p id="mixSummaryText" class="text-sm font-bold text-emerald-800"></p>
+                            <div class="flex flex-wrap gap-2">
+                                <button onclick="saveMixPoolToQuestionBank()" class="bg-white hover:bg-slate-50 border border-emerald-300 text-emerald-800 font-semibold px-3 py-2 rounded-xl text-xs">💾 Lưu vào Ngân hàng câu hỏi</button>
+                                <button id="btnExecuteShuffle" onclick="executeShuffleAndExportWord()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow">⚡ Trộn Đề & Xuất Trọn Bộ File + QR TNMaker</button>
+                            </div>
+                        </div>
+                        <div id="mixPreviewQuestions" class="max-h-56 overflow-y-auto space-y-2 text-xs"></div>
+                    </div>
+                </div>
+
+                <!-- NGÂN HÀNG CÂU HỎI DÙNG CHUNG -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                    <div class="flex flex-wrap justify-between items-center gap-3">
+                        <div>
+                            <h3 class="font-bold text-base text-slate-900">📚 Ngân Hàng Câu Hỏi Dùng Chung Toàn Trường</h3>
+                            <p class="text-xs text-slate-500">Tích chọn câu hỏi theo Môn / Khối / Mức độ để đưa lên bộ trộn đề.</p>
+                        </div>
+                        <button onclick="toggleNewQuestionForm()" class="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-4 py-2 rounded-xl text-xs">+ Thêm câu hỏi mới</button>
+                    </div>
+
+                    <div id="newQuestionForm" class="hidden bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+                        <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                            <select id="qbAddSubject" class="border border-slate-300 rounded-xl px-3 py-2 text-xs bg-white">
+                                <option value="Toán học">Toán học</option>
+                                <option value="Vật lí">Vật lí</option>
+                                <option value="Hóa học">Hóa học</option>
+                                <option value="Sinh học">Sinh học</option>
+                                <option value="Tin học">Tin học</option>
+                                <option value="Tiếng Anh">Tiếng Anh</option>
+                                <option value="Lịch sử">Lịch sử</option>
+                                <option value="Địa lí">Địa lí</option>
+                                <option value="GDKT & PL">GDKT & PL</option>
+                            </select>
+                            <select id="qbAddGrade" class="border border-slate-300 rounded-xl px-3 py-2 text-xs bg-white">
+                                <option value="10">Khối 10</option>
+                                <option value="11">Khối 11</option>
+                                <option value="12">Khối 12</option>
+                            </select>
+                            <input type="text" id="qbAddTopic" placeholder="Chủ đề / Chương..." class="border border-slate-300 rounded-xl px-3 py-2 text-xs">
+                            <select id="qbAddType" onchange="toggleQbTypeFields()" class="border border-slate-300 rounded-xl px-3 py-2 text-xs bg-white">
+                                <option value="NL">Phần I (Trắc nghiệm 4 lựa chọn)</option>
+                                <option value="DS">Phần II (Đúng / Sai)</option>
+                                <option value="TLN">Phần III (Trả lời ngắn)</option>
+                                <option value="TL">Phần IV (Tự luận)</option>
+                            </select>
+                            <select id="qbAddLevel" class="border border-slate-300 rounded-xl px-3 py-2 text-xs bg-white">
                                 <option value="Biết">Mức độ: Biết</option>
                                 <option value="Hiểu">Mức độ: Hiểu</option>
                                 <option value="Vận dụng">Mức độ: Vận dụng</option>
                             </select>
                         </div>
-
-                        <textarea id="qbAddContent" rows="2" placeholder="Nhập nội dung câu hỏi (công thức Toán đặt trong $...$)..." class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white"></textarea>
-
+                        <textarea id="qbAddContent" rows="2" placeholder="Nhập nội dung câu hỏi..." class="w-full border border-slate-300 rounded-xl p-3 text-xs"></textarea>
                         <div id="qbMcqFields" class="grid grid-cols-1 md:grid-cols-5 gap-2">
-                            <input type="text" id="qbOptA" placeholder="Phương án A..." class="border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white">
-                            <input type="text" id="qbOptB" placeholder="Phương án B..." class="border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white">
-                            <input type="text" id="qbOptC" placeholder="Phương án C..." class="border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white">
-                            <input type="text" id="qbOptD" placeholder="Phương án D..." class="border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white">
-                            <select id="qbCorrectLetter" class="border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white font-bold text-emerald-700">
-                                <option value="A">Đáp án đúng: A</option>
-                                <option value="B">Đáp án đúng: B</option>
-                                <option value="C">Đáp án đúng: C</option>
-                                <option value="D">Đáp án đúng: D</option>
-                            </select>
+                            <input type="text" id="qbOptA" placeholder="Phương án A / Ý a)" class="border border-slate-300 rounded-xl px-3 py-2 text-xs">
+                            <input type="text" id="qbOptB" placeholder="Phương án B / Ý b)" class="border border-slate-300 rounded-xl px-3 py-2 text-xs">
+                            <input type="text" id="qbOptC" placeholder="Phương án C / Ý c)" class="border border-slate-300 rounded-xl px-3 py-2 text-xs">
+                            <input type="text" id="qbOptD" placeholder="Phương án D / Ý d)" class="border border-slate-300 rounded-xl px-3 py-2 text-xs">
+                            <input type="text" id="qbCorrectLetter" placeholder="Đáp án (VD: A hoặc a-đúng, b-sai, c-đúng, d-sai)" class="border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold">
                         </div>
-
                         <div id="qbShortField" class="hidden">
-                            <input type="text" id="qbShortAns" placeholder="Nhập đáp số chính xác (tối đa 4 ký tự nếu là số làm tròn)..." class="w-full md:w-1/2 border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white font-bold text-emerald-700">
+                            <input type="text" id="qbShortAns" placeholder="Nhập đáp án trả lời ngắn (VD: 0,5)..." class="w-full md:w-1/2 border border-slate-300 rounded-xl px-3 py-2 text-xs">
                         </div>
-
-                        <div class="flex justify-end gap-2">
-                            <button onclick="toggleNewQuestionForm()" class="px-3 py-1.5 rounded-lg text-xs bg-slate-200 font-semibold">Đóng</button>
-                            <button onclick="addSingleQuestionToBank()" class="px-4 py-1.5 rounded-lg text-xs bg-emerald-600 text-white font-bold">Lưu vào Ngân hàng</button>
+                        <textarea id="qbSolutionInput" rows="2" placeholder="Nhập lời giải chi tiết (nếu có)..." class="w-full border border-slate-300 rounded-xl p-3 text-xs"></textarea>
+                        <div class="flex justify-end">
+                            <button onclick="addSingleQuestionToBank()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded-xl text-xs">💾 Lưu vào Ngân hàng câu hỏi</button>
                         </div>
                     </div>
 
-                    <!-- BỘ LỌC NGÂN HÀNG CÂU HỎI -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2.5">
-                        <select id="qbFilterSubject" onchange="renderQuestionBank()" class="border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white font-semibold">
-                            <option value="ALL">Tất cả môn học</option>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3 pt-2 border-t">
+                        <select id="qbFilterSubject" onchange="renderQuestionBank()" class="border border-slate-300 rounded-xl px-3 py-2 text-xs bg-white">
+                            <option value="ALL">Tất cả các môn</option>
                             <option value="Toán học">Toán học</option>
                             <option value="Vật lí">Vật lí</option>
                             <option value="Hóa học">Hóa học</option>
                             <option value="Sinh học">Sinh học</option>
                             <option value="Tin học">Tin học</option>
-                            <option value="Ngữ văn">Ngữ văn</option>
                             <option value="Tiếng Anh">Tiếng Anh</option>
                             <option value="Lịch sử">Lịch sử</option>
                             <option value="Địa lí">Địa lí</option>
+                            <option value="GDKT & PL">GDKT & PL</option>
                         </select>
-                        <select id="qbFilterGrade" onchange="renderQuestionBank()" class="border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white font-semibold">
+                        <select id="qbFilterGrade" onchange="renderQuestionBank()" class="border border-slate-300 rounded-xl px-3 py-2 text-xs bg-white">
                             <option value="ALL">Tất cả khối</option>
                             <option value="10">Khối 10</option>
                             <option value="11">Khối 11</option>
                             <option value="12">Khối 12</option>
                         </select>
-                        <select id="qbFilterLevel" onchange="renderQuestionBank()" class="border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white font-semibold">
+                        <select id="qbFilterLevel" onchange="renderQuestionBank()" class="border border-slate-300 rounded-xl px-3 py-2 text-xs bg-white">
                             <option value="ALL">Tất cả mức độ</option>
                             <option value="Biết">Biết</option>
                             <option value="Hiểu">Hiểu</option>
                             <option value="Vận dụng">Vận dụng</option>
                         </select>
-                        <input type="text" id="qbSearchInput" oninput="renderQuestionBank()" placeholder="Tìm theo chuyên đề hoặc nội dung..." class="md:col-span-2 border border-slate-300 rounded-lg px-3 py-2 text-xs">
+                        <input type="text" id="qbSearchInput" oninput="renderQuestionBank()" placeholder="Tìm nội dung hoặc chủ đề..." class="border border-slate-300 rounded-xl px-3 py-2 text-xs">
                     </div>
 
-                    <div class="flex items-center justify-between text-xs text-slate-600 bg-slate-50 px-3 py-2 rounded-lg">
-                        <label class="flex items-center gap-2 font-bold cursor-pointer">
-                            <input type="checkbox" id="qbSelectAllChk" onchange="toggleSelectAllBankQuestions(this.checked)">
-                            Chọn tất cả câu hỏi đang hiển thị
+                    <div class="flex items-center justify-between text-xs text-slate-600">
+                        <label class="flex items-center gap-2 cursor-pointer font-semibold">
+                            <input type="checkbox" id="qbSelectAllChk" onchange="toggleSelectAllBankQuestions(this.checked)" class="w-4 h-4"> Chọn tất cả câu đang hiển thị
                         </label>
-                        <span id="qbCountBadge" class="font-bold text-blue-700">Tổng: 0 câu hỏi</span>
+                        <span id="qbCountBadge" class="font-bold text-blue-700">Tổng: 0 câu</span>
                     </div>
 
-                    <div id="questionBankList" class="space-y-2.5 max-h-[420px] overflow-y-auto"></div>
+                    <div id="questionBankList" class="space-y-2.5 max-h-[450px] overflow-y-auto"></div>
                 </div>
             </section>
 
-            <!-- TAB 3 (MỤC 4): SOẠN KHBD 5512, SLIDE POWERPOINT & E-LEARNING -->
+            <!-- TAB 4: SOẠN KHBD 5512 CHUẨN MẪU TRƯỜNG THPT ĐA KIA + SLIDE + E-LEARNING -->
             <section id="admin-sec-3" class="admin-sec hidden space-y-6">
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
                     <div>
-                        <h2 class="text-base md:text-lg font-extrabold text-slate-900">Trợ Lý Soạn KHBD Chuẩn Công Văn 5512 (Tích Hợp Năng Lực Số & AI)</h2>
-                        <p class="text-xs text-slate-500 mt-0.5">Soạn giáo án chuẩn GDPT 2018 (bộ sách Kết nối tri thức), xuất trực tiếp ra file Word (.docx) kèm hình vẽ SGK, chuyển sang Slide PowerPoint 16:9 hiệu ứng từng khung hoặc đóng gói E-learning SCORM.</p>
+                        <h2 class="font-bold text-base text-blue-900">✨ Trợ Lý Soạn KHBD 5512 Chuẩn Mẫu Trường THPT Đa Kia & Tích Hợp Năng Lực Số</h2>
+                        <p class="text-xs text-slate-500">Tự động điền Tổ chuyên môn, Họ tên giáo viên ở phần đầu và tự động phân công ký duyệt Tổ trưởng / Tổ phó ở cuối trang theo đúng mẫu của trường.</p>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-                        <select id="lpSubject" class="border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-semibold bg-white">
-                            <option value="Toán học">Môn Toán học</option>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                        <select id="lpSubject" class="border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white">
+                            <option value="Toán">Môn Toán</option>
                             <option value="Vật lí">Môn Vật lí</option>
                             <option value="Hóa học">Môn Hóa học</option>
                             <option value="Sinh học">Môn Sinh học</option>
                             <option value="Tin học">Môn Tin học</option>
                             <option value="Ngữ văn">Môn Ngữ văn</option>
-                            <option value="Tiếng Anh">Môn Tiếng Anh</option>
                             <option value="Lịch sử">Môn Lịch sử</option>
                             <option value="Địa lí">Môn Địa lí</option>
+                            <option value="Tiếng Anh">Môn Tiếng Anh</option>
+                            <option value="GDKT & PL">Môn GDKT & PL</option>
                         </select>
-
-                        <select id="lpGrade" class="border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-semibold bg-white">
+                        <select id="lpGrade" class="border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white">
                             <option value="10">Lớp 10</option>
                             <option value="11">Lớp 11</option>
                             <option value="12">Lớp 12</option>
                         </select>
-
-                        <select id="lpPeriods" class="border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-semibold bg-white">
-                            <option value="1 tiết">1 tiết</option>
-                            <option value="2 tiết" selected>2 tiết</option>
-                            <option value="3 tiết">3 tiết</option>
-                            <option value="4 tiết">4 tiết</option>
-                            <option value="5 tiết">5 tiết</option>
-                            <option value="6 tiết">6 tiết</option>
-                            <option value="7 tiết">7 tiết</option>
-                            <option value="8 tiết">8 tiết</option>
-                        </select>
-
-                        <select id="lpDigitalLevel" class="border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-semibold bg-white">
-                            <option value="Năng lực số + AI">Mức độ: Năng lực số + AI</option>
-                            <option value="Cơ bản chuẩn 5512">Mức độ: Cơ bản chuẩn 5512</option>
-                            <option value="Dạy học dự án / STEM">Mức độ: Dạy học dự án / STEM</option>
+                        <input type="text" id="lpPeriods" value="3 tiết" placeholder="Số tiết (vd: 3 tiết)" class="border border-slate-300 rounded-xl px-3 py-2 text-sm">
+                        <select id="lpDigitalLevel" class="border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white">
+                            <option value="Tích hợp mã năng lực số (1.1.NC1b, 2.1.NC1a, 5.2.NC1b, 6.2.NC1a)">Đầy đủ mã năng lực số theo mẫu</option>
+                            <option value="Cơ bản (Trình chiếu TV + Quizizz)">Mức cơ bản (TV + Quizizz)</option>
+                            <option value="Nâng cao (Mô phỏng tương tác + AI)">Mức nâng cao (Mô phỏng + AI)</option>
                         </select>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <input type="text" id="lpTitle" placeholder="Nhập tên bài học SGK Kết nối tri thức (vd: Tích vô hướng của hai vectơ)..." class="md:col-span-2 border border-slate-300 rounded-xl px-4 py-2.5 text-sm">
-                        <button id="btnGen5512" onclick="generateLessonPlan5512()" class="bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl px-5 py-2.5 text-sm shadow-sm transition">
-                            ✨ Soạn KHBD 5512 Bằng AI
-                        </button>
+                    <div class="flex flex-col md:flex-row gap-3">
+                        <input type="text" id="lpTitle" placeholder="Nhập tên Chương và Tên Bài học (VD: CHƯƠNG I. MỆNH ĐỀ VÀ TẬP HỢP - BÀI 1: MỆNH ĐỀ)" class="flex-1 border border-slate-300 rounded-xl px-4 py-2.5 text-sm">
+                        <button id="btnGen5512" onclick="generateLessonPlan5512()" class="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-6 py-2.5 rounded-xl text-sm shadow">✨ Soạn KHBD 5512 Bằng AI</button>
                     </div>
 
-                    <textarea id="lpResultEditor" rows="16" placeholder="Nội dung Kế hoạch bài dạy chuẩn Công văn 5512 sẽ hiển thị tại đây. Thầy/Cô có thể chỉnh sửa trực tiếp trước khi tải file Word, Slide PowerPoint hoặc E-learning..." class="w-full border border-slate-300 rounded-xl p-4 text-xs md:text-sm leading-relaxed focus:outline-none focus:border-blue-600"></textarea>
+                    <textarea id="lpResultEditor" rows="16" placeholder="Nội dung KHBD chuẩn Công văn 5512 theo mẫu Trường THPT Đa Kia sẽ hiển thị tại đây..." class="w-full border border-slate-300 rounded-2xl p-4 text-sm font-mono leading-relaxed focus:border-blue-600 outline-none"></textarea>
 
-                    <div id="lpExportToolbar" class="hidden flex flex-wrap gap-3 pt-2">
-                        <button onclick="exportLessonPlanToDocx()" class="bg-blue-700 hover:bg-blue-800 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-sm">
-                            📄 Tải Giáo Án Word (.docx)
-                        </button>
-                        <button id="btnGenSlides" onclick="generateSlidesFromLesson()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-sm">
-                            📊 Xuất Slide PowerPoint 16:9 (.pptx)
-                        </button>
-                        <button onclick="exportElearningScorm()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-sm">
-                            📦 Đóng Gói E-learning SCORM (.zip)
-                        </button>
+                    <div id="lpExportToolbar" class="hidden flex flex-wrap items-center justify-between gap-3 pt-2 border-t">
+                        <p class="text-xs font-semibold text-slate-600">Xuất bản giáo án chuẩn mẫu trường (.docx có bảng 2 cột & chữ ký tổ chuyên môn):</p>
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="exportLessonPlanToDocx()" class="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-4 py-2 rounded-xl text-xs">📄 Xuất KHBD Word (.docx)</button>
+                            <button id="btnGenSlides" onclick="generateSlidesFromLesson()" class="bg-amber-600 hover:bg-amber-700 text-white font-semibold px-4 py-2 rounded-xl text-xs">📊 Xuất Slide PowerPoint 16:9 (.pptx)</button>
+                            <button onclick="exportElearningScorm()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded-xl text-xs">📦 Đóng Gói E-learning SCORM (.zip)</button>
+                        </div>
                     </div>
                 </div>
             </section>
 
-            <!-- TAB 4 (MỤC 5): TẠO MÃ QR & PDF SANG WORD CHUẨN MATHTYPE -->
-            <section id="admin-sec-4" class="admin-sec hidden grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
-                    <h2 class="text-base font-extrabold text-slate-900">🔗 Tạo Mã QR Học Liệu / Link Lớp Học</h2>
-                    <p class="text-xs text-slate-500">Dán đường dẫn Google Forms, đề thi online, video bài giảng hoặc link lớp học để tạo mã QR chiếu lên TV.</p>
-                    <input type="text" id="qrCustomText" placeholder="Dán đường dẫn URL hoặc nội dung cần tạo QR..." class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs">
-                    <div class="flex gap-2">
-                        <button onclick="generateCustomQR()" class="bg-blue-700 hover:bg-blue-800 text-white font-bold px-4 py-2 rounded-xl text-xs">Tạo Mã QR</button>
-                        <button onclick="downloadCustomQR()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-xs">📥 Tải ảnh QR (.png)</button>
+            <!-- TAB 5: TẠO MÃ QR & PDF SANG WORD -->
+            <section id="admin-sec-4" class="admin-sec hidden space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                        <h2 class="font-bold text-base text-blue-900">🔗 Tạo Mã QR Nhanh Cho Lớp Học</h2>
+                        <input type="text" id="qrCustomText" placeholder="Dán đường link hoặc nội dung cần tạo mã QR..." class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm">
+                        <div class="flex gap-2">
+                            <button onclick="generateCustomQR()" class="bg-blue-700 text-white font-semibold px-4 py-2 rounded-xl text-xs">Tạo Mã QR</button>
+                            <button onclick="downloadCustomQR()" class="bg-slate-200 text-slate-800 font-semibold px-4 py-2 rounded-xl text-xs">📥 Tải Ảnh QR (.png)</button>
+                        </div>
+                        <div id="customQrBox" class="p-4 border rounded-xl inline-block bg-white"></div>
                     </div>
-                    <div id="customQrBox" class="p-4 bg-slate-50 border border-slate-200 rounded-xl inline-block min-h-[100px] min-w-[100px]"></div>
-                </div>
 
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
-                    <h2 class="text-base font-extrabold text-slate-900">📄 Chuyển Đổi PDF Sang Word (.docx) Chuẩn MathType</h2>
-                    <p class="text-xs text-slate-500">Tải lên file đề thi hoặc tài liệu PDF, AI sẽ nhận diện toàn bộ văn bản và giữ nguyên công thức Toán/Lí/Hóa dưới dạng <code>$...$</code> để chuyển đổi sang MathType trong Word.</p>
-                    <label class="block border-2 border-dashed border-emerald-300 hover:border-emerald-500 bg-emerald-50/40 rounded-2xl p-6 text-center cursor-pointer transition">
-                        <span class="text-sm font-bold text-emerald-800">📂 Chọn tệp PDF cần chuyển sang Word (.docx)</span>
-                        <input type="file" accept=".pdf" class="hidden" onchange="convertPdfToDocx(event)">
-                    </label>
-                    <p id="pdfConvertStatus" class="text-xs font-semibold text-blue-700"></p>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                        <h2 class="font-bold text-base text-blue-900">📄 Chuyển PDF Đề Thi Sang Word (.docx) Chuẩn MathType</h2>
+                        <p class="text-xs text-slate-500">AI bóc tách văn bản và bảo toàn công thức Toán/Lí/Hóa dưới dạng $ ... $ để Thầy/Cô chỉnh sửa trên Word.</p>
+                        <label class="inline-block cursor-pointer bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl text-xs">
+                            📂 Chọn File PDF Cần Chuyển Sang Word
+                            <input type="file" id="pdfToWordInput" accept=".pdf" class="hidden" onchange="convertPdfToDocx(event)">
+                        </label>
+                        <p id="pdfConvertStatus" class="text-xs text-slate-600 font-medium"></p>
+                    </div>
                 </div>
             </section>
-
         </main>
     </div>
 
-    <!-- HỘP THOẠI ĐỔI MẬT KHẨU -->
-    <div id="changePassModal" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
-            <h3 class="text-base font-extrabold text-slate-900">🔑 Đổi mật khẩu đăng nhập</h3>
-            <div class="space-y-3">
+    <!-- MODAL ĐỔI MẬT KHẨU -->
+    <div id="changePassModal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+        <div class="bg-white max-w-md w-full rounded-2xl shadow-2xl border border-slate-200 p-6 space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-bold text-base text-slate-900">🔑 Đổi Mật Khẩu Tài Khoản</h3>
+                <button onclick="closeChangePasswordModal()" class="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
+            </div>
+            <div class="space-y-3 text-left">
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Mật khẩu hiện tại</label>
-                    <input type="password" id="oldPassInput" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm">
+                    <label class="text-xs font-semibold text-slate-600">Mật khẩu hiện tại</label>
+                    <input type="password" id="oldPassInput" placeholder="Nhập mật khẩu hiện tại..." class="w-full mt-1 border border-slate-300 rounded-xl px-3.5 py-2 text-sm outline-none focus:border-blue-600">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Mật khẩu mới (tối thiểu 6 ký tự)</label>
-                    <input type="password" id="newPassInput" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm">
+                    <label class="text-xs font-semibold text-slate-600">Mật khẩu mới (tối thiểu 6 ký tự)</label>
+                    <input type="password" id="newPassInput" placeholder="Nhập mật khẩu mới..." class="w-full mt-1 border border-slate-300 rounded-xl px-3.5 py-2 text-sm outline-none focus:border-blue-600">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Nhập lại mật khẩu mới</label>
-                    <input type="password" id="confirmNewPassInput" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm">
+                    <label class="text-xs font-semibold text-slate-600">Xác nhận mật khẩu mới</label>
+                    <input type="password" id="confirmNewPassInput" placeholder="Nhập lại mật khẩu mới..." class="w-full mt-1 border border-slate-300 rounded-xl px-3.5 py-2 text-sm outline-none focus:border-blue-600">
                 </div>
             </div>
-            <div class="flex justify-end gap-2 pt-2">
-                <button onclick="closeChangePasswordModal()" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700">Hủy</button>
-                <button onclick="submitChangePassword()" class="px-4 py-2 rounded-xl text-xs font-bold bg-blue-700 hover:bg-blue-800 text-white">Lưu mật khẩu mới</button>
+            <div class="flex justify-end gap-2 pt-2 border-t">
+                <button onclick="closeChangePasswordModal()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700">Hủy bỏ</button>
+                <button onclick="submitChangePassword()" class="px-4 py-2 rounded-xl text-xs font-bold bg-blue-700 hover:bg-blue-800 text-white">💾 Lưu mật khẩu mới</button>
             </div>
         </div>
     </div>
 
-    <script src="js/config.js?v=3"></script>
-    <script src="js/admin-app.js?v=3"></script>
+    <script src="js/config.js?v=5"></script>
+    <script src="js/admin-app.js?v=5"></script>
 </body>
 </html>
