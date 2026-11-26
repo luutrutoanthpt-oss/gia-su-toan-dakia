@@ -90,29 +90,36 @@ Hãy trả về DUY NHẤT một chuỗi JSON hợp lệ (không bọc markdown 
       generationConfig: { temperature, maxOutputTokens: maxTokens }
     });
 
+    // Danh sách mô hình dự phòng tự động chuyển đổi nếu mô hình chính quá tải (503/429)
+    const models = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.6-flash"];
     let lastError = "";
-    for (const apiKey of apiKeys) {
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
-      const geminiRes = await fetch(geminiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: requestBody
-      });
 
-      if (geminiRes.ok) {
-        return new Response(geminiRes.body, {
-          headers: {
-            "Content-Type": "text/event-stream; charset=utf-8",
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive"
-          }
+    for (const modelName of models) {
+      for (const apiKey of apiKeys) {
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
+        const geminiRes = await fetch(geminiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: requestBody
         });
+
+        if (geminiRes.ok) {
+          return new Response(geminiRes.body, {
+            headers: {
+              "Content-Type": "text/event-stream; charset=utf-8",
+              "Cache-Control": "no-cache",
+              "Connection": "keep-alive"
+            }
+          });
+        }
+        lastError = await geminiRes.text();
+        // Nếu lỗi 503 (quá tải mô hình hiện tại) thì chuyển ngay sang mô hình dự phòng tiếp theo
+        if (geminiRes.status === 503) break;
       }
-      lastError = await geminiRes.text();
     }
 
-    return new Response(JSON.stringify({ error: "Lỗi API Key: " + lastError }), {
-      status: 500,
+    return new Response(JSON.stringify({ error: "Máy chủ AI đang bận, vui lòng thử lại sau vài giây: " + lastError }), {
+      status: 503,
       headers: { "Content-Type": "application/json" }
     });
   } catch (err) {
