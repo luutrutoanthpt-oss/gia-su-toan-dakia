@@ -104,7 +104,21 @@ function renderKatexInElement(targetEl) {
     }
 }
 
-// ==================== CHÈN NHANH KÍ HIỆU TOÁN HỌC ====================
+// ==================== CHUYỂN NHÓM & CHÈN KÍ HIỆU TOÁN HỌC ====================
+function switchMathToolbar(catId) {
+    document.querySelectorAll(".math-cat-bar").forEach(bar => bar.classList.add("hidden"));
+    document.querySelectorAll(".math-cat-btn").forEach(btn => {
+        btn.className = "math-cat-btn bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-2.5 py-1 rounded-lg text-[11px] transition";
+    });
+    const targetBar = document.getElementById(`mbar-${catId}`);
+    if (targetBar) targetBar.classList.remove("hidden");
+
+    const activeBtn = document.getElementById(`mtab-${catId}`);
+    if (activeBtn) {
+        activeBtn.className = "math-cat-btn bg-blue-700 text-white font-bold px-2.5 py-1 rounded-lg text-[11px] transition";
+    }
+}
+
 function insertMathSymbol(symbolText) {
     const inp = document.getElementById("tutorPromptInput");
     if (!inp) return;
