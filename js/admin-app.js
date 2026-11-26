@@ -168,23 +168,13 @@ function applyRoleBasedUI() {
     const tab4Btn = document.getElementById("atab-4");
     const masterManager = document.getElementById("masterTeacherManager");
 
+    if (tab1Btn) tab1Btn.classList.remove("hidden");
+
     if (currentLoggedAdmin?.role === "master") {
-        if (tab1Btn) {
-            tab1Btn.classList.remove("hidden");
-            tab1Btn.textContent = "👥 1. Lớp học & Phân quyền GV";
-        }
-        if (tab2Btn) tab2Btn.textContent = "📝 2. Ngân hàng Đề Word & QR";
-        if (tab5Btn) tab5Btn.textContent = "🎲 3. Trộn Đề & Ngân Hàng Câu Hỏi";
-        if (tab3Btn) tab3Btn.textContent = "✨ 4. Soạn KHBD 5512, Slide & E-learning";
-        if (tab4Btn) tab4Btn.textContent = "🔗 5. Tạo Mã QR & PDF sang Word";
+        if (tab1Btn) tab1Btn.textContent = "👥 1. Lớp học & Phân quyền GV";
         if (masterManager) masterManager.classList.remove("hidden");
-        switchAdminTab(1);
     } else {
-        if (tab1Btn) tab1Btn.classList.add("hidden");
-        if (tab2Btn) tab2Btn.textContent = "📝 1. Ngân hàng Đề Word & QR";
-        if (tab5Btn) tab5Btn.textContent = "🎲 2. Trộn Đề & Ngân Hàng Câu Hỏi";
-        if (tab3Btn) tab3Btn.textContent = "✨ 3. Soạn KHBD 5512, Slide & E-learning";
-        if (tab4Btn) tab4Btn.textContent = "🔗 4. Tạo Mã QR & PDF sang Word";
+        if (tab1Btn) tab1Btn.textContent = "👥 1. Quản lý lớp học";
         if (masterManager) masterManager.classList.add("hidden");
 
         const sub = currentLoggedAdmin?.subject || "";
@@ -199,8 +189,14 @@ function applyRoleBasedUI() {
                 }
             }
         });
-        switchAdminTab(2);
     }
+
+    if (tab2Btn) tab2Btn.textContent = "📝 2. Ngân hàng Đề Word & QR";
+    if (tab5Btn) tab5Btn.textContent = "🎲 3. Trộn Đề & Ngân Hàng Câu Hỏi";
+    if (tab3Btn) tab3Btn.textContent = "✨ 4. Soạn KHBD 5512, Slide & E-learning";
+    if (tab4Btn) tab4Btn.textContent = "🔗 5. Tạo Mã QR & PDF sang Word";
+
+    switchAdminTab(1);
 }
 
 function logoutAdmin() {
@@ -232,9 +228,6 @@ async function syncNow() {
 }
 
 function switchAdminTab(tabId) {
-    if (tabId === 1 && currentLoggedAdmin?.role !== "master") {
-        tabId = 2;
-    }
     document.querySelectorAll(".admin-sec").forEach(el => el.classList.add("hidden"));
     document.querySelectorAll(".admin-tab-btn").forEach(btn => {
         btn.classList.remove("border-blue-700", "text-blue-700", "font-bold");
@@ -482,7 +475,6 @@ function parseQuestionsFromDocxText(rawText, defaultSubject = "Toán học", def
         const optCMatch = cleanBlock.match(/(?:^|\n|\s)C[\.\)]\s*([\s\S]*?)(?=(?:\n|\s)D[\.\)])/);
         const optDMatch = cleanBlock.match(/(?:^|\n|\s)D[\.\)]\s*([\s\S]*)$/);
 
-        // Kiểm tra dạng Đúng/Sai a) b) c) d)
         const dsAMatch = cleanBlock.match(/(?:^|\n)\s*a[\)\.]\s*([\s\S]*?)(?=(?:\n)\s*b[\)\.])/);
         const dsBMatch = cleanBlock.match(/(?:^|\n)\s*b[\)\.]\s*([\s\S]*?)(?=(?:\n)\s*c[\)\.])/);
         const dsCMatch = cleanBlock.match(/(?:^|\n)\s*c[\)\.]\s*([\s\S]*?)(?=(?:\n)\s*d[\)\.])/);
@@ -603,7 +595,6 @@ async function publishUploadedExam() {
     uploadedExams.unshift(savedExam);
     localStorage.setItem("dakia_uploaded_exams", JSON.stringify(uploadedExams));
 
-    // Tự động nạp thêm các câu hỏi của đề vừa tải vào Ngân hàng câu hỏi
     if (Array.isArray(savedExam.questions) && savedExam.questions.length > 0) {
         questionBank = [...savedExam.questions, ...questionBank];
         localStorage.setItem("dakia_question_bank", JSON.stringify(questionBank));
@@ -661,7 +652,7 @@ function copyExamShareLink(examId) {
     alert("Đã sao chép đường link làm bài trực tuyến:\n" + url);
 }
 
-// ==================== TAB TRỘN ĐỀ & NGÂN HÀNG CÂU HỎI ====================
+// ==================== TAB TRỘN ĐỀ & NGÂN HÀNG CÂU HỎI + QR TNMAKER ====================
 function toggleNewQuestionForm() {
     document.getElementById("newQuestionForm").classList.toggle("hidden");
 }
@@ -879,7 +870,6 @@ function shuffleArray(arr) {
     return copy;
 }
 
-// Hàm tạo ảnh PNG Mã QR đáp án chuẩn TNMaker từ chuỗi dữ liệu đáp án
 function generateTnmakerQrDataUrl(qrText) {
     return new Promise((resolve) => {
         try {
@@ -904,25 +894,20 @@ function generateTnmakerQrDataUrl(qrText) {
     });
 }
 
-// Xuất kèm File Excel đáp án chuẩn định dạng TNMaker (.xlsx)
 function exportTnmakerExcelFile(examName, subject, grade, allAnswerSheets) {
     const maxNL = Math.max(0, ...allAnswerSheets.map(s => s.nl.length));
     const maxDS = Math.max(0, ...allAnswerSheets.map(s => s.ds.length));
     const maxTLN = Math.max(0, ...allAnswerSheets.map(s => s.tln.length));
 
     const aoa = [];
-    // Dòng 1: Mã đề (chuẩn cấu trúc Excel TNMaker)
     aoa.push(["Câu / Mã đề", ...allAnswerSheets.map(s => s.code)]);
 
-    // Phần I: Trắc nghiệm nhiều lựa chọn
     for (let i = 0; i < maxNL; i++) {
         aoa.push([`I.${i + 1}`, ...allAnswerSheets.map(s => s.nl[i]?.ans || "")]);
     }
-    // Phần II: Đúng / Sai (4 ý viết liền trên 1 dòng chuẩn TNMaker)
     for (let i = 0; i < maxDS; i++) {
         aoa.push([`II.${i + 1}`, ...allAnswerSheets.map(s => (s.ds[i]?.ans || "").replace(/[^ĐDSds]/g, "").toUpperCase())]);
     }
-    // Phần III: Trả lời ngắn
     for (let i = 0; i < maxTLN; i++) {
         aoa.push([`III.${i + 1}`, ...allAnswerSheets.map(s => s.tln[i]?.ans || "")]);
     }
@@ -1051,7 +1036,6 @@ async function executeShuffleAndExportWord() {
         allAnswerSheets.push(variantAns);
     }
 
-    // Chuẩn bị dữ liệu Mã QR chuẩn ứng dụng chấm thi TNMaker
     const tnmakerPayloadLines = [
         `TNMAKER|${subject}_K${grade}`,
         ...allAnswerSheets.map(s => {
@@ -1064,7 +1048,6 @@ async function executeShuffleAndExportWord() {
     const tnmakerQrString = tnmakerPayloadLines.join("\n");
     const tnmakerQrDataUrl = await generateTnmakerQrDataUrl(tnmakerQrString);
 
-    // TRANG CUỐI: BẢNG ĐÁP ÁN TỔNG HỢP + MÃ QR TNMAKER
     docChildren.push(new Paragraph({ children: [new PageBreak()] }));
     docChildren.push(new Paragraph({
         alignment: AlignmentType.CENTER,
@@ -1101,7 +1084,6 @@ async function executeShuffleAndExportWord() {
         }
     });
 
-    // Nhúng trực tiếp ảnh Mã QR TNMaker vào trang cuối của file Word
     if (tnmakerQrDataUrl && ImageRun) {
         docChildren.push(new Paragraph({
             alignment: AlignmentType.CENTER,
@@ -1121,7 +1103,6 @@ async function executeShuffleAndExportWord() {
         }));
     }
 
-    // Hiển thị ngay Mã QR TNMaker trên màn hình web để Thầy giơ điện thoại quét trực tiếp
     const mixBox = document.getElementById("mixReadyBox");
     if (mixBox && tnmakerQrDataUrl) {
         let qrPreview = document.getElementById("tnmakerLiveQrBox");
@@ -1135,13 +1116,12 @@ async function executeShuffleAndExportWord() {
             <img src="${tnmakerQrDataUrl}" alt="QR TNMaker" class="w-36 h-36 border rounded-lg p-1 bg-white">
             <div class="space-y-1.5 text-xs">
                 <p class="font-extrabold text-emerald-800 text-sm">📱 Mã QR Đáp Án TNMaker (Đã tạo cho ${variantCount} mã đề: ${allAnswerSheets.map(s => s.code).join(", ")})</p>
-                <p class="text-slate-600">• Mở ứng dụng <strong>TNMaker</strong> trên điện thoại $\\rightarrow$ chọn <strong>Quét mã QR đáp án</strong> để nạp tự động toàn bộ mã đề.</p>
+                <p class="text-slate-600">• Mở ứng dụng <strong>TNMaker</strong> trên điện thoại → chọn <strong>Quét mã QR đáp án</strong> để nạp tự động toàn bộ mã đề.</p>
                 <p class="text-slate-600">• Hệ thống đã tự động tải về đồng thời <strong>File Word bộ ${variantCount} mã đề</strong> (kèm ảnh QR ở trang cuối) và <strong>File Excel đáp án chuẩn TNMaker (.xlsx)</strong>.</p>
             </div>
         `;
     }
 
-    // Xuất file Word bộ đề + Xuất kèm file Excel đáp án chuẩn TNMaker
     const doc = new Document({ sections: [{ children: docChildren }] });
     const blob = await Packer.toBlob(doc);
     const a = document.createElement("a");
@@ -1150,151 +1130,6 @@ async function executeShuffleAndExportWord() {
     a.click();
 
     exportTnmakerExcelFile(examName, subject, grade, allAnswerSheets);
-}
-
-        // Tiêu đề đầu mỗi mã đề
-        docChildren.push(new Paragraph({
-            alignment: AlignmentType.CENTER,
-            children: [
-                new TextRun({ text: `SỞ GD&ĐT ĐỒNG NAI – TRƯỜNG THPT ĐA KIA\n`, bold: true, size: 24, font: "Times New Roman" }),
-                new TextRun({ text: `${examName} – MÔN: ${subject} – KHỐI ${grade}\n`, bold: true, size: 26, font: "Times New Roman" }),
-                new TextRun({ text: `MÃ ĐỀ: ${examCode}`, bold: true, size: 28, font: "Times New Roman" })
-            ],
-            spacing: { after: 200 }
-        }));
-
-        const variantAns = { code: examCode, nl: [], ds: [], tln: [] };
-
-        // PHẦN I: TRẮC NGHIỆM NHIỀU LỰA CHỌN
-        if (nlPool.length > 0) {
-            docChildren.push(new Paragraph({
-                children: [new TextRun({ text: "PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn.", bold: true, size: 26, font: "Times New Roman" })],
-                spacing: { before: 120, after: 100 }
-            }));
-
-            const shuffledNL = shuffleArray(nlPool);
-            shuffledNL.forEach((q, idx) => {
-                const indexedOpts = (q.options || []).map((text, origIdx) => ({ text, isRight: origIdx === q.correct }));
-                const shuffledOpts = shuffleArray(indexedOpts);
-                const newRightIdx = shuffledOpts.findIndex(o => o.isRight);
-                const newLetter = ["A", "B", "C", "D"][Math.max(0, newRightIdx)];
-                variantAns.nl.push({ num: idx + 1, ans: newLetter });
-
-                docChildren.push(new Paragraph({
-                    children: [
-                        new TextRun({ text: `Câu ${idx + 1}: `, bold: true, size: 26, font: "Times New Roman" }),
-                        new TextRun({ text: q.content, size: 26, font: "Times New Roman" })
-                    ],
-                    spacing: { after: 60 }
-                }));
-
-                const optLine = shuffledOpts.map((o, oi) => `${["A", "B", "C", "D"][oi]}. ${o.text}`).join("      ");
-                docChildren.push(new Paragraph({
-                    children: [new TextRun({ text: optLine, size: 26, font: "Times New Roman" })],
-                    spacing: { after: 100 }
-                }));
-            });
-        }
-
-        // PHẦN II: TRẮC NGHIỆM ĐÚNG SAI
-        if (dsPool.length > 0) {
-            docChildren.push(new Paragraph({
-                children: [new TextRun({ text: "PHẦN II. Câu trắc nghiệm đúng sai.", bold: true, size: 26, font: "Times New Roman" })],
-                spacing: { before: 140, after: 100 }
-            }));
-
-            const shuffledDS = shuffleArray(dsPool);
-            shuffledDS.forEach((q, idx) => {
-                variantAns.ds.push({ num: idx + 1, ans: q.dsAnswer || "Đ-S-Đ-S" });
-                docChildren.push(new Paragraph({
-                    children: [
-                        new TextRun({ text: `Câu ${idx + 1}: `, bold: true, size: 26, font: "Times New Roman" }),
-                        new TextRun({ text: q.content, size: 26, font: "Times New Roman" })
-                    ],
-                    spacing: { after: 60 }
-                }));
-                (q.options || []).forEach((st, si) => {
-                    if (!st) return;
-                    docChildren.push(new Paragraph({
-                        children: [new TextRun({ text: `   ${["a", "b", "c", "d"][si]}) ${st}`, size: 26, font: "Times New Roman" })],
-                        spacing: { after: 40 }
-                    }));
-                });
-            });
-        }
-
-        // PHẦN III: TRẢ LỜI NGẮN
-        if (tlnPool.length > 0) {
-            docChildren.push(new Paragraph({
-                children: [new TextRun({ text: "PHẦN III. Câu trắc nghiệm trả lời ngắn.", bold: true, size: 26, font: "Times New Roman" })],
-                spacing: { before: 140, after: 100 }
-            }));
-
-            const shuffledTLN = shuffleArray(tlnPool);
-            shuffledTLN.forEach((q, idx) => {
-                variantAns.tln.push({ num: idx + 1, ans: q.shortAnswer || "" });
-                docChildren.push(new Paragraph({
-                    children: [
-                        new TextRun({ text: `Câu ${idx + 1}: `, bold: true, size: 26, font: "Times New Roman" }),
-                        new TextRun({ text: q.content, size: 26, font: "Times New Roman" })
-                    ],
-                    spacing: { after: 100 }
-                }));
-            });
-        }
-
-        docChildren.push(new Paragraph({
-            alignment: AlignmentType.CENTER,
-            children: [new TextRun({ text: "--- HẾT ---", bold: true, size: 26, font: "Times New Roman" })],
-            spacing: { before: 160 }
-        }));
-
-        allAnswerSheets.push(variantAns);
-    }
-
-    // TRANG CUỐI: BẢNG ĐÁP ÁN TỔNG HỢP TẤT CẢ MÃ ĐỀ
-    docChildren.push(new Paragraph({ children: [new PageBreak()] }));
-    docChildren.push(new Paragraph({
-        alignment: AlignmentType.CENTER,
-        children: [new TextRun({ text: `BẢNG ĐÁP ÁN TỔNG HỢP – ${examName} (${subject} ${grade})`, bold: true, size: 28, font: "Times New Roman" })],
-        spacing: { after: 200 }
-    }));
-
-    allAnswerSheets.forEach(sheet => {
-        docChildren.push(new Paragraph({
-            children: [new TextRun({ text: `▶ MÃ ĐỀ ${sheet.code}:`, bold: true, size: 26, font: "Times New Roman" })],
-            spacing: { before: 120, after: 60 }
-        }));
-
-        if (sheet.nl.length > 0) {
-            const nlStr = sheet.nl.map(x => `${x.num}.${x.ans}`).join("   ");
-            docChildren.push(new Paragraph({
-                children: [new TextRun({ text: `   - Phần I (Trắc nghiệm): ${nlStr}`, size: 24, font: "Times New Roman" })],
-                spacing: { after: 60 }
-            }));
-        }
-        if (sheet.ds.length > 0) {
-            const dsStr = sheet.ds.map(x => `Câu ${x.num} (${x.ans})`).join("  |  ");
-            docChildren.push(new Paragraph({
-                children: [new TextRun({ text: `   - Phần II (Đúng/Sai): ${dsStr}`, size: 24, font: "Times New Roman" })],
-                spacing: { after: 60 }
-            }));
-        }
-        if (sheet.tln.length > 0) {
-            const tlnStr = sheet.tln.map(x => `Câu ${x.num}: ${x.ans}`).join("  |  ");
-            docChildren.push(new Paragraph({
-                children: [new TextRun({ text: `   - Phần III (Trả lời ngắn): ${tlnStr}`, size: 24, font: "Times New Roman" })],
-                spacing: { after: 80 }
-            }));
-        }
-    });
-
-    const doc = new Document({ sections: [{ children: docChildren }] });
-    const blob = await Packer.toBlob(doc);
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `Bo_${variantCount}_Ma_De_${subject.replace(/\s+/g, "_")}_Khoi_${grade}.docx`;
-    a.click();
 }
 
 // ==================== SOẠN KHBD 5512 ĐA LƯỢT THEO SỐ TIẾT + HÌNH VẼ SGK ====================
