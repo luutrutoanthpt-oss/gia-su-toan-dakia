@@ -2,462 +2,173 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HỖ TRỢ GIÁO VIÊN & HỌC SINH THPT – TRƯỜNG THPT ĐA KIA</title>
-    <!-- Tailwind CSS -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cổng Học Tập & Thi Trực Tuyến - Trường THPT Đa Kia</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- KaTeX hiển thị công thức Toán - Lý - Hóa chuẩn đẹp -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
-    <!-- CSS tùy chỉnh -->
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <style>
+        .katex { font-size: 1.05em; }
+        .chat-scroll::-webkit-scrollbar { width: 6px; }
+        .chat-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+    </style>
 </head>
-<body class="min-h-screen flex flex-col bg-slate-100">
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col">
 
-    <!-- HEADER & LOGO -->
-    <header class="bg-blue-700 text-white shadow-md sticky top-0 z-40">
-        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-            <div class="flex items-center space-x-2.5 cursor-pointer" onclick="switchTab('home')">
-                <div class="bg-white text-blue-700 font-extrabold rounded-lg w-10 h-10 flex items-center justify-center text-xl shadow">
-                    $\sum$
-                </div>
+    <!-- THANH HEADER CHUNG -->
+    <header class="bg-gradient-to-r from-blue-900 via-blue-800 to-indigo-900 text-white px-4 sm:px-6 py-3.5 shadow-md sticky top-0 z-30">
+        <div class="max-w-6xl mx-auto flex flex-wrap justify-between items-center gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-400 text-blue-950 font-extrabold flex items-center justify-center text-lg shadow">ĐK</div>
                 <div>
-                    <h1 class="font-bold text-sm sm:text-lg leading-tight tracking-wide">HỖ TRỢ GIÁO VIÊN & HỌC SINH THPT – THPT ĐA KIA</h1>
-                    <p class="text-xs text-blue-200 hidden sm:block">Học từng bước – Hiểu bản chất – Tự tin tiến bộ (GDPT 2018)</p>
+                    <h1 class="font-bold text-base sm:text-lg leading-tight">Trường THPT Đa Kia</h1>
+                    <p class="text-[11px] text-blue-200">Cổng Tự Học Thông Minh & Thi Trực Tuyến Chuẩn 2018</p>
                 </div>
             </div>
-
-            <div class="flex items-center space-x-2">
-                <div id="studentBadge" onclick="openLoginModal()" class="cursor-pointer bg-blue-800 hover:bg-blue-900 border border-blue-500 px-3 py-1.5 rounded-full text-xs sm:text-sm flex items-center space-x-1.5 transition">
-                    <span>👤</span>
-                    <span id="studentDisplayName">Đăng nhập Mã HS</span>
-                </div>
-                <a href="admin.html" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-semibold px-2.5 py-1.5 rounded-lg text-xs transition" title="Khu vực Giáo viên & Soạn giảng">
-                    Giáo viên
-                </a>
+            <div class="flex items-center gap-2.5">
+                <span id="studentHeaderBadge" class="hidden text-xs bg-white/15 px-3 py-1.5 rounded-full font-semibold"></span>
+                <button id="btnStudentLogout" onclick="logoutStudent()" class="hidden text-xs bg-red-500/90 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg font-semibold">Thoát</button>
+                <a href="admin.html" class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg font-medium text-blue-100">Cổng Giáo Viên</a>
             </div>
         </div>
-
-        <!-- THANH ĐIỀU HƯỚNG NHANH -->
-        <nav class="bg-blue-800/90 text-blue-100 text-xs sm:text-sm border-t border-blue-600/50">
-            <div class="max-w-6xl mx-auto px-2 flex overflow-x-auto no-scrollbar">
-                <button onclick="switchTab('home')" id="nav-home" class="nav-btn px-3.5 py-2.5 font-semibold border-b-2 border-white text-white whitespace-nowrap">🏠 Trang chủ</button>
-                <button onclick="switchTab('tutor')" id="nav-tutor" class="nav-btn px-3.5 py-2.5 font-medium border-b-2 border-transparent hover:text-white whitespace-nowrap">🤖 Gia sư AI Đa môn</button>
-                <button onclick="switchTab('topics')" id="nav-topics" class="nav-btn px-3.5 py-2.5 font-medium border-b-2 border-transparent hover:text-white whitespace-nowrap">📚 Chủ đề Toán</button>
-                <button onclick="switchTab('practice')" id="nav-practice" class="nav-btn px-3.5 py-2.5 font-medium border-b-2 border-transparent hover:text-white whitespace-nowrap">✍️ Luyện tập & Đề thi</button>
-                <button onclick="switchTab('progress')" id="nav-progress" class="nav-btn px-3.5 py-2.5 font-medium border-b-2 border-transparent hover:text-white whitespace-nowrap">📊 Tiến độ của em</button>
-                <button onclick="switchTab('copyright')" id="nav-copyright" class="nav-btn px-3.5 py-2.5 font-medium border-b-2 border-transparent hover:text-white whitespace-nowrap">©️ Bản quyền & Tác giả</button>
-            </div>
-        </nav>
     </header>
 
-    <!-- NỘI DUNG CHÍNH -->
-    <main class="flex-1 max-w-6xl w-full mx-auto px-4 py-5">
-
-        <!-- ==================== TAB 1: TRANG CHỦ ==================== -->
-        <section id="tab-home" class="tab-content active space-y-6">
-            <div class="bg-gradient-to-r from-blue-700 to-teal-700 text-white rounded-2xl p-6 sm:p-8 shadow-lg">
-                <div class="max-w-3xl space-y-3">
-                    <span class="inline-block bg-white/20 text-xs font-semibold px-3 py-1 rounded-full">Chương trình GDPT 2018 • Khối 10, 11, 12 • Đa môn học</span>
-                    <h2 class="text-2xl sm:text-3xl font-bold leading-snug" id="welcomeGreeting">
-                        Chào mừng các em học sinh Trường THPT Đa Kia!
-                    </h2>
-                    <p class="text-blue-100 text-sm sm:text-base">
-                        Hệ thống hỗ trợ tự học thông minh dành cho học sinh và giáo viên Trường THPT Đa Kia. Gia sư AI đồng hành gợi mở từng bước nhỏ giúp em hiểu sâu bản chất và tự tin giải quyết mọi bài tập.
-                    </p>
-                    <div class="pt-2 flex flex-wrap gap-3">
-                        <button onclick="switchTab('tutor')" class="bg-amber-400 hover:bg-amber-300 text-slate-900 font-bold px-6 py-3 rounded-xl shadow-md transition transform active:scale-95 text-sm sm:text-base">
-                            🚀 BẮT ĐẦU HỌC VỚI GIA SƯ AI
-                        </button>
-                        <button onclick="openLoginModal()" class="bg-white/15 hover:bg-white/25 border border-white/40 text-white font-semibold px-5 py-3 rounded-xl text-sm sm:text-base transition">
-                            🪪 Nhập Mã Học Sinh
-                        </button>
-                    </div>
-                </div>
+    <!-- MÀN HÌNH ĐĂNG NHẬP HỌC SINH -->
+    <div id="studentLoginSection" class="flex-1 flex items-center justify-center p-4">
+        <div class="bg-white max-w-md w-full rounded-2xl shadow-lg border border-slate-200 p-7 space-y-5">
+            <div class="text-center">
+                <span class="inline-block bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full mb-2">Dành cho Học sinh THPT Đa Kia</span>
+                <h2 class="text-xl font-bold text-slate-900">Đăng Nhập Học Tập & Làm Bài Thi</h2>
+                <p id="directExamNotice" class="hidden mt-2 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl p-2.5">
+                    🎯 Em đang mở trực tiếp một phòng thi trực tuyến! Nhập Mã học sinh (hoặc Họ tên & Lớp) để bắt đầu làm bài ngay.
+                </p>
             </div>
 
-            <!-- Lưới chức năng nhanh -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div onclick="switchTab('tutor')" class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-400 cursor-pointer transition">
-                    <div class="w-11 h-11 bg-blue-100 text-blue-700 rounded-xl flex items-center justify-center text-2xl mb-3">🤖</div>
-                    <h3 class="font-bold text-slate-800 text-base">Hỏi Gia Sư AI Đa Môn</h3>
-                    <p class="text-xs text-slate-500 mt-1">Hỗ trợ Toán, Lí, Hóa, Sinh, Tin, Văn, Anh, Sử, Địa, GDKTPL. Gõ hoặc chụp ảnh đề bài.</p>
-                </div>
-
-                <div onclick="switchTab('topics')" class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-teal-400 cursor-pointer transition">
-                    <div class="w-11 h-11 bg-teal-100 text-teal-700 rounded-xl flex items-center justify-center text-2xl mb-3">📚</div>
-                    <h3 class="font-bold text-slate-800 text-base">Học Theo Chủ Đề</h3>
-                    <p class="text-xs text-slate-500 mt-1">Tóm tắt lý thuyết, công thức trọng tâm và ví dụ minh họa Toán 10, 11, 12.</p>
-                </div>
-
-                <div onclick="switchTab('practice')" class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-amber-400 cursor-pointer transition">
-                    <div class="w-11 h-11 bg-amber-100 text-amber-700 rounded-xl flex items-center justify-center text-2xl mb-3">✍️</div>
-                    <h3 class="font-bold text-slate-800 text-base">Luyện Tập & Đề Thi QR</h3>
-                    <p class="text-xs text-slate-500 mt-1">Làm bài luyện tập hoặc quét mã QR đề thi do Thầy/Cô Trường THPT Đa Kia giao.</p>
-                </div>
-
-                <div onclick="switchTab('progress')" class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-purple-400 cursor-pointer transition">
-                    <div class="w-11 h-11 bg-purple-100 text-purple-700 rounded-xl flex items-center justify-center text-2xl mb-3">📈</div>
-                    <h3 class="font-bold text-slate-800 text-base">Theo Dõi Tiến Độ</h3>
-                    <p class="text-xs text-slate-500 mt-1">Xem số bài đã hoàn thành, điểm số và nhận diện kiến thức cần củng cố.</p>
-                </div>
-            </div>
-
-            <!-- Hướng dẫn sử dụng -->
-            <div class="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 shadow-sm">
-                <h3 class="font-bold text-lg text-slate-800 mb-3 flex items-center gap-2">
-                    <span>💡</span> Hướng dẫn sử dụng hiệu quả cho học sinh
-                </h3>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-slate-600">
-                    <div class="bg-slate-50 p-3.5 rounded-lg border border-slate-100">
-                        <span class="font-bold text-blue-700 block mb-1">Bước 1: Đăng nhập Mã HS</span>
-                        Nhập mã do Thầy/Cô giáo cung cấp (ví dụ: <code class="bg-slate-200 px-1 rounded">10A801</code>) để lưu lại quá trình tự học. Không cần email hay số điện thoại.
-                    </div>
-                    <div class="bg-slate-50 p-3.5 rounded-lg border border-slate-100">
-                        <span class="font-bold text-teal-700 block mb-1">Bước 2: Chọn môn & Bật chế độ hỗ trợ</span>
-                        Chọn đúng môn học và khối lớp. Nếu em thấy mất gốc, hãy bật <strong>Chế độ HS yếu</strong> để AI chia nhỏ từng bước và cho ví dụ dễ trước.
-                    </div>
-                    <div class="bg-slate-50 p-3.5 rounded-lg border border-slate-100">
-                        <span class="font-bold text-amber-700 block mb-1">Bước 3: Tương tác từng bước</span>
-                        AI sẽ không đưa ngay đáp số mà hỏi gợi mở. Hãy trả lời từng bước tính của em để AI kiểm tra và sửa lỗi ngay lập tức.
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- ==================== TAB 2: GIA SƯ AI ĐA MÔN ==================== -->
-        <section id="tab-tutor" class="tab-content space-y-4">
-            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                <!-- Thanh công cụ phía trên khung chat -->
-                <div class="bg-slate-50 border-b border-slate-200 px-4 py-3 flex flex-wrap items-center justify-between gap-2">
-                    <div class="flex items-center gap-2">
-                        <span class="text-xl">🤖</span>
-                        <div>
-                            <h2 class="font-bold text-slate-800 text-sm sm:text-base">Gia Sư AI Đa Môn – Hướng Dẫn Từng Bước</h2>
-                            <p class="text-xs text-slate-500">Gợi mở tư duy • Vẽ hình trực quan • Không chép bài hộ</p>
-                        </div>
-                    </div>
-
-                    <div class="flex flex-wrap items-center gap-2 sm:gap-3">
-                        <!-- Chọn môn học -->
-                        <select id="tutorSubjectSelect" onchange="onSubjectChange()" class="text-xs sm:text-sm border border-blue-300 rounded-lg px-2.5 py-1.5 bg-blue-50 text-blue-900 font-bold">
-                            <option value="toan" selected>📐 Toán học</option>
-                            <option value="vatli">⚡ Vật lí</option>
-                            <option value="hoahoc">🧪 Hóa học</option>
-                            <option value="sinhhoc">🧬 Sinh học</option>
-                            <option value="tinhoc">💻 Tin học</option>
-                            <option value="nguvan">📖 Ngữ văn</option>
-                            <option value="tienganh">🌐 Tiếng Anh</option>
-                            <option value="lichsu">🏛️ Lịch sử</option>
-                            <option value="diali">🌍 Địa lí</option>
-                            <option value="gdktpl">⚖️ GDKT & Pháp luật</option>
-                        </select>
-
-                        <!-- Chọn khối lớp -->
-                        <select id="tutorGradeSelect" class="text-xs sm:text-sm border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white font-medium">
-                            <option value="10" selected>Lớp 10</option>
-                            <option value="11">Lớp 11</option>
-                            <option value="12">Lớp 12</option>
-                        </select>
-
-                        <!-- Công tắc Chế độ học sinh yếu -->
-                        <label class="flex items-center cursor-pointer bg-amber-50 border border-amber-300 px-2.5 py-1.5 rounded-lg">
-                            <input type="checkbox" id="weakModeToggle" class="sr-only peer" onchange="toggleWeakMode()">
-                            <div class="w-8 h-4 bg-slate-300 rounded-full peer peer-checked:bg-amber-500 relative transition after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:w-3 after:h-3 after:rounded-full after:transition-all peer-checked:after:translate-x-4"></div>
-                            <span class="ml-2 text-xs font-semibold text-amber-900">Chế độ HS yếu</span>
-                        </label>
-
-                        <button onclick="resetChat()" class="text-xs text-slate-500 hover:text-red-600 underline">Bài mới</button>
-                    </div>
-                </div>
-
-                <!-- Khung hiển thị hội thoại -->
-                <div id="chatMessages" class="chat-container p-4 space-y-4 bg-slate-50/50">
-                    <div class="msg-ai max-w-2xl text-sm sm:text-base space-y-2">
-                        <p class="font-semibold text-blue-800">Xin chào em! Thầy là Gia sư AI của Trường THPT Đa Kia.</p>
-                        <p>Em hãy chọn môn học phía trên, nhập đề bài hoặc bấm nút <strong>📷 Chụp/Tải ảnh bài tập</strong> (hoặc dán ảnh trực tiếp bằng <kbd class="bg-slate-200 px-1 rounded text-xs">Ctrl+V</kbd>). Thầy sẽ hướng dẫn em giải từng bước một nhé!</p>
-                    </div>
-                </div>
-
-                <!-- Các nút trợ giúp nhanh -->
-                <div class="px-4 py-2 bg-slate-100 border-t border-slate-200 flex gap-2 overflow-x-auto text-xs">
-                    <button onclick="sendQuickPrompt('Em chưa hiểu bước này, thầy giải thích bằng cách đơn giản hơn giúp em nhé!')" class="bg-white hover:bg-blue-50 border border-slate-300 px-3 py-1.5 rounded-full whitespace-nowrap text-slate-700 font-medium">
-                        🤔 Giải thích đơn giản hơn
-                    </button>
-                    <button onclick="sendQuickPrompt('Thầy cho em xem 1 ví dụ tương tự thật dễ trước được không ạ?')" class="bg-white hover:bg-blue-50 border border-slate-300 px-3 py-1.5 rounded-full whitespace-nowrap text-slate-700 font-medium">
-                        📝 Cho ví dụ tương tự
-                    </button>
-                    <button onclick="sendQuickPrompt('Thầy gợi ý giúp em công thức hoặc kiến thức cần dùng ở bước tiếp theo với ạ!')" class="bg-white hover:bg-blue-50 border border-slate-300 px-3 py-1.5 rounded-full whitespace-nowrap text-slate-700 font-medium">
-                        💡 Gợi ý bước tiếp theo
-                    </button>
-                </div>
-
-                <!-- Khu vực xem trước ảnh chụp đề bài -->
-                <div id="imagePreviewContainer" class="hidden px-4 py-2 bg-blue-50 border-t border-blue-200 flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <img id="imagePreview" src="" alt="Ảnh đề bài" class="h-14 w-14 object-cover rounded-lg border border-blue-300">
-                        <span class="text-xs text-blue-800 font-medium">Đã đính kèm ảnh bài tập</span>
-                    </div>
-                    <button onclick="clearSelectedImage()" class="text-xs text-red-600 font-semibold hover:underline">Xóa ảnh</button>
-                </div>
-
-                <!-- Bảng công thức & ký hiệu đa ngăn -->
-                <div class="px-3 pt-2 pb-1.5 bg-slate-50 border-t border-slate-200 space-y-1.5" id="math-toolbar">
-                    <div class="flex flex-wrap items-center gap-1 text-[11px] font-semibold">
-                        <span class="text-slate-500 mr-1">Công thức:</span>
-                        <button type="button" onclick="switchMathGroup('daiso')" id="mgrp-daiso" class="math-grp-btn px-2 py-0.5 rounded bg-blue-700 text-white">Đại số & Căn</button>
-                        <button type="button" onclick="switchMathGroup('taphop')" id="mgrp-taphop" class="math-grp-btn px-2 py-0.5 rounded bg-slate-200 text-slate-700 hover:bg-slate-300">Tập hợp & Logic</button>
-                        <button type="button" onclick="switchMathGroup('vecto')" id="mgrp-vecto" class="math-grp-btn px-2 py-0.5 rounded bg-slate-200 text-slate-700 hover:bg-slate-300">Vectơ & Tọa độ</button>
-                        <button type="button" onclick="switchMathGroup('hinhhoc')" id="mgrp-hinhhoc" class="math-grp-btn px-2 py-0.5 rounded bg-slate-200 text-slate-700 hover:bg-slate-300">Lượng giác & Hình</button>
-                        <button type="button" onclick="switchMathGroup('thongke')" id="mgrp-thongke" class="math-grp-btn px-2 py-0.5 rounded bg-slate-200 text-slate-700 hover:bg-slate-300">Thống kê</button>
-                    </div>
-
-                    <div id="mpanel-daiso" class="math-panel flex flex-wrap gap-1.5">
-                        <button type="button" onclick="insertMathSymbol('x^2')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">x²</button>
-                        <button type="button" onclick="insertMathSymbol('^{}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">xⁿ</button>
-                        <button type="button" onclick="insertMathSymbol('\\sqrt{}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">√□</button>
-                        <button type="button" onclick="insertMathSymbol('\\frac{a}{b}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">a/b</button>
-                        <button type="button" onclick="insertMathSymbol('|x|')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">|x|</button>
-                        <button type="button" onclick="insertMathSymbol('\\Delta')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">Δ</button>
-                        <button type="button" onclick="insertMathSymbol('\\le')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">≤</button>
-                        <button type="button" onclick="insertMathSymbol('\\ge')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">≥</button>
-                        <button type="button" onclick="insertMathSymbol('\\neq')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">≠</button>
-                        <button type="button" onclick="insertMathSymbol('\\pm')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">±</button>
-                        <button type="button" onclick="insertMathSymbol('\\begin{cases} x + y = 1 \\\\ x - y = 0 \\end{cases}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">{ Hệ PT</button>
-                        <button type="button" onclick="insertMathSymbol('\\Leftrightarrow')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">⇔</button>
-                        <button type="button" onclick="insertMathSymbol('\\Rightarrow')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">⇒</button>
-                    </div>
-
-                    <div id="mpanel-taphop" class="math-panel hidden flex-wrap gap-1.5">
-                        <button type="button" onclick="insertMathSymbol('\\in')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">∈</button>
-                        <button type="button" onclick="insertMathSymbol('\\notin')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">∉</button>
-                        <button type="button" onclick="insertMathSymbol('\\subset')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">⊂</button>
-                        <button type="button" onclick="insertMathSymbol('\\cup')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">∪ (Hợp)</button>
-                        <button type="button" onclick="insertMathSymbol('\\cap')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">∩ (Giao)</button>
-                        <button type="button" onclick="insertMathSymbol('\\setminus')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">\ (Hiệu)</button>
-                        <button type="button" onclick="insertMathSymbol('\\emptyset')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">∅</button>
-                        <button type="button" onclick="insertMathSymbol('\\mathbb{R}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">ℝ</button>
-                        <button type="button" onclick="insertMathSymbol('\\mathbb{N}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">ℕ</button>
-                        <button type="button" onclick="insertMathSymbol('\\mathbb{Z}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">ℤ</button>
-                        <button type="button" onclick="insertMathSymbol('\\forall')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">∀</button>
-                        <button type="button" onclick="insertMathSymbol('\\exists')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">∃</button>
-                        <button type="button" onclick="insertMathSymbol('(-\\infty; +\\infty)')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">(-∞;+∞)</button>
-                    </div>
-
-                    <div id="mpanel-vecto" class="math-panel hidden flex-wrap gap-1.5">
-                        <button type="button" onclick="insertMathSymbol('\\vec{u}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">u⃗</button>
-                        <button type="button" onclick="insertMathSymbol('\\vec{v}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">v⃗</button>
-                        <button type="button" onclick="insertMathSymbol('\\overrightarrow{AB}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">AB⃗</button>
-                        <button type="button" onclick="insertMathSymbol('\\vec{0}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">0⃗</button>
-                        <button type="button" onclick="insertMathSymbol('|\\vec{u}|')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">|u⃗|</button>
-                        <button type="button" onclick="insertMathSymbol('\\vec{u} \\cdot \\vec{v}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">u⃗·v⃗</button>
-                        <button type="button" onclick="insertMathSymbol('(\\vec{u}, \\vec{v})')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">(u⃗,v⃗)</button>
-                        <button type="button" onclick="insertMathSymbol('\\vec{i}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">i⃗</button>
-                        <button type="button" onclick="insertMathSymbol('\\vec{j}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">j⃗</button>
-                        <button type="button" onclick="insertMathSymbol('A(x_A; y_A)')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">A(x;y)</button>
-                    </div>
-
-                    <div id="mpanel-hinhhoc" class="math-panel hidden flex-wrap gap-1.5">
-                        <button type="button" onclick="insertMathSymbol('\\sin')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">sin</button>
-                        <button type="button" onclick="insertMathSymbol('\\cos')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">cos</button>
-                        <button type="button" onclick="insertMathSymbol('\\tan')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">tan</button>
-                        <button type="button" onclick="insertMathSymbol('\\cot')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">cot</button>
-                        <button type="button" onclick="insertMathSymbol('^\\circ')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">° (Độ)</button>
-                        <button type="button" onclick="insertMathSymbol('\\alpha')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">α</button>
-                        <button type="button" onclick="insertMathSymbol('\\beta')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">β</button>
-                        <button type="button" onclick="insertMathSymbol('\\pi')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">π</button>
-                        <button type="button" onclick="insertMathSymbol('\\widehat{ABC}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">∠ABC</button>
-                        <button type="button" onclick="insertMathSymbol('\\triangle ABC')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">△ABC</button>
-                        <button type="button" onclick="insertMathSymbol('\\perp')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">⊥</button>
-                        <button type="button" onclick="insertMathSymbol('\\parallel')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">∥</button>
-                    </div>
-
-                    <div id="mpanel-thongke" class="math-panel hidden flex-wrap gap-1.5">
-                        <button type="button" onclick="insertMathSymbol('\\overline{x}')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">x̄ (TB)</button>
-                        <button type="button" onclick="insertMathSymbol('M_e')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">Mₑ</button>
-                        <button type="button" onclick="insertMathSymbol('M_o')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">Mₒ</button>
-                        <button type="button" onclick="insertMathSymbol('Q_1')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">Q₁</button>
-                        <button type="button" onclick="insertMathSymbol('Q_2')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">Q₂</button>
-                        <button type="button" onclick="insertMathSymbol('Q_3')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">Q₃</button>
-                        <button type="button" onclick="insertMathSymbol('\\Delta_Q')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">Δ_Q</button>
-                        <button type="button" onclick="insertMathSymbol('s^2')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">s²</button>
-                        <button type="button" onclick="insertMathSymbol('\\approx')" class="px-2 py-1 text-xs font-bold bg-white hover:bg-blue-100 text-blue-700 border border-slate-300 rounded">≈</button>
-                    </div>
-                </div>
-
-                <!-- Khu vực nhập đề bài & tải ảnh -->
-                <div class="p-3 bg-white border-t border-slate-200 flex items-end gap-2">
-                    <label class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-700 p-2.5 rounded-xl border border-slate-300 flex items-center justify-center transition" title="Chụp ảnh hoặc tải ảnh bài tập">
-                        <span class="text-xl">📷</span>
-                        <input type="file" id="imageInput" accept="image/*" capture="environment" class="hidden" onchange="handleImageUpload(event)">
-                    </label>
-                    <textarea id="chatInput" rows="1" placeholder="Nhập đề bài hoặc câu trả lời của em (có thể dán ảnh Ctrl+V)..." class="flex-1 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-blue-600 resize-none" onkeydown="handleChatKeydown(event)"></textarea>
-                    <button onclick="sendTutorMessage()" id="sendBtn" class="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition flex items-center gap-1">
-                        <span>Gửi</span>
-                    </button>
-                </div>
-            </div>
-        </section>
-
-        <!-- ==================== TAB 3: HỌC TOÁN THEO CHỦ ĐỀ ==================== -->
-        <section id="tab-topics" class="tab-content space-y-4">
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-3">
+            <div class="space-y-3">
                 <div>
-                    <h2 class="font-bold text-lg text-slate-800">Danh Mục Chủ Đề Toán THPT (GDPT 2018)</h2>
-                    <p class="text-xs text-slate-500">Bộ sách Kết nối tri thức với cuộc sống</p>
-                </div>
-                <div class="flex gap-2">
-                    <button onclick="renderTopics('10')" id="gradeBtn-10" class="grade-filter-btn bg-blue-700 text-white px-4 py-1.5 rounded-lg text-sm font-semibold">Lớp 10</button>
-                    <button onclick="renderTopics('11')" id="gradeBtn-11" class="grade-filter-btn bg-slate-100 text-slate-700 px-4 py-1.5 rounded-lg text-sm font-semibold">Lớp 11</button>
-                    <button onclick="renderTopics('12')" id="gradeBtn-12" class="grade-filter-btn bg-slate-100 text-slate-700 px-4 py-1.5 rounded-lg text-sm font-semibold">Lớp 12</button>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <div id="topicList" class="space-y-2.5"></div>
-                <div id="topicDetail" class="lg:col-span-2 bg-white p-5 sm:p-6 rounded-xl border border-slate-200 shadow-sm space-y-5">
-                    <p class="text-slate-500 text-sm">Chọn một chủ đề bên trái để xem tóm tắt lý thuyết, công thức cần nhớ và ví dụ minh họa.</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- ==================== TAB 4: LUYỆN TẬP & ĐỀ THI TỪ GIÁO VIÊN ==================== -->
-        <section id="tab-practice" class="tab-content space-y-4">
-            <!-- Kho đề thi do Giáo viên tải lên -->
-            <div id="teacherExamsBanner" class="hidden bg-emerald-50 border border-emerald-300 rounded-xl p-4 space-y-3">
-                <div class="flex flex-wrap items-center justify-between gap-2">
-                    <h3 class="font-bold text-sm sm:text-base text-emerald-950">📋 Đề Thi & Phiếu Bài Tập Giáo Viên Đã Giao</h3>
-                    <span class="text-xs text-emerald-700">Chọn đề bên dưới để làm bài trực tuyến</span>
-                </div>
-                <div id="studentTeacherExamsList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5"></div>
-            </div>
-
-            <!-- Bộ lọc bài luyện tập tự do -->
-            <div class="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
-                <h2 class="font-bold text-lg text-slate-800">Luyện Tập & Kiểm Tra Đánh Giá Năng Lực</h2>
-                <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                    <select id="pracGrade" class="border border-slate-300 rounded-lg px-3 py-2 text-sm">
-                        <option value="10">Khối 10</option>
-                        <option value="11">Khối 11</option>
-                        <option value="12">Khối 12</option>
-                    </select>
-                    <select id="pracLevel" class="border border-slate-300 rounded-lg px-3 py-2 text-sm">
-                        <option value="all">Tất cả mức độ</option>
-                        <option value="nhan_biet">Mức độ: Nhận biết</option>
-                        <option value="thong_hieu">Mức độ: Thông hiểu</option>
-                        <option value="van_dung">Mức độ: Vận dụng</option>
-                    </select>
-                    <select id="pracType" class="border border-slate-300 rounded-lg px-3 py-2 text-sm">
-                        <option value="all">Tất cả dạng câu hỏi</option>
-                        <option value="trac_nghiem">Trắc nghiệm 4 phương án</option>
-                        <option value="dung_sai">Trắc nghiệm Đúng / Sai</option>
-                        <option value="tra_loi_ngan">Câu trả lời ngắn</option>
-                        <option value="tu_luan">Tự luận từng bước</option>
-                    </select>
-                    <button onclick="startPracticeQuiz()" class="bg-blue-700 hover:bg-blue-800 text-white font-semibold rounded-lg px-4 py-2 text-sm transition">
-                        Bắt đầu làm bài
-                    </button>
-                </div>
-            </div>
-
-            <div id="quizContainer" class="space-y-4"></div>
-            <div id="quizAnalysisResult" class="hidden bg-white p-5 sm:p-6 rounded-xl border-2 border-blue-600 shadow-md space-y-4"></div>
-        </section>
-
-        <!-- ==================== TAB 5: THEO DÕI TIẾN ĐỘ ==================== -->
-        <section id="tab-progress" class="tab-content space-y-4">
-            <div class="bg-white p-5 sm:p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
-                <div class="flex items-center justify-between">
-                    <h2 class="font-bold text-lg text-slate-800">Hồ Sơ Tiến Độ Học Tập</h2>
-                    <button onclick="openLoginModal()" class="text-xs bg-blue-100 text-blue-700 font-semibold px-3 py-1.5 rounded-lg">Đổi Mã HS</button>
+                    <label class="text-xs font-semibold text-slate-600">Mã học sinh (theo danh sách lớp)</label>
+                    <input type="text" id="stuCodeInput" placeholder="VD: 10A801" onkeydown="if(event.key==='Enter') loginStudent()" class="w-full mt-1 border border-slate-300 rounded-xl px-4 py-2.5 text-sm uppercase font-semibold outline-none focus:border-blue-600">
                 </div>
 
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                    <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">
-                        <span class="text-xs text-slate-500 block">Họ tên & Lớp</span>
-                        <strong id="progName" class="text-sm sm:text-base text-blue-900 mt-1 block">Khách tự do</strong>
-                    </div>
-                    <div class="bg-teal-50 p-4 rounded-xl border border-teal-100">
-                        <span class="text-xs text-slate-500 block">Số bài đã hoàn thành</span>
-                        <strong id="progSolved" class="text-xl text-teal-800 mt-1 block">0</strong>
-                    </div>
-                    <div class="bg-amber-50 p-4 rounded-xl border border-amber-100">
-                        <span class="text-xs text-slate-500 block">Điểm trung bình</span>
-                        <strong id="progAvgScore" class="text-xl text-amber-800 mt-1 block">--</strong>
-                    </div>
-                    <div class="bg-purple-50 p-4 rounded-xl border border-purple-100">
-                        <span class="text-xs text-slate-500 block">Chế độ học tập</span>
-                        <strong id="progMode" class="text-sm text-purple-800 mt-1 block">Tiêu chuẩn</strong>
+                <div class="border-t pt-3">
+                    <p class="text-[11px] text-slate-400 mb-2">Hoặc nhập nhanh nếu chưa có mã học sinh trên hệ thống:</p>
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="text" id="stuGuestName" placeholder="Họ và tên em..." class="col-span-2 border border-slate-300 rounded-xl px-3 py-2 text-xs outline-none focus:border-blue-600">
+                        <input type="text" id="stuGuestClass" placeholder="Lớp (10A8)" class="border border-slate-300 rounded-xl px-3 py-2 text-xs uppercase outline-none focus:border-blue-600">
                     </div>
                 </div>
 
-                <div>
-                    <h3 class="font-bold text-sm text-slate-700 mb-2">Lịch sử luyện tập & Kiến thức cần củng cố:</h3>
-                    <div id="learningHistoryList" class="space-y-2 text-sm text-slate-600">
-                        <p class="italic text-slate-400">Chưa có dữ liệu luyện tập. Em hãy hoàn thành một bài kiểm tra hoặc hỏi Gia sư AI nhé!</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- ==================== TAB 6: BẢN QUYỀN & TÁC GIẢ ==================== -->
-        <section id="tab-copyright" class="tab-content space-y-4">
-            <div class="bg-white rounded-2xl border-2 border-blue-700 p-6 sm:p-8 shadow-md space-y-5">
-                <div class="flex flex-wrap items-center gap-4 border-b border-slate-200 pb-4">
-                    <div class="w-14 h-14 bg-blue-700 text-white rounded-2xl flex items-center justify-center text-2xl font-extrabold shadow">VVB</div>
-                    <div>
-                        <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-0.5 rounded-full uppercase">Thông tin Bản quyền & Sở hữu trí tuệ</span>
-                        <h2 class="text-xl sm:text-2xl font-bold text-slate-900 mt-1">HỆ THỐNG HỖ TRỢ GIÁO VIÊN & HỌC SINH THPT</h2>
-                        <p class="text-xs sm:text-sm text-slate-600">Đơn vị ứng dụng: <strong>Trường THPT Đa Kia</strong> (xã Đa Kia, TP Đồng Nai)</p>
-                    </div>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
-                        <h3 class="font-bold text-blue-900">1. Tác giả & Chủ sở hữu</h3>
-                        <p><strong>Tác giả:</strong> Võ Văn Bình</p>
-                        <p>Giáo viên Toán – Tổ trưởng Tổ Toán – Tin, Trường THPT Đa Kia.</p>
-                    </div>
-                    <div class="bg-amber-50/70 p-4 rounded-xl border border-amber-200 space-y-1.5">
-                        <h3 class="font-bold text-amber-900">2. Quy định sử dụng & Phân quyền nội bộ</h3>
-                        <p>• Hệ thống cung cấp <strong>hoàn toàn miễn phí</strong> phục vụ dạy và học của giáo viên, học sinh Trường THPT Đa Kia.</p>
-                        <p>• Giáo viên các tổ chuyên môn được cấp tài khoản phân quyền riêng để quản lý lớp, tải đề thi và sử dụng bộ công cụ soạn giảng 5512.</p>
-                        <p>• Nghiêm cấm hành vi sao chép mã nguồn, xóa thông tin tác giả hoặc sử dụng vào mục đích thương mại khi chưa có sự đồng ý bằng văn bản của tác giả.</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <!-- MODAL ĐĂNG NHẬP BẰNG MÃ HỌC SINH -->
-    <div id="loginModal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
-            <div class="flex justify-between items-center">
-                <h3 class="font-bold text-lg text-slate-800">Đăng Nhập Học Sinh THPT Đa Kia</h3>
-                <button onclick="closeLoginModal()" class="text-slate-400 hover:text-slate-700 text-xl">&times;</button>
-            </div>
-            <p class="text-xs text-slate-500">Nhập Mã học sinh do Giáo viên cung cấp (không cần mật khẩu hay thông tin cá nhân).</p>
-            <div>
-                <label class="block text-xs font-semibold text-slate-700 mb-1">Mã học sinh (Ví dụ: 10A801)</label>
-                <input type="text" id="studentCodeInput" placeholder="Nhập mã học sinh..." class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm uppercase focus:outline-none focus:border-blue-600" onkeydown="if(event.key==='Enter') loginWithStudentCode()">
-            </div>
-            <p id="loginErrorMsg" class="text-xs text-red-600 hidden"></p>
-            <div class="flex justify-end gap-2 pt-2">
-                <button onclick="closeLoginModal()" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Đóng</button>
-                <button onclick="loginWithStudentCode()" class="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-5 py-2 rounded-lg text-sm">Xác nhận</button>
+                <button onclick="loginStudent()" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-2.5 rounded-xl text-sm shadow transition">Vào Học & Thi Trực Tuyến ➔</button>
+                <p id="stuLoginErr" class="text-xs text-red-600 hidden text-center font-medium"></p>
             </div>
         </div>
     </div>
 
-    <!-- FOOTER -->
-    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500 mt-8">
-        <p class="font-semibold text-slate-700">HỖ TRỢ GIÁO VIÊN & HỌC SINH THPT – TRƯỜNG THPT ĐA KIA</p>
-        <p class="mt-0.5">© Bản quyền thuộc về Thầy <strong>Võ Văn Bình</strong> – Tổ trưởng chuyên môn Tổ Toán – Tin, Trường THPT Đa Kia</p>
-    </footer>
+    <!-- KHU VỰC LÀM VIỆC CHÍNH CỦA HỌC SINH -->
+    <div id="studentWorkspace" class="hidden flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 space-y-5">
 
-    <!-- SCRIPTS -->
-    <script src="js/config.js"></script>
-    <script src="js/curriculum-data.js"></script>
-    <script src="js/student-app.js"></script>
+        <!-- THANH CHỌN CHẾ ĐỘ: GIA SƯ AI vs PHÒNG THI TRỰC TUYẾN -->
+        <div class="bg-white rounded-2xl p-2 shadow-sm border border-slate-200 flex gap-2">
+            <button id="stab-tutor" onclick="switchStudentTab('tutor')" class="flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold bg-blue-700 text-white transition">🤖 1. Gia Sư AI Tự Học (Kết Nối Tri Thức)</button>
+            <button id="stab-exam" onclick="switchStudentTab('exam')" class="flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold text-slate-600 hover:bg-slate-100 transition">📝 2. Phòng Thi Trực Tuyến & Luyện Đề</button>
+        </div>
+
+        <!-- TAB 1: GIA SƯ AI TỰ HỌC -->
+        <section id="ssec-tutor" class="space-y-4">
+            <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex flex-wrap items-center gap-2">
+                    <select id="tutorSubjectSelect" class="border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold bg-slate-50">
+                        <option value="Toán học">Môn Toán học</option>
+                        <option value="Vật lí">Môn Vật lí</option>
+                        <option value="Hóa học">Môn Hóa học</option>
+                        <option value="Sinh học">Môn Sinh học</option>
+                        <option value="Tin học">Môn Tin học</option>
+                        <option value="Ngữ văn">Môn Ngữ văn</option>
+                        <option value="Tiếng Anh">Môn Tiếng Anh</option>
+                    </select>
+                    <select id="tutorGradeSelect" class="border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold bg-slate-50">
+                        <option value="10">Lớp 10</option>
+                        <option value="11">Lớp 11</option>
+                        <option value="12">Lớp 12</option>
+                    </select>
+                    <span id="weakSupportTag" class="hidden text-xs bg-amber-100 text-amber-800 font-bold px-3 py-1.5 rounded-xl">✨ Chế độ hướng dẫn từng bước cho em</span>
+                </div>
+                <button onclick="clearTutorChat()" class="text-xs text-slate-500 hover:text-red-600 font-semibold">🗑️ Xóa cuộc trò chuyện</button>
+            </div>
+
+            <div id="tutorChatBox" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5 h-[430px] overflow-y-auto chat-scroll space-y-4">
+                <div class="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-sm text-slate-800 leading-relaxed">
+                    <p class="font-bold text-blue-900 mb-1">👋 Chào em! Thầy/Cô Trợ lý AI Trường THPT Đa Kia sẵn sàng hỗ trợ em.</p>
+                    <p>Em hãy nhập đề bài tập cần hướng dẫn, hoặc chụp ảnh đề bài tải lên để được gợi ý phương pháp giải từng bước theo đúng chương trình SGK <strong>Kết nối tri thức với cuộc sống</strong> nhé!</p>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl p-3 shadow-sm border border-slate-200 space-y-2">
+                <div id="imagePreviewStrip" class="hidden flex items-center gap-3 bg-slate-50 p-2 rounded-xl border">
+                    <img id="chatImagePreview" src="" alt="Ảnh bài tập" class="h-14 rounded-lg border">
+                    <span class="text-xs text-slate-600 flex-1">Đã đính kèm ảnh bài tập</span>
+                    <button onclick="removeAttachedImage()" class="text-xs text-red-600 font-bold px-2">✕ Bỏ ảnh</button>
+                </div>
+                <div class="flex items-center gap-2">
+                    <label class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2.5 rounded-xl text-xs font-bold shrink-0" title="Tải ảnh đề bài">
+                        📷 Ảnh đề
+                        <input type="file" id="tutorImageInput" accept="image/*" class="hidden" onchange="handleTutorImageUpload(event)">
+                    </label>
+                    <input type="text" id="tutorQuestionInput" placeholder="Nhập câu hỏi hoặc đề bài em cần hướng dẫn..." onkeydown="if(event.key==='Enter') sendTutorMessage()" class="flex-1 border border-slate-300 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-600">
+                    <button id="btnSendTutor" onclick="sendTutorMessage()" class="bg-blue-700 hover:bg-blue-800 text-white font-bold px-5 py-2.5 rounded-xl text-sm shrink-0">Gửi ➔</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: PHÒNG THI TRỰC TUYẾN & CHẤM ĐIỂM TỰ ĐỘNG -->
+        <section id="ssec-exam" class="hidden space-y-5">
+            <!-- DANH SÁCH ĐỀ THI KHẢ DỤNG -->
+            <div id="examLobbyView" class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+                <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-3">
+                    <div>
+                        <h2 class="font-bold text-base text-blue-900">📋 Danh Sách Đề Thi Trực Tuyến Trường THPT Đa Kia</h2>
+                        <p class="text-xs text-slate-500">Chọn đề thi bên dưới hoặc quét mã QR của giáo viên để bắt đầu làm bài.</p>
+                    </div>
+                    <button onclick="refreshStudentExams()" class="text-xs bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-xl font-semibold">🔄 Cập nhật đề mới</button>
+                </div>
+                <div id="studentExamListGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            </div>
+
+            <!-- GIAO DIỆN LÀM BÀI THI TRỰC TUYẾN -->
+            <div id="activeExamView" class="hidden space-y-4">
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-blue-200 flex flex-wrap justify-between items-center gap-3 sticky top-16 z-20">
+                    <div>
+                        <h3 id="activeExamTitle" class="font-bold text-base text-blue-900"></h3>
+                        <p id="activeExamMeta" class="text-xs text-slate-500"></p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="bg-amber-50 border border-amber-300 text-amber-900 px-3.5 py-1.5 rounded-xl text-sm font-extrabold">
+                            ⏱️ <span id="examTimerDisplay">45:00</span>
+                        </div>
+                        <button id="btnSubmitExam" onclick="submitOnlineExam(false)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-xs sm:text-sm shadow">✅ Nộp Bài & Chấm Điểm</button>
+                        <button onclick="exitExamLobby()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-3 py-2 rounded-xl text-xs">Quay lại</button>
+                    </div>
+                </div>
+
+                <!-- BẢNG KẾT QUẢ SAU KHI NỘP BÀI -->
+                <div id="examResultBanner" class="hidden bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-2xl p-6 shadow-md space-y-2">
+                    <div class="flex flex-wrap justify-between items-center gap-3">
+                        <div>
+                            <p class="text-xs uppercase font-bold text-emerald-100">Kết quả chấm điểm tự động</p>
+                            <h4 id="examTotalScoreText" class="text-3xl font-extrabold mt-1">0.00 / 10 điểm</h4>
+                        </div>
+                        <div id="examBreakdownText" class="text-xs sm:text-sm bg-white/15 rounded-xl p-3 space-y-1 font-medium"></div>
+                    </div>
+                </div>
+
+                <!-- NỘI DUNG CÁC PHẦN I, II, III, IV CỦA ĐỀ THI -->
+                <div id="activeExamQuestionsContainer" class="space-y-5"></div>
+            </div>
+        </section>
+    </div>
+
+    <script src="js/config.js?v=5"></script>
+    <script src="js/app.js?v=5"></script>
 </body>
 </html>
