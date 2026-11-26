@@ -1,39 +1,82 @@
-let currentStudent = null;
-let allStudentsCache = JSON.parse(localStorage.getItem("dakia_all_students")) || [];
-let availableExams = JSON.parse(localStorage.getItem("dakia_uploaded_exams")) || [];
-let currentActiveExam = null;
-let examTimerInterval = null;
-let remainingSeconds = 0;
-let isExamSubmitted = false;
-let attachedImageBase64 = "";
-let tutorChatHistory = [];
+let currentStudentProfile = JSON.parse(localStorage.getItem("dakia_current_student")) || null;
+let cachedStudentList = JSON.parse(localStorage.getItem("dakia_all_students")) || [];
+let cachedOnlineExams = JSON.parse(localStorage.getItem("dakia_uploaded_exams")) || [];
+let chatConversationHistory = [];
+let currentAttachedImage = "";
+let activeExamObj = null;
+let activeExamTimer = null;
+let examTimeLeftSec = 0;
+let examAlreadySubmitted = false;
+let userExamResponses = { nl: {}, ds: {}, tln: {}, tl: {} };
 
-// Đáp án học sinh đang làm
-let studentAnswers = {
-    nl: {},   // { qId: 0..3 }
-    ds: {},   // { qId: [true/false/null, ...] }
-    tln: {},  // { qId: "0,5" }
-    tl: {}    // { qId: "Bài làm tự luận..." }
+const KNTT_MATH_TOPICS = {
+    "10": [
+        { title: "Chương I. Mệnh đề và Tập hợp", desc: "Mệnh đề kéo theo, mệnh đề đảo, kí hiệu ∀, ∃ và các phép toán trên tập hợp." },
+        { title: "Chương II. Bất phương trình bậc nhất hai ẩn", desc: "Biểu diễn miền nghiệm trên mặt phẳng tọa độ Oxy và bài toán tối ưu thực tế." },
+        { title: "Chương III. Hệ thức lượng trong tam giác", desc: "Định lí côsin, định lí sin, các công thức tính diện tích tam giác và giải tam giác." },
+        { title: "Chương IV. Vectơ", desc: "Tổng, hiệu hai vectơ, tích của vectơ với một số, tọa độ vectơ và tích vô hướng." },
+        { title: "Chương VI. Hàm số, đồ thị và ứng dụng", desc: "Hàm số bậc hai, đồ thị parabol, dấu của tam thức bậc hai và phương trình quy về bậc hai." }
+    ],
+    "11": [
+        { title: "Chương I. Hàm số lượng giác & Phương trình lượng giác", desc: "Giá trị lượng giác, công thức biến đổi, đồ thị hàm số sin, cos, tan, cot và phương trình lượng giác cơ bản." },
+        { title: "Chương II. Dãy số. Cấp số cộng và Cấp số nhân", desc: "Số hạng tổng quát, tính chất và công thức tính tổng n số hạng đầu." },
+        { title: "Chương IV. Quan hệ song song trong không gian", desc: "Đường thẳng và mặt phẳng song song, hai mặt phẳng song song, phép chiếu song song." },
+        { title: "Chương VI. Hàm số mũ và Hàm số lôgarit", desc: "Lũy thừa, lôgarit, tính chất, đồ thị và phương trình – bất phương trình mũ, lôgarit." },
+        { title: "Chương VII. Quan hệ vuông góc trong không gian", desc: "Đường thẳng vuông góc mặt phẳng, hai mặt phẳng vuông góc, góc và khoảng cách." }
+    ],
+    "12": [
+        { title: "Chương I. Ứng dụng đạo hàm để khảo sát hàm số", desc: "Tính đơn điệu, cực trị, giá trị lớn nhất – nhỏ nhất, đường tiệm cận và khảo sát vẽ đồ thị." },
+        { title: "Chương II. Vectơ và Hệ trục tọa độ trong không gian", desc: "Tọa độ điểm, tọa độ vectơ trong không gian Oxyz và biểu thức tọa độ các phép toán." },
+        { title: "Chương IV. Nguyên hàm và Tích phân", desc: "Bảng nguyên hàm cơ bản, tính chất tích phân và ứng dụng tính diện tích, thể tích." },
+        { title: "Chương V. Phương pháp tọa độ trong không gian", desc: "Phương trình mặt phẳng, phương trình đường thẳng và phương trình mặt cầu trong Oxyz." },
+        { title: "Chương VI. Xác suất có điều kiện", desc: "Công thức xác suất toàn phần, công thức Bayes và sơ đồ hình cây." }
+    ]
 };
 
-window.addEventListener("DOMContentLoaded", async () => {
+window.addEventListener("DOMContentLoaded", () => {
+    updateStudentHeaderUI();
+    renderMathTopics();
+    renderOnlineExamsList();
+    renderStudentProgressView();
+
+    // Dán ảnh trực tiếp bằng Ctrl+V vào ô nhập chat
+    const promptInput = document.getElementById("tutorPromptInput");
+    if (promptInput) {
+        promptInput.addEventListener("paste", (e) => {
+            const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items || [];
+            for (const item of items) {
+                if (item.type.indexOf("image") !== -1) {
+                    const file = item.getAsFile();
+                    if (file) readImageFileToPreview(file);
+                }
+            }
+        });
+    }
+
+    // Kiểm tra nếu quét mã QR trực tiếp vào đề thi (?exam=...)
     const params = new URLSearchParams(window.location.search);
     const directExamId = params.get("exam");
     if (directExamId) {
-        document.getElementById("directExamNotice").classList.remove("hidden");
+        switchMainTab("exam");
+        setTimeout(() => {
+            const found = (JSON.parse(localStorage.getItem("dakia_uploaded_exams")) || []).find(e => e.id === directExamId);
+            if (found) openExamRoom(found.id);
+        }, 400);
     }
 
+    // Đồng bộ ngầm không làm chậm thao tác của học sinh
     if (typeof syncFromGoogleSheets === "function") {
         syncFromGoogleSheets().then(() => {
-            allStudentsCache = JSON.parse(localStorage.getItem("dakia_all_students")) || allStudentsCache;
-            availableExams = JSON.parse(localStorage.getItem("dakia_uploaded_exams")) || availableExams;
+            cachedStudentList = JSON.parse(localStorage.getItem("dakia_all_students")) || cachedStudentList;
+            cachedOnlineExams = JSON.parse(localStorage.getItem("dakia_uploaded_exams")) || cachedOnlineExams;
+            renderOnlineExamsList();
         }).catch(() => {});
     }
 });
 
-function renderMathSafe(el = document.body) {
-    if (window.renderMathInElement) {
-        renderMathInElement(el, {
+function renderKatexInElement(targetEl) {
+    if (window.renderMathInElement && targetEl) {
+        renderMathInElement(targetEl, {
             delimiters: [
                 { left: "$$", right: "$$", display: true },
                 { left: "$", right: "$", display: false }
@@ -43,172 +86,196 @@ function renderMathSafe(el = document.body) {
     }
 }
 
-// ==================== ĐĂNG NHẬP HỌC SINH ====================
-async function loginStudent() {
-    const code = document.getElementById("stuCodeInput").value.trim().toUpperCase();
-    const guestName = document.getElementById("stuGuestName").value.trim();
-    const guestClass = document.getElementById("stuGuestClass").value.trim().toUpperCase();
-    const errEl = document.getElementById("stuLoginErr");
+// ==================== ĐIỀU HƯỚNG 6 TAB CHÍNH ====================
+function switchMainTab(tabId) {
+    document.querySelectorAll(".main-sec").forEach(sec => sec.classList.add("hidden"));
+    document.querySelectorAll(".main-nav-btn").forEach(btn => {
+        btn.className = "main-nav-btn text-blue-100 hover:bg-white/10 font-semibold px-3.5 py-2 rounded-xl flex items-center gap-1.5";
+    });
 
-    allStudentsCache = JSON.parse(localStorage.getItem("dakia_all_students")) || allStudentsCache;
+    const target = document.getElementById(`sec-${tabId}`);
+    if (target) target.classList.remove("hidden");
+
+    const activeBtn = document.getElementById(`nav-${tabId}`);
+    if (activeBtn) {
+        activeBtn.className = "main-nav-btn bg-white text-blue-900 font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-xs";
+    }
+
+    if (tabId === "exam") renderOnlineExamsList();
+    if (tabId === "progress") renderStudentProgressView();
+}
+
+// ==================== ĐĂNG NHẬP MÃ HỌC SINH ====================
+function openStudentLoginModal() {
+    document.getElementById("modalLoginErr").classList.add("hidden");
+    document.getElementById("studentCodeModal").classList.remove("hidden");
+}
+
+function closeStudentLoginModal() {
+    document.getElementById("studentCodeModal").classList.add("hidden");
+}
+
+async function confirmStudentLogin() {
+    const code = document.getElementById("modalStuCodeInput").value.trim().toUpperCase();
+    const gName = document.getElementById("modalGuestName").value.trim();
+    const gClass = document.getElementById("modalGuestClass").value.trim().toUpperCase();
+    const errEl = document.getElementById("modalLoginErr");
+
+    cachedStudentList = JSON.parse(localStorage.getItem("dakia_all_students")) || cachedStudentList;
 
     if (code) {
-        let found = allStudentsCache.find(s => String(s.student_code).toUpperCase() === code);
+        let found = cachedStudentList.find(s => String(s.student_code).toUpperCase() === code);
         if (!found && typeof syncFromGoogleSheets === "function") {
             await syncFromGoogleSheets();
-            allStudentsCache = JSON.parse(localStorage.getItem("dakia_all_students")) || [];
-            found = allStudentsCache.find(s => String(s.student_code).toUpperCase() === code);
+            cachedStudentList = JSON.parse(localStorage.getItem("dakia_all_students")) || [];
+            found = cachedStudentList.find(s => String(s.student_code).toUpperCase() === code);
         }
         if (found) {
-            currentStudent = found;
+            currentStudentProfile = found;
         } else {
-            errEl.textContent = "Không tìm thấy Mã học sinh này! Em kiểm tra lại hoặc nhập Họ tên & Lớp ở bên dưới.";
+            errEl.textContent = "Không tìm thấy Mã học sinh này trong danh sách lớp! Em kiểm tra lại hoặc nhập Họ tên & Lớp bên dưới.";
             errEl.classList.remove("hidden");
             return;
         }
-    } else if (guestName && guestClass) {
-        currentStudent = {
-            student_code: "HS_" + Date.now().toString().slice(-5),
-            full_name: guestName,
-            class_name: guestClass,
-            grade: guestClass.slice(0, 2) || "10",
+    } else if (gName && gClass) {
+        currentStudentProfile = {
+            student_code: "HS_" + Date.now().toString().slice(-4),
+            full_name: gName,
+            class_name: gClass,
+            grade: gClass.slice(0, 2) || "10",
             is_weak_mode: false
         };
     } else {
-        errEl.textContent = "Vui lòng nhập Mã học sinh hoặc nhập đầy đủ Họ tên và Lớp!";
+        errEl.textContent = "Vui lòng nhập Mã HS hoặc nhập Họ tên và Lớp!";
         errEl.classList.remove("hidden");
         return;
     }
 
-    errEl.classList.add("hidden");
-    document.getElementById("studentLoginSection").classList.add("hidden");
-    document.getElementById("studentWorkspace").classList.remove("hidden");
-    document.getElementById("btnStudentLogout").classList.remove("hidden");
+    localStorage.setItem("dakia_current_student", JSON.stringify(currentStudentProfile));
+    updateStudentHeaderUI();
+    closeStudentLoginModal();
+    renderStudentProgressView();
+}
 
-    const badge = document.getElementById("studentHeaderBadge");
-    badge.textContent = `👤 ${currentStudent.full_name} • Lớp ${currentStudent.class_name}`;
-    badge.classList.remove("hidden");
-
-    if (currentStudent.grade) {
+function updateStudentHeaderUI() {
+    const lbl = document.getElementById("headerStudentLabel");
+    if (!lbl) return;
+    if (currentStudentProfile) {
+        lbl.textContent = `${currentStudentProfile.full_name} (${currentStudentProfile.class_name})`;
         const gSel = document.getElementById("tutorGradeSelect");
-        if (gSel && ["10", "11", "12"].includes(String(currentStudent.grade))) {
-            gSel.value = String(currentStudent.grade);
+        if (gSel && ["10", "11", "12"].includes(String(currentStudentProfile.grade))) {
+            gSel.value = String(currentStudentProfile.grade);
         }
-    }
-
-    if (currentStudent.is_weak_mode) {
-        document.getElementById("weakSupportTag").classList.remove("hidden");
-    }
-
-    renderStudentExamList();
-
-    // Kiểm tra nếu học sinh quét mã QR dẫn thẳng vào đề thi (?exam=...)
-    const params = new URLSearchParams(window.location.search);
-    const directExamId = params.get("exam");
-    if (directExamId) {
-        switchStudentTab("exam");
-        let targetExam = availableExams.find(e => e.id === directExamId);
-        if (!targetExam && typeof syncFromGoogleSheets === "function") {
-            await syncFromGoogleSheets();
-            availableExams = JSON.parse(localStorage.getItem("dakia_uploaded_exams")) || [];
-            targetExam = availableExams.find(e => e.id === directExamId);
-        }
-        if (targetExam) {
-            startOnlineExam(targetExam.id);
-        } else {
-            alert("Đề thi này chưa được đồng bộ hoặc đã đóng!");
-        }
-    }
-}
-
-function logoutStudent() {
-    if (examTimerInterval) clearInterval(examTimerInterval);
-    currentStudent = null;
-    document.getElementById("studentWorkspace").classList.add("hidden");
-    document.getElementById("btnStudentLogout").classList.add("hidden");
-    document.getElementById("studentHeaderBadge").classList.add("hidden");
-    document.getElementById("studentLoginSection").classList.remove("hidden");
-}
-
-function switchStudentTab(tabName) {
-    const isTutor = tabName === "tutor";
-    document.getElementById("ssec-tutor").classList.toggle("hidden", !isTutor);
-    document.getElementById("ssec-exam").classList.toggle("hidden", isTutor);
-
-    const btnTutor = document.getElementById("stab-tutor");
-    const btnExam = document.getElementById("stab-exam");
-
-    if (isTutor) {
-        btnTutor.className = "flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold bg-blue-700 text-white transition";
-        btnExam.className = "flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold text-slate-600 hover:bg-slate-100 transition";
+        const weakChk = document.getElementById("weakModeCheckbox");
+        if (weakChk) weakChk.checked = Boolean(currentStudentProfile.is_weak_mode);
     } else {
-        btnExam.className = "flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold bg-blue-700 text-white transition";
-        btnTutor.className = "flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold text-slate-600 hover:bg-slate-100 transition";
-        renderStudentExamList();
+        lbl.textContent = "Đăng nhập Mã HS";
     }
 }
 
-// ==================== TAB 1: GIA SƯ AI TỰ HỌC ====================
-function handleTutorImageUpload(event) {
+// ==================== GIA SƯ AI SIÊU TỐC & VẼ ĐỒ THỊ SVG TRỰC TIẾP ====================
+function onSelectTutorImage(event) {
     const file = event.target.files[0];
-    if (!file) return;
+    if (file) readImageFileToPreview(file);
+}
+
+function readImageFileToPreview(file) {
     const reader = new FileReader();
     reader.onload = function (e) {
-        attachedImageBase64 = e.target.result;
-        document.getElementById("chatImagePreview").src = attachedImageBase64;
-        document.getElementById("imagePreviewStrip").classList.remove("hidden");
+        currentAttachedImage = e.target.result;
+        document.getElementById("attachedImgTag").src = currentAttachedImage;
+        document.getElementById("attachedImgPreviewBox").classList.remove("hidden");
     };
     reader.readAsDataURL(file);
 }
 
-function removeAttachedImage() {
-    attachedImageBase64 = "";
-    document.getElementById("tutorImageInput").value = "";
-    document.getElementById("imagePreviewStrip").classList.add("hidden");
+function clearAttachedImg() {
+    currentAttachedImage = "";
+    const inp = document.getElementById("tutorImgFileInput");
+    if (inp) inp.value = "";
+    document.getElementById("attachedImgPreviewBox").classList.add("hidden");
 }
 
-function clearTutorChat() {
-    tutorChatHistory = [];
-    document.getElementById("tutorChatBox").innerHTML = `
-        <div class="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-sm text-slate-800 leading-relaxed">
-            <p class="font-bold text-blue-900 mb-1">👋 Cuộc trò chuyện mới đã sẵn sàng!</p>
-            <p>Em hãy nhập bài tập hoặc tải ảnh đề bài lên để được hướng dẫn nhé.</p>
+function resetTutorChat() {
+    chatConversationHistory = [];
+    document.getElementById("tutorMessagesContainer").innerHTML = `
+        <div class="bg-slate-50 border-l-4 border-blue-600 rounded-r-2xl p-4 text-sm text-slate-800 space-y-1.5 max-w-3xl">
+            <p class="font-bold text-blue-800">Xin chào em! Thầy (Cô) là Gia sư AI của Trường THPT Đa Kia.</p>
+            <p class="leading-relaxed">Em hãy chọn môn học phía trên, nhập đề bài hoặc bấm nút <strong>📷 Chụp/Tải ảnh</strong>. Thầy (Cô) sẽ hướng dẫn em giải từng bước một nhé!</p>
         </div>
     `;
 }
 
-async function sendTutorMessage() {
-    const inputEl = document.getElementById("tutorQuestionInput");
+function renderAiMessageWithSvg(containerEl, rawText) {
+    // Tách khối <svg>...</svg> ra để dựng đồ thị sắc nét và render KaTeX cho phần văn bản
+    const svgRegex = /<svg[\s\S]*?<\/svg>/gi;
+    const svgs = rawText.match(svgRegex) || [];
+    const textWithoutSvg = rawText
+        .replace(/```(?:xml|svg|html)?\s*<svg[\s\S]*?<\/svg>\s*```/gi, "")
+        .replace(svgRegex, "")
+        .trim();
+
+    containerEl.innerHTML = "";
+
+    if (textWithoutSvg) {
+        const textDiv = document.createElement("div");
+        textDiv.className = "whitespace-pre-wrap leading-relaxed";
+        textDiv.textContent = textWithoutSvg;
+        containerEl.appendChild(textDiv);
+        renderKatexInElement(textDiv);
+    }
+
+    svgs.forEach(svgCode => {
+        const svgWrap = document.createElement("div");
+        svgWrap.className = "my-3 p-3 bg-white border border-blue-200 rounded-xl flex justify-center overflow-x-auto shadow-xs";
+        svgWrap.innerHTML = svgCode;
+        containerEl.appendChild(svgWrap);
+    });
+}
+
+async function handleSendTutor() {
+    const inputEl = document.getElementById("tutorPromptInput");
     const msg = inputEl.value.trim();
-    if (!msg && !attachedImageBase64) return;
+    if (!msg && !currentAttachedImage) return;
 
     const subject = document.getElementById("tutorSubjectSelect").value;
     const grade = document.getElementById("tutorGradeSelect").value;
-    const chatBox = document.getElementById("tutorChatBox");
-    const btn = document.getElementById("btnSendTutor");
+    const isWeak = document.getElementById("weakModeCheckbox").checked;
+    const box = document.getElementById("tutorMessagesContainer");
+    const btn = document.getElementById("btnSendPrompt");
 
+    // Bong bóng tin nhắn học sinh
+    const userRow = document.createElement("div");
+    userRow.className = "flex justify-end";
     const userBubble = document.createElement("div");
-    userBubble.className = "flex justify-end";
-    userBubble.innerHTML = `
-        <div class="max-w-[82%] bg-blue-700 text-white rounded-2xl rounded-tr-xs px-4 py-3 text-sm space-y-2 shadow-xs">
-            ${attachedImageBase64 ? `<img src="${attachedImageBase64}" class="max-h-44 rounded-lg border border-blue-400">` : ""}
-            <p class="whitespace-pre-wrap">${msg || "Nhờ Thầy/Cô hướng dẫn bài tập trong ảnh này."}</p>
-        </div>
-    `;
-    chatBox.appendChild(userBubble);
+    userBubble.className = "max-w-[80%] bg-blue-600 text-white rounded-2xl rounded-tr-xs px-4 py-3 text-sm shadow-xs space-y-2";
+    if (currentAttachedImage) {
+        const img = document.createElement("img");
+        img.src = currentAttachedImage;
+        img.className = "max-h-44 rounded-lg border border-blue-300";
+        userBubble.appendChild(img);
+    }
+    const pUser = document.createElement("p");
+    pUser.className = "whitespace-pre-wrap";
+    pUser.textContent = msg || "Em nhờ Thầy (Cô) hướng dẫn bài tập trong ảnh này.";
+    userBubble.appendChild(pUser);
+    userRow.appendChild(userBubble);
+    box.appendChild(userRow);
+    renderKatexInElement(pUser);
 
-    const aiWrapper = document.createElement("div");
-    aiWrapper.className = "flex justify-start";
+    // Bong bóng phản hồi AI
+    const aiRow = document.createElement("div");
+    aiRow.className = "flex justify-start";
     const aiBubble = document.createElement("div");
-    aiBubble.className = "max-w-[88%] bg-slate-50 border border-slate-200 text-slate-800 rounded-2xl rounded-tl-xs px-4 py-3.5 text-sm leading-relaxed whitespace-pre-wrap shadow-xs";
-    aiBubble.textContent = "⏳ Đang phân tích bài tập...";
-    aiWrapper.appendChild(aiBubble);
-    chatBox.appendChild(aiWrapper);
-    chatBox.scrollTop = chatBox.scrollHeight;
+    aiBubble.className = "max-w-[88%] bg-slate-50 border-l-4 border-blue-600 text-slate-800 rounded-r-2xl px-4 py-3.5 text-sm shadow-xs";
+    aiBubble.innerHTML = `<div class="dot-pulse"><span></span><span></span><span></span></div>`;
+    aiRow.appendChild(aiBubble);
+    box.appendChild(aiRow);
+    box.scrollTop = box.scrollHeight;
 
-    const imgToSend = attachedImageBase64;
+    const imgPayload = currentAttachedImage;
     inputEl.value = "";
-    removeAttachedImage();
+    clearAttachedImg();
     btn.disabled = true;
 
     try {
@@ -216,52 +283,56 @@ async function sendTutorMessage() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                message: `[Môn ${subject} - Lớp ${grade}] ${msg || "Hướng dẫn giải chi tiết bài tập trong hình ảnh."}`,
+                message: `[Môn ${subject} - Lớp ${grade}] ${msg || "Hướng dẫn giải chi tiết bài tập trong ảnh."}`,
                 grade,
-                isWeakMode: Boolean(currentStudent?.is_weak_mode),
-                imageBase64: imgToSend || undefined,
-                history: tutorChatHistory.slice(-6)
+                isWeakMode: isWeak,
+                imageBase64: imgPayload || undefined,
+                history: chatConversationHistory.slice(-6),
+                mode: "student_tutor"
             })
         });
 
         if (!res.ok) {
-            const errData = await res.json().catch(() => ({ error: "Lỗi kết nối máy chủ AI" }));
-            throw new Error(errData.error || "Lỗi kết nối máy chủ AI");
+            const errJson = await res.json().catch(() => ({ error: "Không kết nối được máy chủ AI" }));
+            throw new Error(errJson.error || "Không kết nối được máy chủ AI");
         }
 
-        aiBubble.textContent = "";
         const reader = res.body.getReader();
         const decoder = new TextDecoder("utf-8");
-        let buffer = "";
-        let fullReply = "";
+        let sseBuffer = "";
+        let fullText = "";
 
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split("\n");
-            buffer = lines.pop();
+            sseBuffer += decoder.decode(value, { stream: true });
+            const lines = sseBuffer.split("\n");
+            sseBuffer = lines.pop();
             for (const line of lines) {
                 if (line.startsWith("data: ")) {
-                    const jsonStr = line.slice(6).trim();
-                    if (!jsonStr || jsonStr === "[DONE]") continue;
+                    const dataStr = line.slice(6).trim();
+                    if (!dataStr || dataStr === "[DONE]") continue;
                     try {
-                        const parsed = JSON.parse(jsonStr);
-                        const chunk = (parsed.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
-                        if (chunk) {
-                            fullReply += chunk;
-                            aiBubble.textContent = fullReply;
-                            chatBox.scrollTop = chatBox.scrollHeight;
+                        const parsed = JSON.parse(dataStr);
+                        const delta = (parsed.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
+                        if (delta) {
+                            fullText += delta;
+                            // Hiển thị ngay phần chữ trước khi hoàn tất thẻ SVG
+                            const previewClean = fullText.replace(/<svg[\s\S]*$/i, "\n⏳ Đang dựng hình đồ thị trực quan...");
+                            aiBubble.textContent = previewClean;
+                            box.scrollTop = box.scrollHeight;
                         }
                     } catch (_) {}
                 }
             }
         }
 
-        renderMathSafe(aiBubble);
-        tutorChatHistory.push({ role: "user", text: msg });
-        tutorChatHistory.push({ role: "model", text: fullReply });
-        logStudentActivity(`Hỏi gia sư AI (${subject} ${grade})`, null);
+        renderAiMessageWithSvg(aiBubble, fullText);
+        box.scrollTop = box.scrollHeight;
+
+        chatConversationHistory.push({ role: "user", text: msg });
+        chatConversationHistory.push({ role: "model", text: fullText });
+        recordStudentProgress(`Học với Gia sư AI (${subject} ${grade})`, null);
     } catch (err) {
         aiBubble.textContent = "❌ " + err.message;
     } finally {
@@ -269,94 +340,120 @@ async function sendTutorMessage() {
     }
 }
 
-// ==================== TAB 2: PHÒNG THI TRỰC TUYẾN & CHẤM ĐIỂM TỰ ĐỘNG ====================
-async function refreshStudentExams() {
-    if (typeof syncFromGoogleSheets === "function") {
-        await syncFromGoogleSheets();
-    }
-    availableExams = JSON.parse(localStorage.getItem("dakia_uploaded_exams")) || [];
-    renderStudentExamList();
-}
-
-function renderStudentExamList() {
-    const grid = document.getElementById("studentExamListGrid");
+// ==================== CHỦ ĐỀ TOÁN HỌC ====================
+function renderMathTopics() {
+    const grade = document.getElementById("topicGradeFilter")?.value || "10";
+    const grid = document.getElementById("mathTopicsGrid");
     if (!grid) return;
-    availableExams = JSON.parse(localStorage.getItem("dakia_uploaded_exams")) || availableExams;
 
-    if (availableExams.length === 0) {
-        grid.innerHTML = `<p class="text-xs text-slate-400 col-span-3 py-6 text-center">Hiện chưa có đề thi trực tuyến nào được mở.</p>`;
-        return;
-    }
-
-    grid.innerHTML = availableExams.map(ex => `
+    const list = KNTT_MATH_TOPICS[grade] || [];
+    grid.innerHTML = list.map(item => `
         <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/70 hover:border-blue-400 transition flex flex-col justify-between space-y-3">
             <div>
-                <div class="flex justify-between items-center gap-2">
-                    <span class="bg-blue-100 text-blue-800 text-[11px] font-bold px-2.5 py-0.5 rounded-full">${ex.subject} • Khối ${ex.grade}</span>
-                    <span class="text-[11px] font-semibold text-slate-500">⏱️ ${ex.duration || 45} phút</span>
-                </div>
-                <h4 class="font-bold text-sm text-slate-900 mt-2">${ex.title}</h4>
-                <p class="text-xs text-slate-500 mt-1">Giáo viên: ${ex.teacher} • ${(ex.questions || []).length} câu hỏi</p>
+                <span class="bg-blue-100 text-blue-800 text-[11px] font-bold px-2.5 py-0.5 rounded-full">Toán ${grade} • KNTT</span>
+                <h3 class="font-bold text-sm text-slate-900 mt-2">${item.title}</h3>
+                <p class="text-xs text-slate-600 mt-1 leading-relaxed">${item.desc}</p>
             </div>
-            <button onclick="startOnlineExam('${ex.id}')" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 rounded-xl text-xs shadow">✍️ Bắt Đầu Làm Bài</button>
+            <button onclick="askTopicWithTutor('${item.title}', '${grade}')" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 rounded-xl text-xs">📖 Ôn tập & Luyện bài với Gia sư AI</button>
         </div>
     `).join("");
 }
 
-function startOnlineExam(examId) {
-    const exam = availableExams.find(e => e.id === examId);
-    if (!exam) return alert("Không tìm thấy dữ liệu đề thi!");
+function askTopicWithTutor(topicTitle, grade) {
+    switchMainTab("tutor");
+    document.getElementById("tutorSubjectSelect").value = "Toán học";
+    document.getElementById("tutorGradeSelect").value = grade;
+    document.getElementById("tutorPromptInput").value = `Thầy (Cô) tóm tắt giúp em công thức trọng tâm của "${topicTitle}" (Toán ${grade}) và cho em 1 bài tập ví dụ dễ để luyện tập nhé!`;
+    handleSendTutor();
+}
 
-    currentActiveExam = exam;
-    isExamSubmitted = false;
-    studentAnswers = { nl: {}, ds: {}, tln: {}, tl: {} };
+// ==================== PHÒNG THI TRỰC TUYẾN & CHẤM ĐIỂM TỰ ĐỘNG ====================
+async function reloadOnlineExams() {
+    if (typeof syncFromGoogleSheets === "function") {
+        await syncFromGoogleSheets();
+    }
+    cachedOnlineExams = JSON.parse(localStorage.getItem("dakia_uploaded_exams")) || [];
+    renderOnlineExamsList();
+}
 
-    document.getElementById("examLobbyView").classList.add("hidden");
-    document.getElementById("activeExamView").classList.remove("hidden");
-    document.getElementById("examResultBanner").classList.add("hidden");
+function renderOnlineExamsList() {
+    const grid = document.getElementById("onlineExamsGrid");
+    if (!grid) return;
+    cachedOnlineExams = JSON.parse(localStorage.getItem("dakia_uploaded_exams")) || cachedOnlineExams;
 
-    const btnSubmit = document.getElementById("btnSubmitExam");
-    btnSubmit.disabled = false;
-    btnSubmit.classList.remove("hidden");
+    if (cachedOnlineExams.length === 0) {
+        grid.innerHTML = `<p class="text-xs text-slate-400 col-span-3 py-8 text-center">Hiện chưa có đề thi trực tuyến nào được giáo viên mở.</p>`;
+        return;
+    }
 
-    document.getElementById("activeExamTitle").textContent = `${exam.title} (${exam.subject} – Khối ${exam.grade})`;
-    document.getElementById("activeExamMeta").textContent = `Thí sinh: ${currentStudent.full_name} • Lớp: ${currentStudent.class_name}`;
+    grid.innerHTML = cachedOnlineExams.map(ex => `
+        <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/70 hover:border-blue-400 transition flex flex-col justify-between space-y-3">
+            <div>
+                <div class="flex justify-between items-center gap-2">
+                    <span class="bg-blue-100 text-blue-800 text-[11px] font-bold px-2.5 py-0.5 rounded-full">${ex.subject} • Lớp ${ex.grade}</span>
+                    <span class="text-[11px] font-semibold text-slate-500">⏱️ ${ex.duration || 45} phút</span>
+                </div>
+                <h4 class="font-bold text-sm text-slate-900 mt-2">${ex.title}</h4>
+                <p class="text-xs text-slate-500 mt-1">GV ra đề: ${ex.teacher} • ${(ex.questions || []).length} câu</p>
+            </div>
+            <button onclick="openExamRoom('${ex.id}')" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 rounded-xl text-xs shadow">✍️ Vào Làm Bài Thi</button>
+        </div>
+    `).join("");
+}
 
-    // Khởi động đồng hồ đếm ngược
-    if (examTimerInterval) clearInterval(examTimerInterval);
-    remainingSeconds = (parseInt(exam.duration, 10) || 45) * 60;
-    updateTimerDisplay();
-    examTimerInterval = setInterval(() => {
-        remainingSeconds--;
-        updateTimerDisplay();
-        if (remainingSeconds <= 0) {
-            clearInterval(examTimerInterval);
-            alert("Đã hết thời gian làm bài! Hệ thống tự động nộp bài của em.");
-            submitOnlineExam(true);
+function openExamRoom(examId) {
+    const exam = cachedOnlineExams.find(e => e.id === examId);
+    if (!exam) return alert("Không tìm thấy đề thi này!");
+
+    activeExamObj = exam;
+    examAlreadySubmitted = false;
+    userExamResponses = { nl: {}, ds: {}, tln: {}, tl: {} };
+
+    document.getElementById("examListContainer").classList.add("hidden");
+    document.getElementById("examTakingContainer").classList.remove("hidden");
+    document.getElementById("examScoreSummaryCard").classList.add("hidden");
+
+    const btnSub = document.getElementById("btnSubmitExamNow");
+    btnSub.disabled = false;
+    btnSub.classList.remove("hidden");
+
+    const stuLabel = currentStudentProfile ? `${currentStudentProfile.full_name} – Lớp ${currentStudentProfile.class_name}` : "Học sinh tự luyện";
+    document.getElementById("takingExamTitle").textContent = `${exam.title} (${exam.subject} – Lớp ${exam.grade})`;
+    document.getElementById("takingExamSub").textContent = `Thí sinh: ${stuLabel}`;
+
+    if (activeExamTimer) clearInterval(activeExamTimer);
+    examTimeLeftSec = (parseInt(exam.duration, 10) || 45) * 60;
+    updateExamCountdownText();
+    activeExamTimer = setInterval(() => {
+        examTimeLeftSec--;
+        updateExamCountdownText();
+        if (examTimeLeftSec <= 0) {
+            clearInterval(activeExamTimer);
+            alert("Đã hết giờ làm bài! Hệ thống tự động nộp bài và chấm điểm.");
+            gradeAndSubmitExam(true);
         }
     }, 1000);
 
-    renderExamQuestionsUI();
+    buildExamQuestionsDOM();
 }
 
-function updateTimerDisplay() {
-    const mins = Math.floor(Math.max(0, remainingSeconds) / 60);
-    const secs = Math.max(0, remainingSeconds) % 60;
-    document.getElementById("examTimerDisplay").textContent =
-        `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+function updateExamCountdownText() {
+    const m = Math.floor(Math.max(0, examTimeLeftSec) / 60);
+    const s = Math.max(0, examTimeLeftSec) % 60;
+    document.getElementById("takingTimerText").textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-function exitExamLobby() {
-    if (!isExamSubmitted && !confirm("Bài làm chưa nộp sẽ không được lưu điểm. Em chắc chắn muốn thoát?")) return;
-    if (examTimerInterval) clearInterval(examTimerInterval);
-    currentActiveExam = null;
-    document.getElementById("activeExamView").classList.add("hidden");
-    document.getElementById("examLobbyView").classList.remove("hidden");
+function backToExamList() {
+    if (!examAlreadySubmitted && !confirm("Em chưa nộp bài, thoát ra sẽ không lưu điểm. Tiếp tục thoát?")) return;
+    if (activeExamTimer) clearInterval(activeExamTimer);
+    activeExamObj = null;
+    document.getElementById("examTakingContainer").classList.add("hidden");
+    document.getElementById("examListContainer").classList.remove("hidden");
 }
 
-function renderExamQuestionsUI() {
-    const container = document.getElementById("activeExamQuestionsContainer");
-    const qs = currentActiveExam.questions || [];
+function buildExamQuestionsDOM() {
+    const area = document.getElementById("examQuestionsRenderArea");
+    const qs = activeExamObj.questions || [];
     const nlQs = qs.filter(q => q.type === "NL");
     const dsQs = qs.filter(q => q.type === "DS");
     const tlnQs = qs.filter(q => q.type === "TLN");
@@ -364,272 +461,279 @@ function renderExamQuestionsUI() {
 
     let html = "";
 
-    // PHẦN I
     if (nlQs.length > 0) {
         html += `<div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
             <h4 class="font-bold text-sm sm:text-base text-blue-900 border-b pb-2">
                 Phần I. Câu trắc nghiệm nhiều phương án lựa chọn. Thí sinh trả lời từ câu 1 đến câu ${nlQs.length}. Mỗi câu hỏi thí sinh chỉ chọn một phương án.
             </h4>`;
         nlQs.forEach((q, idx) => {
-            const imgsHtml = (q.images || []).map(src => `<img src="${src}" class="max-h-56 mx-auto my-2 rounded-lg border">`).join("");
-            const optsHtml = (q.options || []).map((opt, oi) => {
-                const letter = ["A", "B", "C", "D"][oi];
-                return `
-                <label id="lbl_nl_${q.id}_${oi}" class="flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 hover:bg-blue-50/60 cursor-pointer transition">
-                    <input type="radio" name="nl_${q.id}" value="${oi}" onchange="studentAnswers.nl['${q.id}'] = ${oi}" class="mt-1 w-4 h-4">
-                    <span class="text-sm"><strong>${letter}.</strong> ${opt}</span>
+            const imgs = (q.images || []).map(src => `<img src="${src}" class="max-h-56 mx-auto my-2 rounded-lg border">`).join("");
+            const opts = (q.options || []).map((opt, oi) => {
+                const char = ["A", "B", "C", "D"][oi];
+                return `<label id="opt_lbl_${q.id}_${oi}" class="flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 hover:bg-blue-50/60 cursor-pointer">
+                    <input type="radio" name="ans_nl_${q.id}" value="${oi}" onchange="userExamResponses.nl['${q.id}'] = ${oi}" class="mt-1 w-4 h-4">
+                    <span class="text-sm"><strong>${char}.</strong> ${opt}</span>
                 </label>`;
             }).join("");
-
-            html += `
-            <div id="qcard_${q.id}" class="p-4 rounded-xl bg-slate-50/70 border border-slate-200 space-y-2.5">
+            html += `<div class="p-4 rounded-xl bg-slate-50/70 border border-slate-200 space-y-2.5">
                 <p class="text-sm font-semibold text-slate-900"><strong>Câu ${idx + 1}.</strong> ${q.content}</p>
-                ${imgsHtml}
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">${optsHtml}</div>
-                <div id="sol_${q.id}" class="hidden mt-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-slate-800"></div>
+                ${imgs}
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">${opts}</div>
+                <div id="exp_box_${q.id}" class="hidden mt-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-slate-800"></div>
             </div>`;
         });
         html += `</div>`;
     }
 
-    // PHẦN II
     if (dsQs.length > 0) {
         html += `<div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
             <h4 class="font-bold text-sm sm:text-base text-blue-900 border-b pb-2">
                 Phần II. Câu trắc nghiệm đúng sai. Thí sinh trả lời từ câu 1 đến câu ${dsQs.length}. Trong mỗi ý a), b), c), d) ở mỗi câu, thí sinh chọn đúng hoặc sai.
             </h4>`;
         dsQs.forEach((q, idx) => {
-            studentAnswers.ds[q.id] = [null, null, null, null];
-            const imgsHtml = (q.images || []).map(src => `<img src="${src}" class="max-h-56 mx-auto my-2 rounded-lg border">`).join("");
-            const rowsHtml = (q.options || []).map((st, si) => {
+            userExamResponses.ds[q.id] = [null, null, null, null];
+            const imgs = (q.images || []).map(src => `<img src="${src}" class="max-h-56 mx-auto my-2 rounded-lg border">`).join("");
+            const rows = (q.options || []).map((st, si) => {
                 if (!st) return "";
-                const subChar = ["a", "b", "c", "d"][si];
-                return `
-                <div id="ds_row_${q.id}_${si}" class="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-white rounded-xl border border-slate-200">
-                    <span class="text-sm flex-1"><strong>${subChar})</strong> ${st}</span>
+                const sub = ["a", "b", "c", "d"][si];
+                return `<div id="ds_item_${q.id}_${si}" class="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-white rounded-xl border border-slate-200">
+                    <span class="text-sm flex-1"><strong>${sub})</strong> ${st}</span>
                     <div class="flex items-center gap-3 shrink-0">
                         <label class="flex items-center gap-1 text-xs font-bold text-emerald-700 cursor-pointer">
-                            <input type="radio" name="ds_${q.id}_${si}" value="true" onchange="studentAnswers.ds['${q.id}'][${si}] = true" class="w-4 h-4"> Đúng
+                            <input type="radio" name="ans_ds_${q.id}_${si}" onchange="userExamResponses.ds['${q.id}'][${si}] = true" class="w-4 h-4"> Đúng
                         </label>
                         <label class="flex items-center gap-1 text-xs font-bold text-red-600 cursor-pointer">
-                            <input type="radio" name="ds_${q.id}_${si}" value="false" onchange="studentAnswers.ds['${q.id}'][${si}] = false" class="w-4 h-4"> Sai
+                            <input type="radio" name="ans_ds_${q.id}_${si}" onchange="userExamResponses.ds['${q.id}'][${si}] = false" class="w-4 h-4"> Sai
                         </label>
                     </div>
                 </div>`;
             }).join("");
-
-            html += `
-            <div id="qcard_${q.id}" class="p-4 rounded-xl bg-slate-50/70 border border-slate-200 space-y-2.5">
+            html += `<div class="p-4 rounded-xl bg-slate-50/70 border border-slate-200 space-y-2.5">
                 <p class="text-sm font-semibold text-slate-900"><strong>Câu ${idx + 1}.</strong> ${q.content}</p>
-                ${imgsHtml}
-                <div class="space-y-2">${rowsHtml}</div>
-                <div id="sol_${q.id}" class="hidden mt-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-slate-800"></div>
+                ${imgs}
+                <div class="space-y-2">${rows}</div>
+                <div id="exp_box_${q.id}" class="hidden mt-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-slate-800"></div>
             </div>`;
         });
         html += `</div>`;
     }
 
-    // PHẦN III
     if (tlnQs.length > 0) {
         html += `<div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
             <h4 class="font-bold text-sm sm:text-base text-blue-900 border-b pb-2">
                 Phần III. Câu trắc nghiệm trả lời ngắn. Thí sinh trả lời từ câu 1 đến câu ${tlnQs.length}.
             </h4>`;
         tlnQs.forEach((q, idx) => {
-            const imgsHtml = (q.images || []).map(src => `<img src="${src}" class="max-h-56 mx-auto my-2 rounded-lg border">`).join("");
-            html += `
-            <div id="qcard_${q.id}" class="p-4 rounded-xl bg-slate-50/70 border border-slate-200 space-y-2.5">
+            const imgs = (q.images || []).map(src => `<img src="${src}" class="max-h-56 mx-auto my-2 rounded-lg border">`).join("");
+            html += `<div class="p-4 rounded-xl bg-slate-50/70 border border-slate-200 space-y-2.5">
                 <p class="text-sm font-semibold text-slate-900"><strong>Câu ${idx + 1}.</strong> ${q.content}</p>
-                ${imgsHtml}
+                ${imgs}
                 <div class="flex items-center gap-2 pt-1">
-                    <span class="text-xs font-bold text-slate-700">Đáp số của em:</span>
-                    <input type="text" id="inp_tln_${q.id}" oninput="studentAnswers.tln['${q.id}'] = this.value" placeholder="Nhập kết quả (VD: 0,5)..." class="border border-slate-300 rounded-xl px-3.5 py-2 text-sm font-bold text-blue-800 w-52 bg-white">
+                    <span class="text-xs font-bold text-slate-700">Đáp án của em:</span>
+                    <input type="text" id="tln_field_${q.id}" oninput="userExamResponses.tln['${q.id}'] = this.value" placeholder="Nhập đáp số (VD: 0,5)..." class="border border-slate-300 rounded-xl px-3.5 py-2 text-sm font-bold text-blue-800 w-52 bg-white">
                 </div>
-                <div id="sol_${q.id}" class="hidden mt-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-slate-800"></div>
+                <div id="exp_box_${q.id}" class="hidden mt-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-slate-800"></div>
             </div>`;
         });
         html += `</div>`;
     }
 
-    // PHẦN IV
     if (tlQs.length > 0) {
         html += `<div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
-            <h4 class="font-bold text-sm sm:text-base text-blue-900 border-b pb-2">
-                Phần IV. Câu hỏi tự luận.
-            </h4>`;
+            <h4 class="font-bold text-sm sm:text-base text-blue-900 border-b pb-2">Phần IV. Câu hỏi tự luận.</h4>`;
         tlQs.forEach((q, idx) => {
-            html += `
-            <div id="qcard_${q.id}" class="p-4 rounded-xl bg-slate-50/70 border border-slate-200 space-y-2.5">
+            html += `<div class="p-4 rounded-xl bg-slate-50/70 border border-slate-200 space-y-2.5">
                 <p class="text-sm font-semibold text-slate-900"><strong>Câu ${idx + 1}.</strong> ${q.content}</p>
-                <textarea rows="3" oninput="studentAnswers.tl['${q.id}'] = this.value" placeholder="Nhập bài làm hoặc hướng giải của em..." class="w-full border border-slate-300 rounded-xl p-3 text-xs bg-white"></textarea>
-                <div id="sol_${q.id}" class="hidden mt-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-slate-800"></div>
+                <textarea rows="3" oninput="userExamResponses.tl['${q.id}'] = this.value" placeholder="Trình bày hướng giải của em..." class="w-full border border-slate-300 rounded-xl p-3 text-xs bg-white"></textarea>
+                <div id="exp_box_${q.id}" class="hidden mt-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-slate-800"></div>
             </div>`;
         });
         html += `</div>`;
     }
 
-    container.innerHTML = html;
-    renderMathSafe(container);
+    area.innerHTML = html;
+    renderKatexInElement(area);
 }
 
-function normalizeNumberAnswer(val) {
-    return String(val || "")
-        .trim()
-        .replace(/\s+/g, "")
-        .replace(",", ".")
-        .toLowerCase();
-}
+async function gradeAndSubmitExam(isTimeout) {
+    if (examAlreadySubmitted || !activeExamObj) return;
+    if (!isTimeout && !confirm("Em xác nhận nộp bài và xem điểm ngay bây giờ?")) return;
 
-async function submitOnlineExam(isAutoTimeout) {
-    if (isExamSubmitted || !currentActiveExam) return;
-    if (!isAutoTimeout && !confirm("Em chắc chắn muốn nộp bài và xem điểm ngay?")) return;
+    examAlreadySubmitted = true;
+    if (activeExamTimer) clearInterval(activeExamTimer);
 
-    isExamSubmitted = true;
-    if (examTimerInterval) clearInterval(examTimerInterval);
+    const btnSub = document.getElementById("btnSubmitExamNow");
+    btnSub.disabled = true;
+    btnSub.classList.add("hidden");
 
-    const btnSubmit = document.getElementById("btnSubmitExam");
-    btnSubmit.disabled = true;
-    btnSubmit.classList.add("hidden");
-
-    const qs = currentActiveExam.questions || [];
+    const qs = activeExamObj.questions || [];
     const nlQs = qs.filter(q => q.type === "NL");
     const dsQs = qs.filter(q => q.type === "DS");
     const tlnQs = qs.filter(q => q.type === "TLN");
     const tlQs = qs.filter(q => q.type === "TL");
 
-    const cfg = currentActiveExam.scoreConfig || {
-        p1Total: 3.0,
-        p2_1: 0.1,
-        p2_2: 0.25,
-        p2_3: 0.5,
-        p2_4: 1.0,
-        p3Total: 3.0
-    };
+    const cfg = activeExamObj.scoreConfig || { p1Total: 3.0, p2_1: 0.1, p2_2: 0.25, p2_3: 0.5, p2_4: 1.0, p3Total: 3.0 };
 
-    // 1. Chấm điểm Phần I (chia đều tổng điểm Phần I cho số câu Phần I)
-    let scoreP1 = 0;
-    let rightCountP1 = 0;
-    const eachP1 = nlQs.length > 0 ? (Number(cfg.p1Total) || 0) / nlQs.length : 0;
+    // Phần I: chia đều tổng điểm Phần I cho số câu Phần I
+    let ptsP1 = 0;
+    let rightP1 = 0;
+    const unitP1 = nlQs.length > 0 ? (Number(cfg.p1Total) || 0) / nlQs.length : 0;
 
     nlQs.forEach(q => {
-        const picked = studentAnswers.nl[q.id];
-        const isRight = picked !== undefined && Number(picked) === Number(q.correct);
-        if (isRight) {
-            rightCountP1++;
-            scoreP1 += eachP1;
+        const picked = userExamResponses.nl[q.id];
+        const ok = picked !== undefined && Number(picked) === Number(q.correct);
+        if (ok) {
+            rightP1++;
+            ptsP1 += unitP1;
         }
-        const rightLbl = document.getElementById(`lbl_nl_${q.id}_${q.correct}`);
+        const rightLbl = document.getElementById(`opt_lbl_${q.id}_${q.correct}`);
         if (rightLbl) rightLbl.classList.add("bg-emerald-100", "border-emerald-500", "font-bold");
-        if (picked !== undefined && !isRight) {
-            const wrongLbl = document.getElementById(`lbl_nl_${q.id}_${picked}`);
+        if (picked !== undefined && !ok) {
+            const wrongLbl = document.getElementById(`opt_lbl_${q.id}_${picked}`);
             if (wrongLbl) wrongLbl.classList.add("bg-red-100", "border-red-400");
         }
-        const solBox = document.getElementById(`sol_${q.id}`);
-        if (solBox) {
-            solBox.classList.remove("hidden");
-            solBox.innerHTML = `<strong>${isRight ? "✅ Chính xác!" : "❌ Chưa đúng."} Đáp án đúng: ${["A", "B", "C", "D"][q.correct]}</strong>${q.solution ? `<br>${q.solution}` : ""}`;
+        const expBox = document.getElementById(`exp_box_${q.id}`);
+        if (expBox) {
+            expBox.classList.remove("hidden");
+            expBox.innerHTML = `<strong>${ok ? "✅ Đúng!" : "❌ Sai."} Đáp án đúng: ${["A", "B", "C", "D"][q.correct]}</strong>${q.solution ? `<br>${q.solution}` : ""}`;
         }
     });
 
-    // 2. Chấm điểm Phần II (theo số ý đúng 1, 2, 3, 4)
-    let scoreP2 = 0;
+    // Phần II: chấm theo mức điểm đúng 1 ý, 2 ý, 3 ý, 4 ý
+    let ptsP2 = 0;
     dsQs.forEach(q => {
-        const ansArr = Array.isArray(q.dsBool) && q.dsBool.length === 4 ? q.dsBool : [true, true, false, false];
-        const userArr = studentAnswers.ds[q.id] || [null, null, null, null];
-        let matchedSub = 0;
+        const keyArr = Array.isArray(q.dsBool) && q.dsBool.length === 4 ? q.dsBool : [true, true, false, false];
+        const uArr = userExamResponses.ds[q.id] || [null, null, null, null];
+        let matched = 0;
         for (let i = 0; i < 4; i++) {
-            const rowEl = document.getElementById(`ds_row_${q.id}_${i}`);
-            if (userArr[i] !== null && Boolean(userArr[i]) === Boolean(ansArr[i])) {
-                matchedSub++;
-                if (rowEl) rowEl.classList.add("border-emerald-500", "bg-emerald-50");
-            } else if (rowEl) {
-                rowEl.classList.add("border-red-300", "bg-red-50/60");
+            const row = document.getElementById(`ds_item_${q.id}_${i}`);
+            if (uArr[i] !== null && Boolean(uArr[i]) === Boolean(keyArr[i])) {
+                matched++;
+                if (row) row.classList.add("border-emerald-500", "bg-emerald-50");
+            } else if (row) {
+                row.classList.add("border-red-300", "bg-red-50/60");
             }
         }
-        if (matchedSub === 1) scoreP2 += Number(cfg.p2_1) || 0;
-        else if (matchedSub === 2) scoreP2 += Number(cfg.p2_2) || 0;
-        else if (matchedSub === 3) scoreP2 += Number(cfg.p2_3) || 0;
-        else if (matchedSub === 4) scoreP2 += Number(cfg.p2_4) || 0;
+        if (matched === 1) ptsP2 += Number(cfg.p2_1) || 0;
+        else if (matched === 2) ptsP2 += Number(cfg.p2_2) || 0;
+        else if (matched === 3) ptsP2 += Number(cfg.p2_3) || 0;
+        else if (matched === 4) ptsP2 += Number(cfg.p2_4) || 0;
 
-        const solBox = document.getElementById(`sol_${q.id}`);
-        if (solBox) {
-            const readable = ansArr.map((b, bi) => `${["a", "b", "c", "d"][bi]}-${b ? "đúng" : "sai"}`).join(", ");
-            solBox.classList.remove("hidden");
-            solBox.innerHTML = `<strong>Đúng ${matchedSub}/4 ý. Đáp án chuẩn: ${readable}</strong>${q.solution ? `<br>${q.solution}` : ""}`;
+        const expBox = document.getElementById(`exp_box_${q.id}`);
+        if (expBox) {
+            const readable = keyArr.map((b, bi) => `${["a", "b", "c", "d"][bi]}-${b ? "đúng" : "sai"}`).join(", ");
+            expBox.classList.remove("hidden");
+            expBox.innerHTML = `<strong>Đúng ${matched}/4 ý. Đáp án chuẩn: ${readable}</strong>${q.solution ? `<br>${q.solution}` : ""}`;
         }
     });
 
-    // 3. Chấm điểm Phần III (mỗi câu số điểm bằng nhau = tổng điểm Phần III / số câu)
-    let scoreP3 = 0;
-    let rightCountP3 = 0;
-    const eachP3 = tlnQs.length > 0 ? (Number(cfg.p3Total) || 0) / tlnQs.length : 0;
+    // Phần III: mỗi câu số điểm như nhau (tổng điểm Phần III chia đều cho số câu)
+    let ptsP3 = 0;
+    let rightP3 = 0;
+    const unitP3 = tlnQs.length > 0 ? (Number(cfg.p3Total) || 0) / tlnQs.length : 0;
 
     tlnQs.forEach(q => {
-        const uVal = normalizeNumberAnswer(studentAnswers.tln[q.id]);
-        const cVal = normalizeNumberAnswer(q.shortAnswer);
-        const isRight = uVal !== "" && uVal === cVal;
-        if (isRight) {
-            rightCountP3++;
-            scoreP3 += eachP3;
+        const uClean = String(userExamResponses.tln[q.id] || "").trim().replace(/\s+/g, "").replace(",", ".").toLowerCase();
+        const kClean = String(q.shortAnswer || "").trim().replace(/\s+/g, "").replace(",", ".").toLowerCase();
+        const ok = uClean !== "" && uClean === kClean;
+        if (ok) {
+            rightP3++;
+            ptsP3 += unitP3;
         }
-        const inp = document.getElementById(`inp_tln_${q.id}`);
-        if (inp) {
-            inp.disabled = true;
-            inp.classList.add(isRight ? "border-emerald-600" : "border-red-500");
-        }
-        const solBox = document.getElementById(`sol_${q.id}`);
-        if (solBox) {
-            solBox.classList.remove("hidden");
-            solBox.innerHTML = `<strong>${isRight ? "✅ Chính xác!" : "❌ Chưa đúng."} Đáp án: ${q.shortAnswer}</strong>${q.solution ? `<br>${q.solution}` : ""}`;
+        const fld = document.getElementById(`tln_field_${q.id}`);
+        if (fld) fld.disabled = true;
+
+        const expBox = document.getElementById(`exp_box_${q.id}`);
+        if (expBox) {
+            expBox.classList.remove("hidden");
+            expBox.innerHTML = `<strong>${ok ? "✅ Đúng!" : "❌ Sai."} Đáp án: ${q.shortAnswer}</strong>${q.solution ? `<br>${q.solution}` : ""}`;
         }
     });
 
-    // Hiển thị lời giải Phần IV (nếu có)
     tlQs.forEach(q => {
-        const solBox = document.getElementById(`sol_${q.id}`);
-        if (solBox && q.solution) {
-            solBox.classList.remove("hidden");
-            solBox.innerHTML = `<strong>Hướng dẫn giải:</strong><br>${q.solution}`;
+        const expBox = document.getElementById(`exp_box_${q.id}`);
+        if (expBox && q.solution) {
+            expBox.classList.remove("hidden");
+            expBox.innerHTML = `<strong>Hướng dẫn giải:</strong><br>${q.solution}`;
         }
     });
 
-    const totalScore = Number((scoreP1 + scoreP2 + scoreP3).toFixed(2));
-    const banner = document.getElementById("examResultBanner");
-    banner.classList.remove("hidden");
-    document.getElementById("examTotalScoreText").textContent = `${totalScore} điểm`;
-    document.getElementById("examBreakdownText").innerHTML = `
-        <div>• Phần I (Trắc nghiệm): <strong>${scoreP1.toFixed(2)} điểm</strong> (${rightCountP1}/${nlQs.length} câu)</div>
-        <div>• Phần II (Đúng / Sai): <strong>${scoreP2.toFixed(2)} điểm</strong> (${dsQs.length} câu)</div>
-        <div>• Phần III (Trả lời ngắn): <strong>${scoreP3.toFixed(2)} điểm</strong> (${rightCountP3}/${tlnQs.length} câu)</div>
+    const finalScore = Number((ptsP1 + ptsP2 + ptsP3).toFixed(2));
+    document.getElementById("examScoreSummaryCard").classList.remove("hidden");
+    document.getElementById("finalExamScoreBig").textContent = `${finalScore} điểm`;
+    document.getElementById("finalExamDetailParts").innerHTML = `
+        <div>• Phần I (Trắc nghiệm): <strong>${ptsP1.toFixed(2)} điểm</strong> (${rightP1}/${nlQs.length} câu)</div>
+        <div>• Phần II (Đúng / Sai): <strong>${ptsP2.toFixed(2)} điểm</strong> (${dsQs.length} câu)</div>
+        <div>• Phần III (Trả lời ngắn): <strong>${ptsP3.toFixed(2)} điểm</strong> (${rightP3}/${tlnQs.length} câu)</div>
     `;
 
-    renderMathSafe(document.getElementById("activeExamQuestionsContainer"));
+    renderKatexInElement(document.getElementById("examQuestionsRenderArea"));
     window.scrollTo({ top: 0, behavior: "smooth" });
-
-    // Lưu điểm vào nhật ký học tập & đồng bộ lên Google Sheets cho giáo viên theo dõi
-    await logStudentActivity(`Thi online: ${currentActiveExam.title}`, totalScore);
+    await recordStudentProgress(`Thi online: ${activeExamObj.title}`, finalScore);
 }
 
-async function logStudentActivity(activityName, score) {
-    if (!currentStudent) return;
+// ==================== NHẬT KÝ TIẾN ĐỘ HỌC TẬP ====================
+async function recordStudentProgress(activityTitle, scoreVal) {
     const logs = JSON.parse(localStorage.getItem("dakia_learning_logs")) || [];
-    const entry = {
-        student_code: currentStudent.student_code,
-        full_name: currentStudent.full_name,
-        class_name: currentStudent.class_name,
-        activity: activityName,
-        score: score,
+    const stuCode = currentStudentProfile?.student_code || "KHACH";
+    const stuName = currentStudentProfile?.full_name || "Học sinh tự học";
+    const stuClass = currentStudentProfile?.class_name || "Tự do";
+
+    const row = {
+        student_code: stuCode,
+        full_name: stuName,
+        class_name: stuClass,
+        activity: activityTitle,
+        score: scoreVal,
         timestamp: new Date().toLocaleString("vi-VN")
     };
-    logs.unshift(entry);
+    logs.unshift(row);
     localStorage.setItem("dakia_learning_logs", JSON.stringify(logs));
 
     if (typeof SYSTEM_CONFIG !== "undefined" && SYSTEM_CONFIG.googleScriptUrl && !SYSTEM_CONFIG.googleScriptUrl.startsWith("DAN_URL")) {
         try {
             await fetch(SYSTEM_CONFIG.googleScriptUrl, {
                 method: "POST",
-                body: JSON.stringify({ action: "log_activity", log: entry })
+                body: JSON.stringify({ action: "log_activity", log: row })
             });
         } catch (_) {}
+    }
+}
+
+function renderStudentProgressView() {
+    const logs = JSON.parse(localStorage.getItem("dakia_learning_logs")) || [];
+    const myCode = currentStudentProfile?.student_code || "KHACH";
+    const myLogs = logs.filter(l => l.student_code === myCode);
+
+    const countEl = document.getElementById("progCount");
+    const avgEl = document.getElementById("progAvg");
+    const statusEl = document.getElementById("progStatus");
+    const tbody = document.getElementById("progressLogsTbody");
+
+    if (countEl) countEl.textContent = myLogs.length;
+    const scored = myLogs.filter(l => l.score !== null && l.score !== undefined);
+    if (avgEl) {
+        avgEl.textContent = scored.length > 0
+            ? (scored.reduce((acc, item) => acc + Number(item.score), 0) / scored.length).toFixed(2)
+            : "--";
+    }
+    if (statusEl) {
+        statusEl.textContent = currentStudentProfile
+            ? `Đã xác thực: ${currentStudentProfile.full_name} (${currentStudentProfile.class_name})`
+            : "Khách tự học (Bấm 'Đăng nhập Mã HS' ở góc trên)";
+    }
+
+    if (tbody) {
+        if (myLogs.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="3" class="py-6 text-center text-slate-400">Chưa có dữ liệu học tập nào được ghi nhận.</td></tr>`;
+        } else {
+            tbody.innerHTML = myLogs.slice(0, 30).map(item => `
+                <tr>
+                    <td class="py-2.5 px-4 text-slate-500">${item.timestamp}</td>
+                    <td class="py-2.5 px-4 font-semibold text-slate-800">${item.activity}</td>
+                    <td class="py-2.5 px-4 font-bold text-emerald-700">${item.score !== null && item.score !== undefined ? item.score + " điểm" : "Hoàn thành"}</td>
+                </tr>
+            `).join("");
+        }
     }
 }
