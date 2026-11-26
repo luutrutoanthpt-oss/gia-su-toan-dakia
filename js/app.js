@@ -33,13 +33,33 @@ const KNTT_MATH_TOPICS = {
     ]
 };
 
+// Tự động tìm API Key từ mọi tên biến có thể có trong js/config.js hoặc localStorage
+function resolveActiveGeminiKey() {
+    if (typeof SYSTEM_CONFIG !== "undefined" && SYSTEM_CONFIG) {
+        const candidates = [
+            SYSTEM_CONFIG.geminiApiKey,
+            SYSTEM_CONFIG.apiKey,
+            SYSTEM_CONFIG.GEMINI_API_KEY,
+            SYSTEM_CONFIG.geminiKey,
+            SYSTEM_CONFIG.key
+        ];
+        for (const k of candidates) {
+            if (k && typeof k === "string" && k.trim().startsWith("AIza")) {
+                return k.trim();
+            }
+        }
+    }
+    const localKey = localStorage.getItem("dakia_gemini_api_key") || localStorage.getItem("GEMINI_API_KEY") || "";
+    if (localKey.trim().startsWith("AIza")) return localKey.trim();
+    return "";
+}
+
 window.addEventListener("DOMContentLoaded", () => {
     updateStudentHeaderUI();
     renderMathTopics();
     renderOnlineExamsList();
     renderStudentProgressView();
 
-    // Dán ảnh trực tiếp bằng Ctrl+V vào ô nhập chat
     const promptInput = document.getElementById("tutorPromptInput");
     if (promptInput) {
         promptInput.addEventListener("paste", (e) => {
@@ -53,7 +73,6 @@ window.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Kiểm tra nếu quét mã QR trực tiếp vào đề thi (?exam=...)
     const params = new URLSearchParams(window.location.search);
     const directExamId = params.get("exam");
     if (directExamId) {
@@ -64,7 +83,6 @@ window.addEventListener("DOMContentLoaded", () => {
         }, 400);
     }
 
-    // Đồng bộ ngầm không làm chậm thao tác của học sinh
     if (typeof syncFromGoogleSheets === "function") {
         syncFromGoogleSheets().then(() => {
             cachedStudentList = JSON.parse(localStorage.getItem("dakia_all_students")) || cachedStudentList;
@@ -84,6 +102,19 @@ function renderKatexInElement(targetEl) {
             throwOnError: false
         });
     }
+}
+
+// ==================== CHÈN NHANH KÍ HIỆU TOÁN HỌC ====================
+function insertMathSymbol(symbolText) {
+    const inp = document.getElementById("tutorPromptInput");
+    if (!inp) return;
+    const start = inp.selectionStart || inp.value.length;
+    const end = inp.selectionEnd || inp.value.length;
+    inp.value = inp.value.slice(0, start) + symbolText + inp.value.slice(end);
+    inp.focus();
+    const bracePos = symbolText.indexOf("{}");
+    const newCursor = bracePos !== -1 ? start + bracePos + 1 : start + symbolText.length;
+    inp.setSelectionRange(newCursor, newCursor);
 }
 
 // ==================== ĐIỀU HƯỚNG 6 TAB CHÍNH ====================
@@ -207,7 +238,6 @@ function resetTutorChat() {
 }
 
 function renderAiMessageWithSvg(containerEl, rawText) {
-    // Tách khối <svg>...</svg> ra để dựng đồ thị sắc nét và render KaTeX cho phần văn bản
     const svgRegex = /<svg[\s\S]*?<\/svg>/gi;
     const svgs = rawText.match(svgRegex) || [];
     const textWithoutSvg = rawText
@@ -244,7 +274,6 @@ async function handleSendTutor() {
     const box = document.getElementById("tutorMessagesContainer");
     const btn = document.getElementById("btnSendPrompt");
 
-    // Bong bóng tin nhắn học sinh
     const userRow = document.createElement("div");
     userRow.className = "flex justify-end";
     const userBubble = document.createElement("div");
@@ -263,7 +292,6 @@ async function handleSendTutor() {
     box.appendChild(userRow);
     renderKatexInElement(pUser);
 
-    // Bong bóng phản hồi AI
     const aiRow = document.createElement("div");
     aiRow.className = "flex justify-start";
     const aiBubble = document.createElement("div");
@@ -278,17 +306,23 @@ async function handleSendTutor() {
     clearAttachedImg();
     btn.disabled = true;
 
+    const activeKey = resolveActiveGeminiKey();
+
     try {
         const res = await fetch("/api/tutor", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                ...(activeKey ? { "x-gemini-key": activeKey } : {})
+            },
             body: JSON.stringify({
                 message: `[Môn ${subject} - Lớp ${grade}] ${msg || "Hướng dẫn giải chi tiết bài tập trong ảnh."}`,
                 grade,
                 isWeakMode: isWeak,
                 imageBase64: imgPayload || undefined,
                 history: chatConversationHistory.slice(-6),
-                mode: "student_tutor"
+                mode: "student_tutor",
+                apiKey: activeKey
             })
         });
 
@@ -317,7 +351,6 @@ async function handleSendTutor() {
                         const delta = (parsed.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
                         if (delta) {
                             fullText += delta;
-                            // Hiển thị ngay phần chữ trước khi hoàn tất thẻ SVG
                             const previewClean = fullText.replace(/<svg[\s\S]*$/i, "\n⏳ Đang dựng hình đồ thị trực quan...");
                             aiBubble.textContent = previewClean;
                             box.scrollTop = box.scrollHeight;
@@ -574,7 +607,6 @@ async function gradeAndSubmitExam(isTimeout) {
 
     const cfg = activeExamObj.scoreConfig || { p1Total: 3.0, p2_1: 0.1, p2_2: 0.25, p2_3: 0.5, p2_4: 1.0, p3Total: 3.0 };
 
-    // Phần I: chia đều tổng điểm Phần I cho số câu Phần I
     let ptsP1 = 0;
     let rightP1 = 0;
     const unitP1 = nlQs.length > 0 ? (Number(cfg.p1Total) || 0) / nlQs.length : 0;
@@ -599,7 +631,6 @@ async function gradeAndSubmitExam(isTimeout) {
         }
     });
 
-    // Phần II: chấm theo mức điểm đúng 1 ý, 2 ý, 3 ý, 4 ý
     let ptsP2 = 0;
     dsQs.forEach(q => {
         const keyArr = Array.isArray(q.dsBool) && q.dsBool.length === 4 ? q.dsBool : [true, true, false, false];
@@ -627,7 +658,6 @@ async function gradeAndSubmitExam(isTimeout) {
         }
     });
 
-    // Phần III: mỗi câu số điểm như nhau (tổng điểm Phần III chia đều cho số câu)
     let ptsP3 = 0;
     let rightP3 = 0;
     const unitP3 = tlnQs.length > 0 ? (Number(cfg.p3Total) || 0) / tlnQs.length : 0;
