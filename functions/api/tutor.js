@@ -12,12 +12,16 @@ export async function onRequestPost(context) {
             apiKey: clientApiKey
         } = body;
 
-        const headerKey = context.request.headers.get("x-gemini-key") || "";
-        const apiKey = String(context.env.GEMINI_API_KEY || clientApiKey || headerKey || "").trim();
+        const envKey = String(context.env.GEMINI_API_KEY || "").trim();
+        const headerKey = String(context.request.headers.get("x-gemini-key") || "").trim();
+        const bodyKey = String(clientApiKey || "").trim();
+        
+        // Ưu tiên tuyệt đối biến môi trường bảo mật trên Cloudflare Pages
+        const apiKey = envKey || bodyKey || headerKey;
 
         if (!apiKey || apiKey.startsWith("DAN_API")) {
             return new Response(JSON.stringify({
-                error: "Chưa tìm thấy Gemini API Key hợp lệ trong js/config.js hoặc Cloudflare Pages. Thầy kiểm tra lại mã key nhé!"
+                error: "Chưa tìm thấy biến GEMINI_API_KEY trên Cloudflare Pages. Hãy kiểm tra lại mục Variables and Secrets!"
             }), {
                 status: 400,
                 headers: { "Content-Type": "application/json" }
@@ -65,24 +69,47 @@ QUY TẮC CÔNG THỨC & VẼ ĐỒ THỊ:
         currentParts.push({ text: String(message || "Hướng dẫn giúp em bài này.") });
         contents.push({ role: "user", parts: currentParts });
 
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
+        const modelName = "gemini-3.8-flash";
+        const payloadObj = {
+            systemInstruction: { parts: [{ text: systemInstruction }] },
+            contents,
+            generationConfig: {
+                temperature: 0.4,
+                thinkingConfig: { thinkingBudget: 0 }
+            }
+        };
 
-        const geminiRes = await fetch(geminiUrl, {
+        const reqHeaders = {
+            "Content-Type": "application/json",
+            "x-goog-api-key": apiKey
+        };
+
+        // 1. Thử cổng Vertex AI Express (chuẩn cho khóa AQ...)
+        const vertexUrl = `https://aiplatform.googleapis.com/v1/publishers/google/models/${modelName}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
+        let geminiRes = await fetch(vertexUrl, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                systemInstruction: { parts: [{ text: systemInstruction }] },
-                contents,
-                generationConfig: {
-                    temperature: 0.4,
-                    thinkingConfig: { thinkingBudget: 0 }
-                }
-            })
+            headers: reqHeaders,
+            body: JSON.stringify(payloadObj)
         });
+
+        // 2. Nếu chưa khớp, thử sang cổng Google AI Studio (v1beta)
+        if (!geminiRes.ok) {
+            const studioUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
+            const studioRes = await fetch(studioUrl, {
+                method: "POST",
+                headers: reqHeaders,
+                body: JSON.stringify(payloadObj)
+            });
+            if (studioRes.ok) {
+                geminiRes = studioRes;
+            }
+        }
 
         if (!geminiRes.ok) {
             const errTxt = await geminiRes.text();
-            return new Response(JSON.stringify({ error: `Lỗi Gemini API (${geminiRes.status}): ${errTxt.slice(0, 220)}` }), {
+            return new Response(JSON.stringify({
+                error: `Lỗi xác thực (${geminiRes.status}) [Đầu key: ${apiKey.slice(0, 6)}...]: ${errTxt.slice(0, 220)}`
+            }), {
                 status: 502,
                 headers: { "Content-Type": "application/json" }
             });
