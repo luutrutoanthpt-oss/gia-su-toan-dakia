@@ -2181,4 +2181,561 @@ Nội dung:\n${rawContent.slice(0, 5000)}`,
                 slide.background = { color: "F8FAFC" };
 
                 slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 13.33, h: 1.0, fill: { color: "1E3A8A" } });
-                slide.addShape(pptx.ShapeType.rect, { x:
+                slide.addShape(pptx.ShapeType.rect, { x: 0, y: 1.0, w: 13.33, h: 0.06, fill: { color: "F59E0B" } });
+                slide.addText(formatMathUnicode(topic.heading || `Hoạt động ${tIdx + 1}`), {
+                    x: 0.6, y: 0.18, w: 12.1, h: 0.65, fontSize: 21, bold: true, color: "FFFFFF", fit: "shrink"
+                });
+
+                const contentWidth = showImg ? 7.45 : 12.1;
+                const cardHeight = 1.62;
+                const gap = 0.22;
+
+                for (let c = 0; c < step; c++) {
+                    const yPos = 1.32 + c * (cardHeight + gap);
+                    const accent = cardAccents[c % cardAccents.length];
+                    const bg = cardBgColors[c % cardBgColors.length];
+                    const formattedMathText = formatMathUnicode(cards[c]);
+
+                    slide.addShape(pptx.ShapeType.rect, {
+                        x: 0.6, y: yPos, w: contentWidth, h: cardHeight,
+                        fill: { color: bg }, line: { color: accent, width: 1.5 }
+                    });
+                    slide.addShape(pptx.ShapeType.rect, {
+                        x: 0.6, y: yPos, w: 0.16, h: cardHeight,
+                        fill: { color: accent }
+                    });
+                    slide.addText(`0${c + 1}`, {
+                        x: 0.88, y: yPos + 0.15, w: 0.55, h: 0.45,
+                        fontSize: 16, bold: true, color: accent
+                    });
+                    slide.addText(formattedMathText, {
+                        x: 1.48, y: yPos + 0.12, w: contentWidth - 1.1, h: cardHeight - 0.24,
+                        fontSize: 18, color: "0F172A", valign: "middle", fit: "shrink", wrap: true
+                    });
+                }
+
+                if (showImg) {
+                    slide.addShape(pptx.ShapeType.rect, {
+                        x: 8.25, y: 1.32, w: 4.5, h: 5.3,
+                        fill: { color: "FFFFFF" }, line: { color: "CBD5E1", width: 1.2 }
+                    });
+                    slide.addText("HÌNH MINH HỌA SGK", {
+                        x: 8.25, y: 1.48, w: 4.5, h: 0.4,
+                        fontSize: 13, bold: true, color: "1D4ED8", align: "center"
+                    });
+                    slide.addImage({
+                        data: pngDataUrl,
+                        x: 8.4, y: 2.15, w: 4.2, h: 2.2
+                    });
+                }
+
+                slide.addText(`THPT Đa Kia • Bấm chuột để hiện khung tiếp theo (${step}/${cards.length}) | Slide ${slideCounter++}`, {
+                    x: 0.6, y: 7.0, w: 12.1, fontSize: 11, color: "64748B", align: "right"
+                });
+                if (topic.note && step === 1) slide.addNotes(topic.note);
+            }
+        });
+
+        if (data.quiz && data.quiz.question) {
+            for (let qStep = 1; qStep <= 2; qStep++) {
+                const qSlide = pptx.addSlide();
+                qSlide.transition = qStep === 1 ? { type: "wipe", duration: 450 } : { type: "none" };
+                qSlide.background = { color: "F8FAFC" };
+                qSlide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 13.33, h: 1.0, fill: { color: "047857" } });
+                qSlide.addText("LUYỆN TẬP NHANH • GIƠ THẺ MÀU A / B / C / D", {
+                    x: 0.6, y: 0.2, w: 12.1, h: 0.6, fontSize: 21, bold: true, color: "FFFFFF"
+                });
+
+                qSlide.addShape(pptx.ShapeType.rect, {
+                    x: 0.6, y: 1.3, w: 12.1, h: 1.4, fill: { color: "ECFDF5" }, line: { color: "059669", width: 1.5 }
+                });
+                qSlide.addText(formatMathUnicode(data.quiz.question), {
+                    x: 0.85, y: 1.4, w: 11.6, h: 1.2, fontSize: 19, bold: true, color: "064E3B", valign: "middle", fit: "shrink"
+                });
+
+                const opts = (data.quiz.options || []).slice(0, 4);
+                opts.forEach((opt, idx) => {
+                    const col = idx % 2;
+                    const row = Math.floor(idx / 2);
+                    const xBox = 0.6 + col * 6.15;
+                    const yBox = 2.95 + row * 1.25;
+                    qSlide.addShape(pptx.ShapeType.rect, {
+                        x: xBox, y: yBox, w: 5.95, h: 1.05, fill: { color: "FFFFFF" }, line: { color: "94A3B8", width: 1.2 }
+                    });
+                    qSlide.addText(formatMathUnicode(opt), {
+                        x: xBox + 0.2, y: yBox + 0.1, w: 5.55, h: 0.85, fontSize: 18, color: "0F172A", valign: "middle", fit: "shrink"
+                    });
+                });
+
+                if (qStep === 2) {
+                    qSlide.addShape(pptx.ShapeType.rect, {
+                        x: 0.6, y: 5.55, w: 12.1, h: 1.15, fill: { color: "FEF3C7" }, line: { color: "D97706", width: 1.5 }
+                    });
+                    qSlide.addText("✅ " + formatMathUnicode(data.quiz.answerText || ""), {
+                        x: 0.85, y: 5.65, w: 11.6, h: 0.95, fontSize: 18, bold: true, color: "92400E", valign: "middle", fit: "shrink"
+                    });
+                }
+
+                qSlide.addText(`THPT Đa Kia • ${qStep === 1 ? "Bấm chuột để hiện Đáp án" : "Hoàn thành bài giảng"} | Slide ${slideCounter++}`, {
+                    x: 0.6, y: 7.0, w: 12.1, fontSize: 11, color: "64748B", align: "right"
+                });
+            }
+        }
+
+        await pptx.writeFile({ fileName: `Slide_16x9_HieuUng_${title.replace(/\s+/g, "_")}.pptx` });
+    } catch (err) {
+        alert("Lỗi tạo PowerPoint: " + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "📊 Xuất Slide PowerPoint 16:9 (.pptx)";
+    }
+}
+
+async function exportElearningScorm() {
+    const rawContent = document.getElementById("lpResultEditor").value.trim();
+    const title = document.getElementById("lpTitle").value.trim() || "BaiGiang_Elearning";
+    if (!rawContent) return alert("Chưa có nội dung để đóng gói E-learning!");
+
+    const btn = typeof event !== "undefined" ? event.target : null;
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = "⏳ Đang đóng gói E-learning chuẩn bố cục...";
+    }
+
+    const svgRaw = latestLessonSvg || buildFallbackSvg(title);
+
+    try {
+        const res = await fetch("/api/tutor", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                message: `Chuyển giáo án sau thành bài giảng E-learning gồm 4 chặng học tập.
+QUY TẮC BẮT BUỘC VỀ BỐ CỤC LÝ THUYẾT:
+- Tách phần lý thuyết thành 3-4 ý riêng biệt (mảng "points"), mỗi ý nằm trọn trên 1 dòng mạch lạc, công thức Toán đặt trọn vẹn trong $...$ trên cùng 1 dòng (tuyệt đối không ngắt dòng giữa công thức).
+- Có thêm mục "formulaHighlight" là 1 công thức cốt lõi nhất của chặng (đặt trong $...$).
+- Mỗi chặng có 3 câu hỏi tương tác đa dạng ("mcq": Trắc nghiệm 4 lựa chọn, "tf": Đúng/Sai nhanh, "fill": Điền số ngắn gọn).
+Trả về DUY NHẤT JSON hợp lệ theo mẫu:
+{"stages":[{"title":"Chặng 1: ...","formulaHighlight":"$...$","points":["Ý lý thuyết 1...","Ý lý thuyết 2...","Ý lý thuyết 3..."],"questions":[
+  {"type":"mcq","question":"Câu trắc nghiệm...","options":["A. ...","B. ...","C. ...","D. ..."],"answer":0,"explain":"Giải thích ngắn..."},
+  {"type":"tf","question":"Khẳng định sau Đúng hay Sai: ...","options":["Đúng","Sai"],"answer":0,"explain":"Giải thích ngắn..."},
+  {"type":"fill","question":"Tính giá trị (nhập số ngắn gọn): ...","answerText":"3","explain":"Giải thích ngắn..."}
+]}]}
+Nội dung:\n${rawContent.slice(0, 5000)}`,
+                mode: "teacher_slides"
+            })
+        });
+
+        let rawJson = "";
+        for await (const chunk of responseBodyReader(res)) rawJson += chunk;
+        const cleanJson = rawJson.replace(/```json|```/g, "").trim();
+        const eData = JSON.parse(cleanJson);
+
+        const zip = new JSZip();
+        const manifestXml = `<?xml version="1.0" encoding="UTF-8"?>
+<manifest identifier="THPT_DAKIA_SCORM_12" version="1.0"
+  xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2"
+  xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_rootv1p2"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <metadata><schema>ADL SCORM</schema><schemaversion>1.2</schemaversion></metadata>
+  <organizations default="ORG_DAKIA">
+    <organization identifier="ORG_DAKIA">
+      <title>${title}</title>
+      <item identifier="ITEM_1" identifierref="RES_1"><title>${title}</title></item>
+    </organization>
+  </organizations>
+  <resources>
+    <resource identifier="RES_1" type="webcontent" adlcp:scormtype="sco" href="index.html">
+      <file href="index.html"/>
+    </resource>
+  </resources>
+</manifest>`;
+
+        const htmlLesson = `<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${title} – E-Learning Tương Tác THPT Đa Kia</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMath();"></script>
+<style>
+  *{box-sizing:border-box}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135deg,#dbeafe 0%,#f8fafc 100%);margin:0;color:#0f172a;min-height:100vh}
+  header{background:linear-gradient(90deg,#1e3a8a,#2563eb);color:#fff;padding:18px 32px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 4px 12px rgba(30,58,138,.2)}
+  .badge-group{display:flex;gap:12px;align-items:center}
+  .pill{background:rgba(255,255,255,.18);padding:7px 14px;border-radius:999px;font-weight:700;font-size:13px}
+  .pill-gold{background:#facc15;color:#1e293b}
+  .wrap{max-width:1040px;margin:26px auto;padding:0 16px}
+  .stepper{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:20px}
+  .step-btn{padding:12px 14px;border:2px solid #cbd5e1;border-radius:12px;background:#fff;font-weight:700;color:#475569;cursor:pointer;transition:.2s;text-align:left}
+  .step-btn.active{border-color:#1d4ed8;background:#1d4ed8;color:#fff;box-shadow:0 6px 14px rgba(29,78,216,.25)}
+  .panel{background:#fff;border-radius:18px;padding:30px;box-shadow:0 10px 28px rgba(15,23,42,.08);border:1px solid #e2e8f0;animation:fadeIn .3s ease}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .theory-grid{display:grid;grid-template-columns:1.35fr 1fr;gap:22px;align-items:start;margin-top:14px}
+  @media(max-width:768px){.theory-grid{grid-template-columns:1fr}}
+  .point-card{background:#f8fafc;border-left:5px solid #2563eb;padding:14px 18px;border-radius:10px;margin-bottom:12px;font-size:16px;line-height:1.7}
+  .formula-card{background:linear-gradient(135deg,#eff6ff,#dbeafe);border:2px solid #3b82f6;border-radius:14px;padding:18px;text-align:center;margin-bottom:16px}
+  .formula-title{font-size:12px;font-weight:800;color:#1d4ed8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+  .formula-math{font-size:20px;font-weight:700;color:#0f172a;overflow-x:auto;padding:6px 0}
+  .svg-box{text-align:center;padding:12px;background:#fff;border:1.5px solid #cbd5e1;border-radius:14px}
+  .svg-box svg{max-width:100%;height:auto}
+  .katex{white-space:nowrap}
+  .q-type-tag{display:inline-block;background:#e0e7ff;color:#1e40af;font-weight:800;font-size:12px;padding:5px 12px;border-radius:999px;margin-bottom:10px;text-transform:uppercase}
+  .opt-btn{display:block;width:100%;text-align:left;padding:13px 16px;margin:10px 0;border:2px solid #cbd5e1;border-radius:12px;background:#fff;font-size:16px;cursor:pointer;transition:.15s}
+  .opt-btn:hover:not(:disabled){border-color:#2563eb;background:#eff6ff;transform:translateX(4px)}
+  .opt-btn.correct{border-color:#059669;background:#d1fae5;color:#065f46;font-weight:700}
+  .opt-btn.wrong{border-color:#dc2626;background:#fee2e2;color:#991b1b}
+  .tf-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
+  .tf-btn{padding:18px;font-size:18px;font-weight:800;border-radius:14px;border:2px solid #cbd5e1;background:#fff;cursor:pointer;text-align:center}
+  .tf-btn:hover:not(:disabled){border-color:#2563eb;background:#eff6ff}
+  .fill-box{display:flex;gap:10px;margin:14px 0;flex-wrap:wrap}
+  .fill-input{flex:1;min-width:200px;padding:12px 16px;font-size:16px;border:2px solid #94a3b8;border-radius:10px}
+  .feedback{margin-top:14px;padding:15px 18px;border-radius:12px;font-size:15px;line-height:1.6}
+  .fb-ok{background:#ecfdf5;border:1.5px solid #34d399;color:#065f46}
+  .fb-no{background:#fef2f2;border:1.5px solid #f87171;color:#991b1b}
+  .controls{display:flex;justify-content:space-between;align-items:center;margin-top:26px;padding-top:18px;border-top:1px solid #e2e8f0;gap:12px;flex-wrap:wrap}
+  .btn-main{background:#1d4ed8;color:#fff;border:none;padding:13px 24px;border-radius:12px;font-size:15.5px;font-weight:700;cursor:pointer;box-shadow:0 4px 10px rgba(29,78,216,.25)}
+  .btn-play{background:linear-gradient(90deg,#059669,#10b981);color:#fff;border:none;padding:14px 26px;border-radius:12px;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 4px 12px rgba(5,150,105,.3)}
+  .btn-sub{background:#e2e8f0;color:#1e293b;border:none;padding:12px 20px;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div style="font-size:12px;letter-spacing:.6px;opacity:.85;font-weight:700">TRƯỜNG THPT ĐA KIA • BÀI GIẢNG E-LEARNING TƯƠNG TÁC</div>
+    <div style="font-size:20px;font-weight:800;margin-top:2px">${title}</div>
+  </div>
+  <div class="badge-group">
+    <div class="pill" id="scoreBadge">Điểm: 0</div>
+    <div class="pill pill-gold" id="progBadge">Chặng 1</div>
+  </div>
+</header>
+<div class="wrap">
+  <div class="stepper" id="stepper"></div>
+  <div class="panel" id="mainPanel"></div>
+</div>
+<script>
+const data = ${JSON.stringify(eData)};
+const svgDiagram = ${JSON.stringify(svgRaw)};
+const praises = [
+  "🌟 Tuyệt vời! Em nắm chắc kiến thức rồi đấy, nhận ngay +10 điểm thưởng!",
+  "👏 Chính xác! Tư duy giải toán của em rất sắc bén, tiếp tục chinh phục câu sau nhé!",
+  "🎯 Xuất sắc! Em đã vượt qua thử thách này một cách ngoạn mục!"
+];
+let stageIdx = 0;
+let viewMode = "theory";
+let currentQIdx = 0;
+let answeredMap = {};
+let totalRight = 0;
+
+function fixInlineMath(str){
+  return String(str || "").replace(/\\$([^$]+)\\$/g, function(_, inner){
+    return "$" + inner.replace(/\\n+/g, " ").trim() + "$";
+  });
+}
+
+function renderMath(){
+  if(window.renderMathInElement){
+    renderMathInElement(document.body,{delimiters:[{left:'$',right:'$',display:false}]});
+  }
+}
+
+function initScorm(){
+  try{
+    let w = window;
+    while(w && !w.API && w.parent && w.parent !== w) w = w.parent;
+    if(w && w.API){ w.API.LMSInitialize(""); w.API.LMSSetValue("cmi.core.lesson_status","incomplete"); w.API.LMSCommit(""); }
+  }catch(e){}
+}
+
+function syncScorm(score){
+  try{
+    let w = window;
+    while(w && !w.API && w.parent && w.parent !== w) w = w.parent;
+    if(w && w.API){
+      w.API.LMSSetValue("cmi.core.score.raw", String(score));
+      w.API.LMSSetValue("cmi.core.lesson_status", score >= 50 ? "passed" : "completed");
+      w.API.LMSCommit("");
+    }
+  }catch(e){}
+}
+
+function render(){
+  const stages = data.stages || [];
+  const totalQ = stages.reduce((acc, s) => acc + (s.questions || []).length, 0);
+  const pctScore = totalQ ? Math.round((totalRight / totalQ) * 100) : 100;
+  document.getElementById("scoreBadge").textContent = \`🏆 Điểm: \${pctScore}/100 (\${totalRight}/\${totalQ} câu)\`;
+  document.getElementById("progBadge").textContent = \`Chặng \${stageIdx + 1}/\${stages.length}\`;
+
+  document.getElementById("stepper").innerHTML = stages.map((st, idx) =>
+    \`<button class="step-btn \${idx === stageIdx ? 'active' : ''}" onclick="goStage(\${idx})">\${st.title}</button>\`
+  ).join("");
+
+  const st = stages[stageIdx];
+  if(!st) return;
+  const qs = st.questions || [];
+  const panel = document.getElementById("mainPanel");
+
+  if(viewMode === "theory"){
+    const points = Array.isArray(st.points) && st.points.length
+      ? st.points
+      : String(st.theory || "").split("\\n").filter(Boolean);
+
+    const pointsHtml = points.map((p, i) =>
+      \`<div class="point-card"><strong>\${i + 1}.</strong> \${fixInlineMath(p)}</div>\`
+    ).join("");
+
+    const formulaHtml = st.formulaHighlight
+      ? \`<div class="formula-card"><div class="formula-title">📌 Công thức / Ghi nhớ cốt lõi</div><div class="formula-math">\${fixInlineMath(st.formulaHighlight)}</div></div>\`
+      : "";
+
+    const diagramHtml = svgDiagram
+      ? \`<div class="svg-box"><div style="font-size:12px;font-weight:800;color:#1d4ed8;margin-bottom:6px">HÌNH MINH HỌA TRỰC QUAN SGK</div>\${svgDiagram}</div>\`
+      : "";
+
+    panel.innerHTML = \`
+      <span class="q-type-tag">📖 Kiến Thức Trọng Tâm • \${st.title}</span>
+      <h2 style="margin-top:4px;color:#1e3a8a">\${st.title}</h2>
+      <div class="theory-grid">
+        <div>\${pointsHtml}</div>
+        <div>\${formulaHtml}\${diagramHtml}</div>
+      </div>
+      <div class="controls">
+        <button class="btn-sub" \${stageIdx === 0 ? "disabled" : ""} onclick="goStage(\${stageIdx - 1})">⬅ Chặng trước</button>
+        <button class="btn-play" onclick="startStageQuiz()">🎮 Luyện tập tương tác chặng này (\${qs.length} câu) ➔</button>
+      </div>
+    \`;
+    renderMath();
+    return;
+  }
+
+  const q = qs[currentQIdx];
+  if(!q) return;
+  const key = \`\${stageIdx}_\${currentQIdx}\`;
+  const userAns = answeredMap[key];
+  const isDone = userAns !== undefined;
+
+  let typeLabel = "🎯 Thử thách Trắc nghiệm 4 lựa chọn";
+  if(q.type === "tf") typeLabel = "⚡ Thử thách Phản xạ Đúng / Sai";
+  if(q.type === "fill") typeLabel = "✍️ Thử thách Điền đáp số chính xác";
+
+  let interactionHtml = "";
+  let isCorrectPick = false;
+
+  if(q.type === "fill"){
+    const normUser = String(userAns || "").replace(/\\s+/g, "").replace(",", ".").toLowerCase();
+    const normAns = String(q.answerText || "").replace(/\\s+/g, "").replace(",", ".").toLowerCase();
+    isCorrectPick = isDone && normUser === normAns;
+    interactionHtml = \`
+      <div class="fill-box">
+        <input id="fillInput" class="fill-input" placeholder="Nhập đáp số của em..." value="\${isDone ? userAns : ""}" \${isDone ? "disabled" : ""}>
+        <button class="btn-main" \${isDone ? "disabled" : ""} onclick="submitFill()">Kiểm tra đáp án</button>
+      </div>
+    \`;
+  } else if(q.type === "tf"){
+    isCorrectPick = isDone && Number(userAns) === Number(q.answer);
+    const opts = q.options && q.options.length === 2 ? q.options : ["Đúng", "Sai"];
+    interactionHtml = \`<div class="tf-grid">\` + opts.map((opt, oi) => {
+      let cls = "tf-btn";
+      if(isDone){
+        if(oi === Number(q.answer)) cls += " opt-btn correct";
+        else if(oi === Number(userAns)) cls += " opt-btn wrong";
+      }
+      return \`<button class="\${cls}" \${isDone ? "disabled" : ""} onclick="submitChoice(\${oi})">\${oi === 0 ? "✅ " : "❌ "}\${fixInlineMath(opt)}</button>\`;
+    }).join("") + \`</div>\`;
+  } else {
+    isCorrectPick = isDone && Number(userAns) === Number(q.answer);
+    interactionHtml = (q.options || []).map((opt, oi) => {
+      let cls = "opt-btn";
+      if(isDone){
+        if(oi === Number(q.answer)) cls += " correct";
+        else if(oi === Number(userAns)) cls += " wrong";
+      }
+      return \`<button class="\${cls}" \${isDone ? "disabled" : ""} onclick="submitChoice(\${oi})">\${fixInlineMath(opt)}</button>\`;
+    }).join("");
+  }
+
+  const rightDisplay = q.type === "fill" ? q.answerText : fixInlineMath((q.options || [])[q.answer]);
+  const feedbackHtml = isDone ? (isCorrectPick
+    ? \`<div class="feedback fb-ok"><strong>\${praises[currentQIdx % praises.length]}</strong><br>💡 Giải thích chi tiết: \${fixInlineMath(q.explain || "Hoàn toàn chính xác!")}</div>\`
+    : \`<div class="feedback fb-no"><strong>💪 Chưa chính xác rồi, cố gắng lên em nhé!</strong><br>👉 Đáp án đúng là: <strong>\${rightDisplay}</strong>.<br>💡 Lời giải gợi ý: \${fixInlineMath(q.explain || "Em xem lại phần lý thuyết chặng này nhé!")}</div>\`
+  ) : "";
+
+  const isLastQInStage = currentQIdx >= qs.length - 1;
+  const isLastStage = stageIdx >= stages.length - 1;
+
+  let nextActionBtn = "";
+  if(!isLastQInStage){
+    nextActionBtn = \`<button class="btn-play" onclick="nextQuestion()">Câu tiếp theo (\${currentQIdx + 2}/\${qs.length}) ➔</button>\`;
+  } else if(!isLastStage){
+    nextActionBtn = \`<button class="btn-main" onclick="goStage(\${stageIdx + 1})">Hoàn thành chặng • Sang Chặng \${stageIdx + 2} ➔</button>\`;
+  } else {
+    nextActionBtn = \`<button class="btn-play" onclick="finishAll(\${pctScore})">🏆 Hoàn thành bài học & Lưu điểm SCORM</button>\`;
+  }
+
+  panel.innerHTML = \`
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <span class="q-type-tag">\${typeLabel}</span>
+      <span style="font-weight:700;color:#64748b;font-size:14px">\${st.title} • Câu \${currentQIdx + 1}/\${qs.length}</span>
+    </div>
+    <h3 style="font-size:19px;color:#0f172a;margin:10px 0 14px;line-height:1.6">\${fixInlineMath(q.question)}</h3>
+    \${interactionHtml}
+    \${feedbackHtml}
+    <div class="controls">
+      <button class="btn-sub" onclick="backToTheory()">📖 Xem lại lý thuyết chặng này</button>
+      \${nextActionBtn}
+    </div>
+  \`;
+  renderMath();
+}
+
+function startStageQuiz(){
+  viewMode = "quiz";
+  currentQIdx = 0;
+  render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function backToTheory(){
+  viewMode = "theory";
+  render();
+}
+
+function nextQuestion(){
+  currentQIdx++;
+  render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function submitChoice(oi){
+  const key = \`\${stageIdx}_\${currentQIdx}\`;
+  if(answeredMap[key] !== undefined) return;
+  answeredMap[key] = oi;
+  const q = data.stages[stageIdx].questions[currentQIdx];
+  if(Number(oi) === Number(q.answer)) totalRight++;
+  updateAndRender();
+}
+
+function submitFill(){
+  const val = document.getElementById("fillInput").value.trim();
+  if(!val) return alert("Em hãy nhập câu trả lời trước khi bấm kiểm tra nhé!");
+  const key = \`\${stageIdx}_\${currentQIdx}\`;
+  if(answeredMap[key] !== undefined) return;
+  answeredMap[key] = val;
+  const q = data.stages[stageIdx].questions[currentQIdx];
+  const normUser = val.replace(/\\s+/g, "").replace(",", ".").toLowerCase();
+  const normAns = String(q.answerText || "").replace(/\\s+/g, "").replace(",", ".").toLowerCase();
+  if(normUser === normAns) totalRight++;
+  updateAndRender();
+}
+
+function updateAndRender(){
+  const totalQ = (data.stages || []).reduce((acc, s) => acc + (s.questions || []).length, 0);
+  const pct = totalQ ? Math.round((totalRight / totalQ) * 100) : 100;
+  syncScorm(pct);
+  render();
+}
+
+function goStage(idx){
+  stageIdx = idx;
+  viewMode = "theory";
+  currentQIdx = 0;
+  render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function finishAll(score){
+  syncScorm(score);
+  alert(\`🎉 Xuất sắc! Em đã hoàn thành toàn bộ bài học với số điểm \${score}/100. Kết quả đã được lưu vào hệ thống!\`);
+}
+
+initScorm();
+render();
+</script>
+</body>
+</html>`;
+
+        zip.file("imsmanifest.xml", manifestXml);
+        zip.file("index.html", htmlLesson);
+        const blob = await zip.generateAsync({ type: "blob" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `SCORM_Elearning_TuongTac_${title.replace(/\s+/g, "_")}.zip`;
+        a.click();
+    } catch (err) {
+        alert("Lỗi đóng gói E-learning: " + err.message);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = "📦 Đóng Gói E-learning SCORM (.zip)";
+        }
+    }
+}
+
+// ==================== TIỆN ÍCH TẠO MÃ QR & PDF SANG WORD CHUẨN MATHTYPE ====================
+function generateCustomQR() {
+    const text = document.getElementById("qrCustomText").value.trim();
+    if (!text) return alert("Vui lòng nhập đường dẫn hoặc nội dung cần tạo mã QR!");
+    const box = document.getElementById("customQrBox");
+    box.innerHTML = "";
+    new QRCode(box, { text, width: 180, height: 180 });
+}
+
+function downloadCustomQR() {
+    const canvas = document.querySelector("#customQrBox canvas");
+    if (!canvas) return alert("Vui lòng bấm 'Tạo Mã QR' trước!");
+    const a = document.createElement("a");
+    a.href = canvas.toDataURL("image/png");
+    a.download = "MaQR_THPT_DaKia.png";
+    a.click();
+}
+
+async function convertPdfToDocx(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const statusEl = document.getElementById("pdfConvertStatus");
+    statusEl.textContent = "⏳ AI đang nhận diện chữ và công thức Toán học từ PDF sang Word (vui lòng đợi 15-30 giây)...";
+
+    try {
+        const arrayBuffer = await file.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuffer);
+        let binary = "";
+        for (let i = 0; i < bytes.byteLength; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        const pdfBase64 = btoa(binary);
+
+        const res = await fetch("/api/tutor", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                message: "Trích xuất nguyên văn toàn bộ đề thi/tài liệu trong file PDF này, giữ nguyên công thức Toán/Lí/Hóa dưới dạng $...$ chuẩn MathType.",
+                mode: "pdf_to_word",
+                pdfBase64
+            })
+        });
+
+        let fullText = "";
+        for await (const chunk of responseBodyReader(res)) {
+            fullText += chunk;
+        }
+
+        const { Document, Packer, Paragraph, TextRun } = docx;
+        const lines = fullText.split("\n");
+        const paragraphs = lines.map(line => new Paragraph({
+            children: [new TextRun({ text: line, size: 26, font: "Times New Roman" })],
+            spacing: { after: 120 }
+        }));
+
+        const doc = new Document({ sections: [{ children: paragraphs }] });
+        const blob = await Packer.toBlob(doc);
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = file.name.replace(/\.pdf$/i, "") + "_DaChuyenWord_MathType.docx";
+        a.click();
+        statusEl.textContent = "✅ Đã chuyển đổi xong sang file Word (.docx) giữ nguyên công thức Toán!";
+    } catch (err) {
+        statusEl.textContent = "❌ Lỗi chuyển đổi PDF: " + err.message;
+    }
+}
