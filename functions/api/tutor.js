@@ -1,13 +1,3 @@
-async function fetchWithTimeout(url, options, timeoutMs = 6500) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-        return await fetch(url, { ...options, signal: controller.signal });
-    } finally {
-        clearTimeout(timer);
-    }
-}
-
 export async function onRequestPost(context) {
     try {
         const body = await context.request.json();
@@ -43,12 +33,10 @@ export async function onRequestPost(context) {
             });
         }
 
-        // Xáo trộn ngẫu nhiên danh sách key để chia tải đều
-        const shuffledKeys = [...keyList];
-        for (let i = shuffledKeys.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [shuffledKeys[i], shuffledKeys[j]] = [shuffledKeys[j], shuffledKeys[i]];
-        }
+        // Chọn ngẫu nhiên 1 key chính và 1 key dự phòng khác nhau để không tốn thời gian thử nhiều vòng
+        const primaryIdx = Math.floor(Math.random() * keyList.length);
+        const primaryKey = keyList[primaryIdx];
+        const backupKey = keyList.length > 1 ? keyList[(primaryIdx + 1) % keyList.length] : primaryKey;
 
         let systemInstruction = "";
         if (mode === "student_tutor") {
@@ -73,7 +61,7 @@ Quy tắc:
                 const compactText = String(turn.text)
                     .replace(/\[\[PLOT:[^\]]+\]\]/gi, "[Đã vẽ đồ thị]")
                     .replace(/<svg[\s\S]*?<\/svg>/gi, "[Đã vẽ hình]")
-                    .slice(0, 600);
+                    .slice(0, 500);
                 contents.push({
                     role: turn.role === "model" ? "model" : "user",
                     parts: [{ text: compactText }]
@@ -82,4 +70,5 @@ Quy tắc:
         }
 
         const currentParts = [];
-        if
+        if (imageBase64) {
+            const match = imageBase64.match(/^data:(image\/[a-zA-Z0-9.+-]+);
