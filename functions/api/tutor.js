@@ -19,7 +19,7 @@ export async function onRequestPost(context) {
 
         if (!apiKey || apiKey.startsWith("DAN_API")) {
             return new Response(JSON.stringify({
-                error: "Chưa tìm thấy biến GEMINI_API_KEY trên Cloudflare Pages. Thầy kiểm tra lại mục Variables and Secrets!"
+                error: "Chưa tìm thấy biến GEMINI_API_KEY trên Cloudflare Pages. Hãy kiểm tra lại mục Variables and Secrets!"
             }), {
                 status: 400,
                 headers: { "Content-Type": "application/json" }
@@ -67,13 +67,7 @@ QUY TẮC CÔNG THỨC & VẼ ĐỒ THỊ:
         currentParts.push({ text: String(message || "Hướng dẫn giúp em bài này.") });
         contents.push({ role: "user", parts: currentParts });
 
-        // Cấu hình chuẩn cho khóa AQ.Ab8... (Vertex AI Express Mode)
-        const isAqKey = apiKey.startsWith("AQ.");
-        const modelName = isAqKey ? "gemini-2.5-flash-lite" : "gemini-3.8-flash";
-        const endpointUrl = isAqKey
-            ? `https://aiplatform.googleapis.com/v1/publishers/google/models/${modelName}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`
-            : `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
-
+        const modelName = "gemini-2.5-flash-lite";
         const payloadObj = {
             systemInstruction: { parts: [{ text: systemInstruction }] },
             contents,
@@ -82,9 +76,19 @@ QUY TẮC CÔNG THỨC & VẼ ĐỒ THỊ:
             }
         };
 
+        const isAqKey = apiKey.startsWith("AQ.");
+        const endpointUrl = isAqKey
+            ? `https://aiplatform.googleapis.com/v1/publishers/google/models/${modelName}:streamGenerateContent?alt=sse`
+            : `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
+
+        const headers = { "Content-Type": "application/json" };
+        if (isAqKey) {
+            headers["Authorization"] = `Bearer ${apiKey}`;
+        }
+
         const geminiRes = await fetch(endpointUrl, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers,
             body: JSON.stringify(payloadObj)
         });
 
