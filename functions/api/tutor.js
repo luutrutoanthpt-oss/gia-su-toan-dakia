@@ -32,8 +32,14 @@ export async function onRequestPost(context) {
 Bám sát chương trình GDPT 2018 và bộ sách Kết nối tri thức với cuộc sống (Lớp ${grade}).
 ${isWeakMode ? "Học sinh đang ở chế độ HỖ TRỢ NỀN TẢNG: hãy chia nhỏ từng bước thật dễ hiểu, nhắc lại công thức cơ bản trước khi tính và chỉ gợi mở bước đầu tiên để em tự làm." : "Hướng dẫn từng bước rõ ràng, gợi mở tư duy, không chép hộ bài từ đầu đến cuối."}
 QUY TẮC CÔNG THỨC & VẼ ĐỒ THỊ:
-- Mọi công thức Toán/Lí/Hóa viết gọn trong dấu $...$ (ví dụ: $y = x^2$).
-- KHI HỌC SINH YÊU CẦU VẼ ĐỒ THỊ HÀM SỐ HOẶC HÌNH HỌC TRỰC QUAN: Bắt buộc xuất kèm 1 khối mã <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 320" width="420" height="320">...</svg> hoàn chỉnh, nền trắng, kẻ lưới mờ, trục Ox và Oy màu đậm có mũi tên ở đầu dương, ghi rõ nhãn O, x, y, các điểm đặc biệt và đường cong đồ thị màu xanh dương (#1d4ed8) dày 2.5px. Không đặt SVG trong khối code markdown.`;
+- Mọi công thức Toán/Lí/Hóa viết gọn trong dấu $...$ (ví dụ: $y = x^2 + 1$).
+- KHI HỌC SINH YÊU CẦU VẼ ĐỒ THỊ HÀM SỐ $y = f(x)$: TUYỆT ĐỐI KHÔNG tự viết thẻ <svg> bằng tay. Thay vào đó, ở phần hình vẽ đồ thị, hãy xuất ĐÚNG cú pháp thẻ lệnh:
+[[PLOT: biểu_thức_f(x) | xmin=-4 | xmax=4 | ymin=-2 | ymax=6 | points=(0,1);(-1,2);(1,2);(-2,5);(2,5)]]
+Trong đó:
++ biểu_thức_f(x) viết theo cú pháp toán học chuẩn (ví dụ: x^2 + 1, -x^2 + 2*x + 3, x^3 - 3*x, (2*x - 1)/(x - 1), sin(x), 2^x, log(x)).
++ xmin, xmax, ymin, ymax chọn vừa vặn để thấy rõ đỉnh, cực trị, giao điểm trục tọa độ và các điểm đặc biệt (tỷ lệ chia 1 đơn vị bằng nhau trên cả hai trục).
++ points là danh sách các điểm đặc biệt (đỉnh, cực trị, giao trục) cần chấm tròn và ghi tọa độ trên đồ thị.
+- Chỉ dùng thẻ <svg> khi vẽ hình học phẳng (tam giác, đường tròn, vectơ) không phải đồ thị hàm số.`;
         } else if (mode === "teacher_5512_intro" || mode === "teacher_5512_period" || mode === "teacher_5512_outro") {
             systemInstruction = "Bạn là chuyên gia soạn Kế hoạch bài dạy (KHBD) chuẩn Công văn 5512 của Bộ GD&ĐT, bám sát SGK Kết nối tri thức với cuộc sống và mẫu Trường THPT Đa Kia. Trình bày mạch lạc, đúng cấu trúc từng mục, không dùng ký tự thừa.";
         } else if (mode === "teacher_svg") {
@@ -74,7 +80,7 @@ QUY TẮC CÔNG THỨC & VẼ ĐỒ THỊ:
             systemInstruction: { parts: [{ text: systemInstruction }] },
             contents,
             generationConfig: {
-                temperature: 0.4,
+                temperature: 0.3,
                 thinkingConfig: { thinkingBudget: 0 }
             }
         };
