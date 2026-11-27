@@ -268,6 +268,223 @@ function generateExactFunctionSvg(plotSpec) {
     </div>`;
 }
 
+// ==================== BỘ DỰNG HÌNH HỌC KHÔNG GIAN 3D CHUẨN PHÉP CHIẾU SONG SONG ====================
+function generateExact3DShapeSvg(shapeSpec) {
+    const cleanSpec = String(shapeSpec || "").replace(/\s+/g, " ").trim();
+    const parts = cleanSpec.split("|").map(s => s.trim());
+    const shapeType = (parts[0] || "pyramid_quad").toLowerCase();
+    let customLabels = [];
+    let altitudeType = "";
+    let extraSpecs = [];
+
+    for (let i = 1; i < parts.length; i++) {
+        const p = parts[i];
+        if (/^labels\s*=/i.test(p)) {
+            customLabels = p.split("=")[1].split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+        } else if (/^altitude\s*=/i.test(p)) {
+            altitudeType = p.split("=")[1].trim().toUpperCase();
+        } else if (/^extra\s*=/i.test(p)) {
+            extraSpecs = p.split("=")[1].split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+        }
+    }
+
+    // Hệ tọa độ 2D chuẩn mặt phẳng vẽ (380x270) theo góc nghiêng quy ước SGK Việt Nam
+    const vertices = {};
+    const edges = [];
+    let caption = "Hình minh họa hình học không gian";
+
+    const addEdge = (u, v, style = "solid", color = "#0f172a") => {
+        if (vertices[u] && vertices[v]) {
+            edges.push({ u, v, style, color });
+        }
+    };
+
+    if (shapeType.includes("oxyz")) {
+        const uid = "xyz_" + Math.random().toString(36).slice(2, 7);
+        return `
+        <div class="my-3 p-3 bg-white border border-blue-200 rounded-xl flex flex-col items-center overflow-x-auto shadow-xs">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 260" width="360" height="260" class="max-w-full h-auto">
+                <defs>
+                    <marker id="${uid}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#0f172a"/>
+                    </marker>
+                </defs>
+                <rect x="0" y="0" width="360" height="260" fill="#ffffff"/>
+                <line x1="150" y1="150" x2="70" y2="230" stroke="#0f172a" stroke-width="1.8" marker-end="url(#${uid})"/>
+                <text x="56" y="238" font-size="14" font-style="italic" font-weight="bold" font-family="Times New Roman, serif">x</text>
+                <line x1="150" y1="150" x2="310" y2="150" stroke="#0f172a" stroke-width="1.8" marker-end="url(#${uid})"/>
+                <text x="318" y="155" font-size="14" font-style="italic" font-weight="bold" font-family="Times New Roman, serif">y</text>
+                <line x1="150" y1="150" x2="150" y2="30" stroke="#0f172a" stroke-width="1.8" marker-end="url(#${uid})"/>
+                <text x="158" y="34" font-size="14" font-style="italic" font-weight="bold" font-family="Times New Roman, serif">z</text>
+                <text x="132" y="146" font-size="13" font-weight="bold" font-family="Arial, sans-serif">O</text>
+                <line x1="150" y1="150" x2="123" y2="177" stroke="#dc2626" stroke-width="2.2" marker-end="url(#${uid})"/>
+                <text x="115" y="166" font-size="12" font-weight="bold" fill="#dc2626">i</text>
+                <line x1="150" y1="150" x2="195" y2="150" stroke="#1d4ed8" stroke-width="2.2" marker-end="url(#${uid})"/>
+                <text x="185" y="142" font-size="12" font-weight="bold" fill="#1d4ed8">j</text>
+                <line x1="150" y1="150" x2="150" y2="105" stroke="#059669" stroke-width="2.2" marker-end="url(#${uid})"/>
+                <text x="158" y="112" font-size="12" font-weight="bold" fill="#059669">k</text>
+            </svg>
+            <span class="text-xs font-semibold text-blue-900 mt-1">Hệ trục tọa độ Oxyz trong không gian</span>
+        </div>`;
+    } else if (shapeType.includes("pyramid_tri")) {
+        const L = customLabels.length >= 4 ? customLabels : ["S", "A", "B", "C"];
+        vertices[L[1]] = { x: 85, y: 195, dx: -16, dy: 5 };
+        vertices[L[2]] = { x: 185, y: 238, dx: -4, dy: 16 };
+        vertices[L[3]] = { x: 305, y: 195, dx: 8, dy: 5 };
+
+        let sx = 175, sy = 42;
+        if (altitudeType === "A" || altitudeType === L[1]) {
+            sx = vertices[L[1]].x;
+            sy = 42;
+        } else if (altitudeType === "H") {
+            const hx = (vertices[L[1]].x + vertices[L[2]].x) / 2;
+            const hy = (vertices[L[1]].y + vertices[L[2]].y) / 2;
+            vertices["H"] = { x: hx, y: hy, dx: -14, dy: 12 };
+            sx = hx;
+            sy = 42;
+            addEdge(L[0], "H", "dashed", "#dc2626");
+        } else if (altitudeType === "O" || altitudeType === "G") {
+            const gx = (vertices[L[1]].x + vertices[L[2]].x + vertices[L[3]].x) / 3;
+            const gy = (vertices[L[1]].y + vertices[L[2]].y + vertices[L[3]].y) / 3;
+            const foot = altitudeType === "O" ? "O" : "G";
+            vertices[foot] = { x: gx, y: gy, dx: 6, dy: 12 };
+            sx = gx;
+            sy = 42;
+            addEdge(L[0], foot, "dashed", "#dc2626");
+        }
+        vertices[L[0]] = { x: sx, y: sy, dx: -4, dy: -8 };
+
+        addEdge(L[1], L[2], "solid");
+        addEdge(L[2], L[3], "solid");
+        addEdge(L[1], L[3], "dashed");
+        addEdge(L[0], L[1], "solid");
+        addEdge(L[0], L[2], "solid");
+        addEdge(L[0], L[3], "solid");
+        caption = `Hình chóp ${L[0]}.${L[1]}${L[2]}${L[3]}`;
+    } else if (shapeType.includes("prism_tri")) {
+        const L = customLabels.length >= 6 ? customLabels : ["A", "B", "C", "A'", "B'", "C'"];
+        vertices[L[0]] = { x: 95, y: 205, dx: -16, dy: 5 };
+        vertices[L[1]] = { x: 185, y: 242, dx: -4, dy: 16 };
+        vertices[L[2]] = { x: 295, y: 205, dx: 8, dy: 5 };
+        const shiftX = altitudeType === "SLANT" ? 28 : 0;
+        const shiftY = -145;
+        vertices[L[3]] = { x: 95 + shiftX, y: 205 + shiftY, dx: -18, dy: -4 };
+        vertices[L[4]] = { x: 185 + shiftX, y: 242 + shiftY, dx: -4, dy: -8 };
+        vertices[L[5]] = { x: 295 + shiftX, y: 205 + shiftY, dx: 8, dy: -4 };
+
+        addEdge(L[0], L[1], "solid");
+        addEdge(L[1], L[2], "solid");
+        addEdge(L[0], L[2], "dashed");
+        addEdge(L[3], L[4], "solid");
+        addEdge(L[4], L[5], "solid");
+        addEdge(L[3], L[5], "solid");
+        addEdge(L[0], L[3], "solid");
+        addEdge(L[1], L[4], "solid");
+        addEdge(L[2], L[5], "solid");
+        caption = `Hình lăng trụ ${L[0]}${L[1]}${L[2]}.${L[3]}${L[4]}${L[5]}`;
+    } else if (shapeType.includes("box")) {
+        const L = customLabels.length >= 8 ? customLabels : ["A", "B", "C", "D", "A'", "B'", "C'", "D'"];
+        vertices[L[0]] = { x: 115, y: 185, dx: -15, dy: -4 };
+        vertices[L[1]] = { x: 65, y: 235, dx: -16, dy: 8 };
+        vertices[L[2]] = { x: 245, y: 235, dx: 8, dy: 8 };
+        vertices[L[3]] = { x: 295, y: 185, dx: 8, dy: 4 };
+
+        const h = 125;
+        vertices[L[4]] = { x: 115, y: 185 - h, dx: -16, dy: -6 };
+        vertices[L[5]] = { x: 65, y: 235 - h, dx: -16, dy: -4 };
+        vertices[L[6]] = { x: 245, y: 235 - h, dx: 8, dy: -4 };
+        vertices[L[7]] = { x: 295, y: 185 - h, dx: 8, dy: -6 };
+
+        addEdge(L[0], L[1], "dashed");
+        addEdge(L[0], L[3], "dashed");
+        addEdge(L[0], L[4], "dashed");
+        addEdge(L[1], L[2], "solid");
+        addEdge(L[2], L[3], "solid");
+        addEdge(L[4], L[5], "solid");
+        addEdge(L[5], L[6], "solid");
+        addEdge(L[6], L[7], "solid");
+        addEdge(L[7], L[4], "solid");
+        addEdge(L[1], L[5], "solid");
+        addEdge(L[2], L[6], "solid");
+        addEdge(L[3], L[7], "solid");
+        caption = `Hình hộp ${L[0]}${L[1]}${L[2]}${L[3]}.${L[4]}${L[5]}${L[6]}${L[7]}`;
+    } else {
+        // Mặc định: Hình chóp tứ giác S.ABCD chuẩn quy tắc SGK
+        const L = customLabels.length >= 5 ? customLabels : ["S", "A", "B", "C", "D"];
+        vertices[L[1]] = { x: 125, y: 185, dx: -15, dy: -3 };
+        vertices[L[2]] = { x: 68, y: 238, dx: -16, dy: 8 };
+        vertices[L[3]] = { x: 252, y: 238, dx: 8, dy: 8 };
+        vertices[L[4]] = { x: 308, y: 185, dx: 8, dy: 4 };
+
+        let sx = 175, sy = 40;
+        if (altitudeType === "A" || altitudeType === L[1]) {
+            sx = vertices[L[1]].x;
+            sy = 40;
+        } else if (altitudeType === "O") {
+            const ox = (vertices[L[1]].x + vertices[L[3]].x) / 2;
+            const oy = (vertices[L[1]].y + vertices[L[3]].y) / 2;
+            vertices["O"] = { x: ox, y: oy, dx: 5, dy: 12 };
+            sx = ox;
+            sy = 40;
+            addEdge(L[1], L[3], "dashed", "#64748b");
+            addEdge(L[2], L[4], "dashed", "#64748b");
+            addEdge(L[0], "O", "dashed", "#dc2626");
+        } else if (altitudeType === "H") {
+            const hx = (vertices[L[1]].x + vertices[L[2]].x) / 2;
+            const hy = (vertices[L[1]].y + vertices[L[2]].y) / 2;
+            vertices["H"] = { x: hx, y: hy, dx: -15, dy: 10 };
+            sx = hx;
+            sy = 40;
+            addEdge(L[0], "H", "dashed", "#dc2626");
+        }
+        vertices[L[0]] = { x: sx, y: sy, dx: -4, dy: -8 };
+
+        addEdge(L[1], L[2], "dashed");
+        addEdge(L[1], L[4], "dashed");
+        addEdge(L[0], L[1], "dashed");
+        addEdge(L[2], L[3], "solid");
+        addEdge(L[3], L[4], "solid");
+        addEdge(L[0], L[2], "solid");
+        addEdge(L[0], L[3], "solid");
+        addEdge(L[0], L[4], "solid");
+        caption = `Hình chóp ${L[0]}.${L[1]}${L[2]}${L[3]}${L[4]}`;
+    }
+
+    // Xử lý các đường phụ thêm theo lệnh extra=dashed:A-C;solid:M-N
+    extraSpecs.forEach(item => {
+        const m = item.match(/^(solid|dashed)\s*:\s*([A-Z0-9']+)\s*-\s*([A-Z0-9']+)$/i);
+        if (m) {
+            const style = m[1].toLowerCase();
+            const u = m[2];
+            const v = m[3];
+            const already = edges.some(e => (e.u === u && e.v === v) || (e.u === v && e.v === u));
+            if (!already) addEdge(u, v, style, "#1d4ed8");
+        }
+    });
+
+    const linesSvg = edges.map(e => {
+        const p1 = vertices[e.u];
+        const p2 = vertices[e.v];
+        const dashAttr = e.style === "dashed" ? `stroke-dasharray="5,4"` : "";
+        return `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="${e.color}" stroke-width="1.8" ${dashAttr}/>`;
+    }).join("");
+
+    const ptsSvg = Object.entries(vertices).map(([name, pt]) => `
+        <circle cx="${pt.x}" cy="${pt.y}" r="2.6" fill="#0f172a"/>
+        <text x="${pt.x + pt.dx}" y="${pt.y + pt.dy}" font-size="13" font-weight="bold" font-family="Times New Roman, serif" fill="#0f172a">${name}</text>
+    `).join("");
+
+    return `
+    <div class="my-3 p-3 bg-white border border-blue-200 rounded-xl flex flex-col items-center overflow-x-auto shadow-xs">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 270" width="380" height="270" class="max-w-full h-auto">
+            <rect x="0" y="0" width="380" height="270" fill="#ffffff"/>
+            ${linesSvg}
+            ${ptsSvg}
+        </svg>
+        <span class="text-xs font-semibold text-blue-900 mt-1">${caption} (Nét đứt là đường khuất)</span>
+    </div>`;
+}
+
 // ==================== CHUYỂN NHÓM & CHÈN KÍ HIỆU TOÁN HỌC ====================
 function switchMathToolbar(catId) {
     document.querySelectorAll(".math-cat-bar").forEach(bar => bar.classList.add("hidden"));
@@ -382,7 +599,7 @@ function updateStudentHeaderUI() {
     }
 }
 
-// ==================== GIA SƯ AI & HIỂN THỊ MARKDOWN + KATEX + ĐỒ THỊ CHÍNH XÁC ====================
+// ==================== GIA SƯ AI & HIỂN THỊ MARKDOWN + KATEX + ĐỒ THỊ + HÌNH 3D ====================
 function onSelectTutorImage(event) {
     const file = event.target.files[0];
     if (file) readImageFileToPreview(file);
@@ -494,6 +711,13 @@ function renderAiMessageWithSvg(containerEl, rawText) {
             return `\n@@PLOT_BLOCK_${idx}@@\n`;
         });
 
+    const shape3DBlocks = [];
+    cleanedText = cleanedText.replace(/`*\[\[\s*SHAPE3D\s*:([\s\S]*?)\]\]`*/gi, (_, spec) => {
+        const idx = shape3DBlocks.length;
+        shape3DBlocks.push(generateExact3DShapeSvg(spec));
+        return `\n@@SHAPE3D_BLOCK_${idx}@@\n`;
+    });
+
     const svgBlocks = [];
     cleanedText = cleanedText
         .replace(/```(?:xml|svg|html)?\s*(<svg[\s\S]*?<\/svg>)\s*```/gi, "$1")
@@ -506,6 +730,7 @@ function renderAiMessageWithSvg(containerEl, rawText) {
     let htmlContent = markdownTextToHtml(cleanedText);
     htmlContent = htmlContent
         .replace(/@@PLOT_BLOCK_(\d+)@@/g, (_, idx) => plotBlocks[Number(idx)] || "")
+        .replace(/@@SHAPE3D_BLOCK_(\d+)@@/g, (_, idx) => shape3DBlocks[Number(idx)] || "")
         .replace(/@@SVG_BLOCK_(\d+)@@/g, (_, idx) => svgBlocks[Number(idx)] || "");
 
     containerEl.innerHTML = `<div class="space-y-1 text-slate-800">${htmlContent}</div>`;
@@ -605,7 +830,7 @@ async function handleSendTutor() {
                             if (now - lastRenderTime > 160) {
                                 lastRenderTime = now;
                                 const streamPreview = fullText
-                                    .replace(/\[\[\s*PLOT:[\s\S]*$/i, "\n⏳ Đang tính tọa độ và dựng đồ thị...")
+                                    .replace(/\[\[\s*(?:PLOT|SHAPE3D):[\s\S]*$/i, "\n⏳ Đang dựng hình minh họa...")
                                     .replace(/<svg[\s\S]*$/i, "\n⏳ Đang dựng hình...");
                                 aiBubble.innerHTML = `<div class="space-y-1 text-slate-800">${markdownTextToHtml(streamPreview)}</div>`;
                                 box.scrollTop = box.scrollHeight;
