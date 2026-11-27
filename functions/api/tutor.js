@@ -33,7 +33,6 @@ export async function onRequestPost(context) {
             });
         }
 
-        // Chọn ngẫu nhiên 1 key chính và 1 key dự phòng khác nhau để không tốn thời gian thử nhiều vòng
         const primaryIdx = Math.floor(Math.random() * keyList.length);
         const primaryKey = keyList[primaryIdx];
         const backupKey = keyList.length > 1 ? keyList[(primaryIdx + 1) % keyList.length] : primaryKey;
@@ -42,9 +41,18 @@ export async function onRequestPost(context) {
         if (mode === "student_tutor") {
             systemInstruction = `Gia sư AI Trường THPT Đa Kia, xưng "Thầy (Cô)", gọi học sinh "em". Bám sát SGK Kết nối tri thức Lớp ${grade}.
 ${isWeakMode ? "Chế độ HỖ TRỢ NỀN TẢNG: giải thích cực kỳ ngắn gọn, dễ hiểu, nhắc công thức cơ bản rồi gợi mở bước đầu tiên." : "Trả lời súc tích, rõ từng bước, không dài dòng."}
-Quy tắc:
+Quy tắc công thức & hình vẽ:
 - Công thức đặt trong $...$.
-- Khi vẽ đồ thị $y = f(x)$, KHÔNG viết thẻ <svg>, chỉ xuất đúng 1 dòng: [[PLOT: biểu_thức | xmin=-4 | xmax=4 | ymin=-2 | ymax=6 | points=(x1,y1);(x2,y2)]] (ví dụ: [[PLOT: x^2 + 1 | xmin=-4 | xmax=4 | ymin=-1 | ymax=6 | points=(0,1);(-1,2);(1,2)]]).`;
+- KHÔNG tự viết thẻ <svg> bằng tay.
+- Khi vẽ ĐỒ THỊ HÀM SỐ $y = f(x)$, xuất đúng 1 dòng:
+  [[PLOT: biểu_thức | xmin=-4 | xmax=4 | ymin=-2 | ymax=6 | points=(x1,y1);(x2,y2)]]
+- Khi vẽ HÌNH HỌC KHÔNG GIAN 3D, xuất đúng 1 dòng theo cú pháp:
+  [[SHAPE3D: loại_hình | labels=tên_đỉnh | altitude=chân_đường_cao | extra=nét_thêm]]
+  Trong đó:
+  + loại_hình gồm: pyramid_tri (chóp tam giác S.ABC), pyramid_quad (chóp tứ giác S.ABCD), prism_tri (lăng trụ tam giác ABC.A'B'C'), box (hình hộp/lập phương ABCD.A'B'C'D'), oxyz (hệ trục Oxyz).
+  + labels: danh sách tên đỉnh theo đúng thứ tự (VD: S,A,B,C hoặc S,A,B,C,D hoặc A,B,C,D,A',B',C',D').
+  + altitude (tùy chọn): chân đường cao từ đỉnh S xuống đáy, chọn 1 trong: A (SA vuông góc đáy), O (chóp đều/tâm đáy O), H (trung điểm AB).
+  + extra (tùy chọn): các đoạn nối thêm dạng solid:M-N hoặc dashed:S-O (VD: extra=dashed:A-C;dashed:B-D;dashed:S-O).`;
         } else if (mode === "teacher_5512_intro" || mode === "teacher_5512_period" || mode === "teacher_5512_outro") {
             systemInstruction = "Chuyên gia soạn KHBD chuẩn Công văn 5512, bám sát SGK Kết nối tri thức và mẫu Trường THPT Đa Kia. Trình bày mạch lạc, đúng mục.";
         } else if (mode === "teacher_svg") {
@@ -59,7 +67,7 @@ Quy tắc:
         for (const turn of history.slice(-2)) {
             if (turn && turn.text) {
                 const compactText = String(turn.text)
-                    .replace(/\[\[PLOT:[^\]]+\]\]/gi, "[Đã vẽ đồ thị]")
+                    .replace(/\[\[(?:PLOT|SHAPE3D):[^\]]+\]\]/gi, "[Đã vẽ hình]")
                     .replace(/<svg[\s\S]*?<\/svg>/gi, "[Đã vẽ hình]")
                     .slice(0, 500);
                 contents.push({
@@ -92,14 +100,12 @@ Quy tắc:
             }
         };
 
-        // Lần 1: Gọi trực tiếp mô hình siêu nhanh gemini-3.5-flash-lite
         let geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:streamGenerateContent?alt=sse&key=${encodeURIComponent(primaryKey)}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payloadObj)
         });
 
-        // Lần 2 (chỉ chạy khi lần 1 gặp lỗi): Đổi sang key dự phòng và mô hình gemini-3.6-flash
         if (!geminiRes.ok) {
             geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:streamGenerateContent?alt=sse&key=${encodeURIComponent(backupKey)}`, {
                 method: "POST",
