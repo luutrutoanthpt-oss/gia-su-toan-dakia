@@ -106,6 +106,7 @@ function renderKatexInElement(targetEl) {
 // ==================== BỘ VẼ ĐỒ THỊ TOÁN HỌC CHÍNH XÁC TỪNG PIXEL ====================
 function buildMathEvaluator(exprRaw) {
     let jsExpr = String(exprRaw || "")
+        .replace(/\$/g, "")
         .replace(/^y\s*=\s*/i, "")
         .replace(/\^/g, "**")
         .replace(/(\d)([a-zA-Z(])/g, "$1*$2")
@@ -132,17 +133,18 @@ function buildMathEvaluator(exprRaw) {
 }
 
 function generateExactFunctionSvg(plotSpec) {
-    const parts = plotSpec.split("|").map(s => s.trim());
-    const expr = parts[0] || "x^2";
+    const cleanSpec = String(plotSpec || "").replace(/\s+/g, " ").trim();
+    const parts = cleanSpec.split("|").map(s => s.trim());
+    const expr = (parts[0] || "x^2").replace(/\$/g, "").replace(/^y\s*=\s*/i, "");
     let xmin = -4, xmax = 4, ymin = -2, ymax = 6;
     const specialPts = [];
 
     for (let i = 1; i < parts.length; i++) {
         const p = parts[i];
-        if (/^xmin\s*=/i.test(p)) xmin = parseFloat(p.split("=")[1]) || xmin;
-        else if (/^xmax\s*=/i.test(p)) xmax = parseFloat(p.split("=")[1]) || xmax;
-        else if (/^ymin\s*=/i.test(p)) ymin = parseFloat(p.split("=")[1]) || ymin;
-        else if (/^ymax\s*=/i.test(p)) ymax = parseFloat(p.split("=")[1]) || ymax;
+        if (/^xmin\s*=/i.test(p)) xmin = parseFloat(p.split("=")[1]);
+        else if (/^xmax\s*=/i.test(p)) xmax = parseFloat(p.split("=")[1]);
+        else if (/^ymin\s*=/i.test(p)) ymin = parseFloat(p.split("=")[1]);
+        else if (/^ymax\s*=/i.test(p)) ymax = parseFloat(p.split("=")[1]);
         else if (/^points\s*=/i.test(p)) {
             const rawPts = p.split("=")[1] || "";
             const matches = rawPts.match(/\(\s*[-+0-9.]+\s*[,;]\s*[-+0-9.]+\s*\)/g) || [];
@@ -155,15 +157,14 @@ function generateExactFunctionSvg(plotSpec) {
         }
     }
 
-    if (xmin >= 0) xmin = -2;
-    if (xmax <= 0) xmax = 2;
-    if (ymin >= 0) ymin = -2;
-    if (ymax <= 0) ymax = 4;
+    if (!Number.isFinite(xmin) || xmin >= 0) xmin = -3;
+    if (!Number.isFinite(xmax) || xmax <= 0) xmax = 3;
+    if (!Number.isFinite(ymin) || ymin >= 0) ymin = -2;
+    if (!Number.isFinite(ymax) || ymax <= 0) ymax = 6;
 
     const fn = buildMathEvaluator(expr);
     if (!fn) return "";
 
-    // Tính kích thước lưới vuông 1:1 chuẩn xác tuyệt đối
     const spanX = xmax - xmin;
     const spanY = ymax - ymin;
     const targetMaxPx = 380;
@@ -201,7 +202,6 @@ function generateExactFunctionSvg(plotSpec) {
         }
     }
 
-    // Vẽ đường cong hàm số liên tục qua 400 mẫu điểm (tự ngắt tại tiệm cận đứng)
     let curvePaths = "";
     let dSeg = "";
     let prevY = null;
@@ -228,7 +228,6 @@ function generateExactFunctionSvg(plotSpec) {
         curvePaths += `<path d="${dSeg}" fill="none" stroke="#1d4ed8" stroke-width="2.5" stroke-linecap="round"/>`;
     }
 
-    // Vẽ nét đứt gióng tọa độ và chấm tròn các điểm đặc biệt
     let ptsSvg = "";
     specialPts.forEach((pt, idx) => {
         if (pt.x < xmin || pt.x > xmax || pt.y < ymin || pt.y > ymax) return;
@@ -242,29 +241,25 @@ function generateExactFunctionSvg(plotSpec) {
         const dotColor = isVertex ? "#dc2626" : "#1d4ed8";
         ptsSvg += `<circle cx="${px}" cy="${py}" r="${isVertex ? 4.5 : 3.5}" fill="${dotColor}" stroke="#ffffff" stroke-width="1.2"/>`;
         if (isVertex) {
-            const lblX = px + 8;
-            const lblY = py - 8;
-            ptsSvg += `<text x="${lblX}" y="${lblY}" font-size="11.5" font-weight="bold" font-family="Arial, sans-serif" fill="#dc2626">I(${pt.x}; ${pt.y})</text>`;
+            ptsSvg += `<text x="${px + 8}" y="${py - 8}" font-size="11.5" font-weight="bold" font-family="Arial, sans-serif" fill="#dc2626">I(${pt.x}; ${pt.y})</text>`;
         }
     });
 
+    const uid = "ax_" + Math.random().toString(36).slice(2, 7);
     return `
     <div class="my-3 p-3 bg-white border border-blue-200 rounded-xl flex flex-col items-center overflow-x-auto shadow-xs">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${svgW} ${svgH}" width="${svgW}" height="${svgH}" class="max-w-full h-auto">
             <defs>
-                <marker id="axisArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <marker id="${uid}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                     <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#0f172a"/>
                 </marker>
             </defs>
             <rect x="0" y="0" width="${svgW}" height="${svgH}" fill="#ffffff"/>
             ${gridSvg}
-            <!-- Trục Ox -->
-            <line x1="${pad - 12}" y1="${originY}" x2="${pad + plotW + 16}" y2="${originY}" stroke="#0f172a" stroke-width="1.8" marker-end="url(#axisArrow)"/>
+            <line x1="${pad - 12}" y1="${originY}" x2="${pad + plotW + 16}" y2="${originY}" stroke="#0f172a" stroke-width="1.8" marker-end="url(#${uid})"/>
             <text x="${pad + plotW + 18}" y="${originY + 15}" font-size="13" font-style="italic" font-weight="bold" font-family="Times New Roman, serif" fill="#0f172a">x</text>
-            <!-- Trục Oy -->
-            <line x1="${originX}" y1="${pad + plotH + 12}" x2="${originX}" y2="${pad - 16}" stroke="#0f172a" stroke-width="1.8" marker-end="url(#axisArrow)"/>
+            <line x1="${originX}" y1="${pad + plotH + 12}" x2="${originX}" y2="${pad - 16}" stroke="#0f172a" stroke-width="1.8" marker-end="url(#${uid})"/>
             <text x="${originX - 15}" y="${pad - 12}" font-size="13" font-style="italic" font-weight="bold" font-family="Times New Roman, serif" fill="#0f172a">y</text>
-            <!-- Gốc tọa độ O -->
             <text x="${originX - 12}" y="${originY + 15}" font-size="12" font-family="Arial, sans-serif" fill="#0f172a">O</text>
             ${curvePaths}
             ${ptsSvg}
@@ -468,9 +463,11 @@ function markdownTextToHtml(mdText) {
         if (/^\s*---+\s*$/.test(line)) {
             out.push(`<hr class="my-3 border-slate-200">`);
         } else if (/^###\s+(.+)$/.test(line)) {
-            out.push(`<h4 class="font-bold text-sm sm:text-base text-blue-900 mt-3 mb-1">${line.replace(/^###\s+/, "")}</h4>`);
+            const hTxt = line.replace(/^###\s+/, "").replace(/\*\*(.+?)\*\*/g, "$1");
+            out.push(`<h4 class="font-bold text-sm sm:text-base text-blue-900 mt-3 mb-1">${hTxt}</h4>`);
         } else if (/^##\s+(.+)$/.test(line)) {
-            out.push(`<h3 class="font-bold text-base text-blue-950 mt-3 mb-1">${line.replace(/^##\s+/, "")}</h3>`);
+            const hTxt = line.replace(/^##\s+/, "").replace(/\*\*(.+?)\*\*/g, "$1");
+            out.push(`<h3 class="font-bold text-base text-blue-950 mt-3 mb-1">${hTxt}</h3>`);
         } else if (/^\s*[-*]\s+(.+)$/.test(line)) {
             const itemTxt = line.replace(/^\s*[-*]\s+/, "").replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
             out.push(`<div class="flex items-start gap-2 my-1 pl-2"><span class="text-blue-700 font-bold">•</span><span class="flex-1">${itemTxt}</span></div>`);
@@ -490,11 +487,12 @@ function markdownTextToHtml(mdText) {
 
 function renderAiMessageWithSvg(containerEl, rawText) {
     const plotBlocks = [];
-    let cleanedText = rawText.replace(/\[\[PLOT:\s*([^\]]+)\]\]/gi, (_, spec) => {
-        const idx = plotBlocks.length;
-        plotBlocks.push(generateExactFunctionSvg(spec));
-        return `@@PLOT_BLOCK_${idx}@@`;
-    });
+    let cleanedText = String(rawText || "")
+        .replace(/`*\[\[\s*PLOT\s*:([\s\S]*?)\]\]`*/gi, (_, spec) => {
+            const idx = plotBlocks.length;
+            plotBlocks.push(generateExactFunctionSvg(spec));
+            return `\n@@PLOT_BLOCK_${idx}@@\n`;
+        });
 
     const svgBlocks = [];
     cleanedText = cleanedText
@@ -502,7 +500,7 @@ function renderAiMessageWithSvg(containerEl, rawText) {
         .replace(/<svg[\s\S]*?<\/svg>/gi, (svgStr) => {
             const idx = svgBlocks.length;
             svgBlocks.push(`<div class="my-3 p-3 bg-white border border-blue-200 rounded-xl flex justify-center overflow-x-auto shadow-xs">${svgStr}</div>`);
-            return `@@SVG_BLOCK_${idx}@@`;
+            return `\n@@SVG_BLOCK_${idx}@@\n`;
         });
 
     let htmlContent = markdownTextToHtml(cleanedText);
@@ -571,7 +569,7 @@ async function handleSendTutor() {
                 grade,
                 isWeakMode: isWeak,
                 imageBase64: imgPayload || undefined,
-                history: chatConversationHistory.slice(-6),
+                history: chatConversationHistory.slice(-2),
                 mode: "student_tutor",
                 apiKey: activeKey
             })
@@ -586,6 +584,7 @@ async function handleSendTutor() {
         const decoder = new TextDecoder("utf-8");
         let sseBuffer = "";
         let fullText = "";
+        let lastRenderTime = 0;
 
         while (true) {
             const { done, value } = await reader.read();
@@ -602,11 +601,15 @@ async function handleSendTutor() {
                         const delta = (parsed.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
                         if (delta) {
                             fullText += delta;
-                            const previewClean = fullText
-                                .replace(/\[\[PLOT:[\s\S]*$/i, "\n⏳ Đang tính tọa độ và dựng đồ thị chính xác...")
-                                .replace(/<svg[\s\S]*$/i, "\n⏳ Đang dựng hình trực quan...");
-                            aiBubble.textContent = previewClean;
-                            box.scrollTop = box.scrollHeight;
+                            const now = Date.now();
+                            if (now - lastRenderTime > 160) {
+                                lastRenderTime = now;
+                                const streamPreview = fullText
+                                    .replace(/\[\[\s*PLOT:[\s\S]*$/i, "\n⏳ Đang tính tọa độ và dựng đồ thị...")
+                                    .replace(/<svg[\s\S]*$/i, "\n⏳ Đang dựng hình...");
+                                aiBubble.innerHTML = `<div class="space-y-1 text-slate-800">${markdownTextToHtml(streamPreview)}</div>`;
+                                box.scrollTop = box.scrollHeight;
+                            }
                         }
                     } catch (_) {}
                 }
