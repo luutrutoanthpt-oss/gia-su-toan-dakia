@@ -71,4 +71,65 @@ Quy tắc:
 
         const currentParts = [];
         if (imageBase64) {
-            const match = imageBase64.match(/^data:(image\/[a-zA-Z0-9.+-]+);
+            const match = imageBase64.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+            if (match) {
+                currentParts.push({ inlineData: { mimeType: match[1], data: match[2] } });
+            }
+        }
+        if (pdfBase64) {
+            currentParts.push({ inlineData: { mimeType: "application/pdf", data: pdfBase64 } });
+        }
+        currentParts.push({ text: String(message || "Hướng dẫn giúp em bài này.") });
+        contents.push({ role: "user", parts: currentParts });
+
+        const isTutorFast = mode === "student_tutor";
+        const payloadObj = {
+            systemInstruction: { parts: [{ text: systemInstruction }] },
+            contents,
+            generationConfig: {
+                temperature: 0.3,
+                ...(isTutorFast ? { maxOutputTokens: 1000 } : {})
+            }
+        };
+
+        // Lần 1: Gọi trực tiếp mô hình siêu nhanh gemini-3.5-flash-lite
+        let geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:streamGenerateContent?alt=sse&key=${encodeURIComponent(primaryKey)}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payloadObj)
+        });
+
+        // Lần 2 (chỉ chạy khi lần 1 gặp lỗi): Đổi sang key dự phòng và mô hình gemini-3.6-flash
+        if (!geminiRes.ok) {
+            geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:streamGenerateContent?alt=sse&key=${encodeURIComponent(backupKey)}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payloadObj)
+            });
+        }
+
+        if (!geminiRes.ok) {
+            const errTxt = await geminiRes.text();
+            return new Response(JSON.stringify({
+                error: `Lỗi AI (${geminiRes.status}): ${errTxt.slice(0, 200)}`
+            }), {
+                status: 502,
+                headers: { "Content-Type": "application/json" }
+            });
+        }
+
+        return new Response(geminiRes.body, {
+            status: 200,
+            headers: {
+                "Content-Type": "text/event-stream; charset=utf-8",
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive"
+            }
+        });
+    } catch (err) {
+        return new Response(JSON.stringify({ error: err.message || "Lỗi xử lý máy chủ" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" }
+        });
+    }
+}
