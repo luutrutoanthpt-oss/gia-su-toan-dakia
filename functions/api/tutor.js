@@ -19,7 +19,7 @@ export async function onRequestPost(context) {
 
         if (!apiKey || apiKey.startsWith("DAN_API")) {
             return new Response(JSON.stringify({
-                error: "Chưa tìm thấy biến GEMINI_API_KEY trên Cloudflare Pages. Hãy kiểm tra lại mục Variables and Secrets!"
+                error: "Chưa tìm thấy biến GEMINI_API_KEY trên Cloudflare Pages. Hãy kiểm tra lại mục Variables and secrets!"
             }), {
                 status: 400,
                 headers: { "Content-Type": "application/json" }
@@ -67,7 +67,7 @@ QUY TẮC CÔNG THỨC & VẼ ĐỒ THỊ:
         currentParts.push({ text: String(message || "Hướng dẫn giúp em bài này.") });
         contents.push({ role: "user", parts: currentParts });
 
-        const modelName = "gemini-3.8-flash";
+        const modelName = "gemini-2.5-flash";
         const endpointUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
 
         const payloadObj = {
