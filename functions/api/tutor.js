@@ -67,28 +67,21 @@ QUY TẮC CÔNG THỨC & VẼ ĐỒ THỊ:
         currentParts.push({ text: String(message || "Hướng dẫn giúp em bài này.") });
         contents.push({ role: "user", parts: currentParts });
 
-        const modelName = "gemini-2.5-flash-lite";
+        const modelName = "gemini-3.8-flash";
+        const endpointUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
+
         const payloadObj = {
             systemInstruction: { parts: [{ text: systemInstruction }] },
             contents,
             generationConfig: {
-                temperature: 0.4
+                temperature: 0.4,
+                thinkingConfig: { thinkingBudget: 0 }
             }
         };
 
-        const isAqKey = apiKey.startsWith("AQ.");
-        const endpointUrl = isAqKey
-            ? `https://aiplatform.googleapis.com/v1/publishers/google/models/${modelName}:streamGenerateContent?alt=sse`
-            : `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
-
-        const headers = { "Content-Type": "application/json" };
-        if (isAqKey) {
-            headers["Authorization"] = `Bearer ${apiKey}`;
-        }
-
         const geminiRes = await fetch(endpointUrl, {
             method: "POST",
-            headers,
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payloadObj)
         });
 
