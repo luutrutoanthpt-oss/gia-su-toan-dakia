@@ -33,7 +33,6 @@ const KNTT_MATH_TOPICS = {
     ]
 };
 
-// Tự động tìm API Key từ mọi tên biến có thể có trong js/config.js hoặc localStorage
 function resolveActiveGeminiKey() {
     if (typeof SYSTEM_CONFIG !== "undefined" && SYSTEM_CONFIG) {
         const candidates = [
@@ -44,13 +43,13 @@ function resolveActiveGeminiKey() {
             SYSTEM_CONFIG.key
         ];
         for (const k of candidates) {
-            if (k && typeof k === "string" && k.trim().startsWith("AIza")) {
+            if (k && typeof k === "string" && k.trim().length > 10 && !k.trim().startsWith("DAN_API")) {
                 return k.trim();
             }
         }
     }
     const localKey = localStorage.getItem("dakia_gemini_api_key") || localStorage.getItem("GEMINI_API_KEY") || "";
-    if (localKey.trim().startsWith("AIza")) return localKey.trim();
+    if (localKey.trim().length > 10 && !localKey.trim().startsWith("DAN_API")) return localKey.trim();
     return "";
 }
 
@@ -102,6 +101,176 @@ function renderKatexInElement(targetEl) {
             throwOnError: false
         });
     }
+}
+
+// ==================== BỘ VẼ ĐỒ THỊ TOÁN HỌC CHÍNH XÁC TỪNG PIXEL ====================
+function buildMathEvaluator(exprRaw) {
+    let jsExpr = String(exprRaw || "")
+        .replace(/^y\s*=\s*/i, "")
+        .replace(/\^/g, "**")
+        .replace(/(\d)([a-zA-Z(])/g, "$1*$2")
+        .replace(/(\))(\()/g, "$1*$2")
+        .replace(/(\))([a-zA-Z0-9])/g, "$1*$2")
+        .replace(/\bsin\b/gi, "Math.sin")
+        .replace(/\bcos\b/gi, "Math.cos")
+        .replace(/\btan\b/gi, "Math.tan")
+        .replace(/\bsqrt\b/gi, "Math.sqrt")
+        .replace(/\babs\b/gi, "Math.abs")
+        .replace(/\bln\b/gi, "Math.log")
+        .replace(/\blog\b/gi, "Math.log10")
+        .replace(/\bexp\b/gi, "Math.exp")
+        .replace(/\bpi\b/gi, "Math.PI")
+        .replace(/\be\b/g, "Math.E");
+
+    try {
+        const fn = new Function("x", `try { const v = (${jsExpr}); return Number.isFinite(v) ? v : NaN; } catch(e) { return NaN; }`);
+        fn(0);
+        return fn;
+    } catch (_) {
+        return null;
+    }
+}
+
+function generateExactFunctionSvg(plotSpec) {
+    const parts = plotSpec.split("|").map(s => s.trim());
+    const expr = parts[0] || "x^2";
+    let xmin = -4, xmax = 4, ymin = -2, ymax = 6;
+    const specialPts = [];
+
+    for (let i = 1; i < parts.length; i++) {
+        const p = parts[i];
+        if (/^xmin\s*=/i.test(p)) xmin = parseFloat(p.split("=")[1]) || xmin;
+        else if (/^xmax\s*=/i.test(p)) xmax = parseFloat(p.split("=")[1]) || xmax;
+        else if (/^ymin\s*=/i.test(p)) ymin = parseFloat(p.split("=")[1]) || ymin;
+        else if (/^ymax\s*=/i.test(p)) ymax = parseFloat(p.split("=")[1]) || ymax;
+        else if (/^points\s*=/i.test(p)) {
+            const rawPts = p.split("=")[1] || "";
+            const matches = rawPts.match(/\(\s*[-+0-9.]+\s*[,;]\s*[-+0-9.]+\s*\)/g) || [];
+            matches.forEach(m => {
+                const nums = m.replace(/[()]/g, "").split(/[,;]/).map(Number);
+                if (nums.length === 2 && Number.isFinite(nums[0]) && Number.isFinite(nums[1])) {
+                    specialPts.push({ x: nums[0], y: nums[1] });
+                }
+            });
+        }
+    }
+
+    if (xmin >= 0) xmin = -2;
+    if (xmax <= 0) xmax = 2;
+    if (ymin >= 0) ymin = -2;
+    if (ymax <= 0) ymax = 4;
+
+    const fn = buildMathEvaluator(expr);
+    if (!fn) return "";
+
+    // Tính kích thước lưới vuông 1:1 chuẩn xác tuyệt đối
+    const spanX = xmax - xmin;
+    const spanY = ymax - ymin;
+    const targetMaxPx = 380;
+    const unitPx = Math.max(24, Math.min(48, Math.floor(targetMaxPx / Math.max(spanX, spanY))));
+    const pad = 34;
+    const plotW = spanX * unitPx;
+    const plotH = spanY * unitPx;
+    const svgW = plotW + pad * 2;
+    const svgH = plotH + pad * 2;
+
+    const toPxX = (x) => pad + (x - xmin) * unitPx;
+    const toPxY = (y) => pad + (ymax - y) * unitPx;
+    const originX = toPxX(0);
+    const originY = toPxY(0);
+
+    let gridSvg = "";
+    const stepX = spanX > 12 ? 2 : 1;
+    const stepY = spanY > 12 ? 2 : 1;
+
+    for (let gx = Math.ceil(xmin); gx <= Math.floor(xmax); gx++) {
+        const px = toPxX(gx);
+        gridSvg += `<line x1="${px}" y1="${pad}" x2="${px}" y2="${pad + plotH}" stroke="#e2e8f0" stroke-width="1"/>`;
+        if (gx !== 0 && gx % stepX === 0) {
+            gridSvg += `<line x1="${px}" y1="${originY - 3}" x2="${px}" y2="${originY + 3}" stroke="#334155" stroke-width="1.3"/>`;
+            gridSvg += `<text x="${px}" y="${originY + 15}" font-size="11" font-family="Arial, sans-serif" fill="#334155" text-anchor="middle">${gx}</text>`;
+        }
+    }
+
+    for (let gy = Math.ceil(ymin); gy <= Math.floor(ymax); gy++) {
+        const py = toPxY(gy);
+        gridSvg += `<line x1="${pad}" y1="${py}" x2="${pad + plotW}" y2="${py}" stroke="#e2e8f0" stroke-width="1"/>`;
+        if (gy !== 0 && gy % stepY === 0) {
+            gridSvg += `<line x1="${originX - 3}" y1="${py}" x2="${originX + 3}" y2="${py}" stroke="#334155" stroke-width="1.3"/>`;
+            gridSvg += `<text x="${originX - 8}" y="${py + 4}" font-size="11" font-family="Arial, sans-serif" fill="#334155" text-anchor="end">${gy}</text>`;
+        }
+    }
+
+    // Vẽ đường cong hàm số liên tục qua 400 mẫu điểm (tự ngắt tại tiệm cận đứng)
+    let curvePaths = "";
+    let dSeg = "";
+    let prevY = null;
+    const samples = 400;
+    const dx = spanX / samples;
+
+    for (let i = 0; i <= samples; i++) {
+        const x = xmin + i * dx;
+        const y = fn(x);
+        if (!Number.isFinite(y) || y < ymin - 0.3 || y > ymax + 0.3 || (prevY !== null && Math.abs(y - prevY) > spanY * 0.6)) {
+            if (dSeg) {
+                curvePaths += `<path d="${dSeg}" fill="none" stroke="#1d4ed8" stroke-width="2.5" stroke-linecap="round"/>`;
+                dSeg = "";
+            }
+            prevY = Number.isFinite(y) ? y : null;
+            continue;
+        }
+        const px = toPxX(x).toFixed(1);
+        const py = toPxY(y).toFixed(1);
+        dSeg += dSeg === "" ? `M ${px} ${py}` : ` L ${px} ${py}`;
+        prevY = y;
+    }
+    if (dSeg) {
+        curvePaths += `<path d="${dSeg}" fill="none" stroke="#1d4ed8" stroke-width="2.5" stroke-linecap="round"/>`;
+    }
+
+    // Vẽ nét đứt gióng tọa độ và chấm tròn các điểm đặc biệt
+    let ptsSvg = "";
+    specialPts.forEach((pt, idx) => {
+        if (pt.x < xmin || pt.x > xmax || pt.y < ymin || pt.y > ymax) return;
+        const px = toPxX(pt.x);
+        const py = toPxY(pt.y);
+        if (pt.x !== 0 && pt.y !== 0) {
+            ptsSvg += `<line x1="${px}" y1="${py}" x2="${px}" y2="${originY}" stroke="#94a3b8" stroke-width="1.1" stroke-dasharray="4,3"/>`;
+            ptsSvg += `<line x1="${px}" y1="${py}" x2="${originX}" y2="${py}" stroke="#94a3b8" stroke-width="1.1" stroke-dasharray="4,3"/>`;
+        }
+        const isVertex = idx === 0;
+        const dotColor = isVertex ? "#dc2626" : "#1d4ed8";
+        ptsSvg += `<circle cx="${px}" cy="${py}" r="${isVertex ? 4.5 : 3.5}" fill="${dotColor}" stroke="#ffffff" stroke-width="1.2"/>`;
+        if (isVertex) {
+            const lblX = px + 8;
+            const lblY = py - 8;
+            ptsSvg += `<text x="${lblX}" y="${lblY}" font-size="11.5" font-weight="bold" font-family="Arial, sans-serif" fill="#dc2626">I(${pt.x}; ${pt.y})</text>`;
+        }
+    });
+
+    return `
+    <div class="my-3 p-3 bg-white border border-blue-200 rounded-xl flex flex-col items-center overflow-x-auto shadow-xs">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${svgW} ${svgH}" width="${svgW}" height="${svgH}" class="max-w-full h-auto">
+            <defs>
+                <marker id="axisArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#0f172a"/>
+                </marker>
+            </defs>
+            <rect x="0" y="0" width="${svgW}" height="${svgH}" fill="#ffffff"/>
+            ${gridSvg}
+            <!-- Trục Ox -->
+            <line x1="${pad - 12}" y1="${originY}" x2="${pad + plotW + 16}" y2="${originY}" stroke="#0f172a" stroke-width="1.8" marker-end="url(#axisArrow)"/>
+            <text x="${pad + plotW + 18}" y="${originY + 15}" font-size="13" font-style="italic" font-weight="bold" font-family="Times New Roman, serif" fill="#0f172a">x</text>
+            <!-- Trục Oy -->
+            <line x1="${originX}" y1="${pad + plotH + 12}" x2="${originX}" y2="${pad - 16}" stroke="#0f172a" stroke-width="1.8" marker-end="url(#axisArrow)"/>
+            <text x="${originX - 15}" y="${pad - 12}" font-size="13" font-style="italic" font-weight="bold" font-family="Times New Roman, serif" fill="#0f172a">y</text>
+            <!-- Gốc tọa độ O -->
+            <text x="${originX - 12}" y="${originY + 15}" font-size="12" font-family="Arial, sans-serif" fill="#0f172a">O</text>
+            ${curvePaths}
+            ${ptsSvg}
+        </svg>
+        <span class="text-xs font-semibold text-blue-900 mt-1">Đồ thị hàm số y = ${expr}</span>
+    </div>`;
 }
 
 // ==================== CHUYỂN NHÓM & CHÈN KÍ HIỆU TOÁN HỌC ====================
@@ -218,7 +387,7 @@ function updateStudentHeaderUI() {
     }
 }
 
-// ==================== GIA SƯ AI SIÊU TỐC & VẼ ĐỒ THỊ SVG TRỰC TIẾP ====================
+// ==================== GIA SƯ AI & HIỂN THỊ MARKDOWN + KATEX + ĐỒ THỊ CHÍNH XÁC ====================
 function onSelectTutorImage(event) {
     const file = event.target.files[0];
     if (file) readImageFileToPreview(file);
@@ -251,30 +420,98 @@ function resetTutorChat() {
     `;
 }
 
-function renderAiMessageWithSvg(containerEl, rawText) {
-    const svgRegex = /<svg[\s\S]*?<\/svg>/gi;
-    const svgs = rawText.match(svgRegex) || [];
-    const textWithoutSvg = rawText
-        .replace(/```(?:xml|svg|html)?\s*<svg[\s\S]*?<\/svg>\s*```/gi, "")
-        .replace(svgRegex, "")
-        .trim();
-
-    containerEl.innerHTML = "";
-
-    if (textWithoutSvg) {
-        const textDiv = document.createElement("div");
-        textDiv.className = "whitespace-pre-wrap leading-relaxed";
-        textDiv.textContent = textWithoutSvg;
-        containerEl.appendChild(textDiv);
-        renderKatexInElement(textDiv);
-    }
-
-    svgs.forEach(svgCode => {
-        const svgWrap = document.createElement("div");
-        svgWrap.className = "my-3 p-3 bg-white border border-blue-200 rounded-xl flex justify-center overflow-x-auto shadow-xs";
-        svgWrap.innerHTML = svgCode;
-        containerEl.appendChild(svgWrap);
+function markdownTextToHtml(mdText) {
+    const mathTokens = [];
+    let safeText = mdText.replace(/(\$\$[\s\S]*?\$\$|\$[^$\n]+\$)/g, (m) => {
+        const idx = mathTokens.length;
+        mathTokens.push(m);
+        return `@@MATH_${idx}@@`;
     });
+
+    const lines = safeText.split("\n");
+    const out = [];
+    let tableRows = [];
+
+    const flushTable = () => {
+        if (tableRows.length === 0) return;
+        const parsedRows = tableRows
+            .filter(r => !/^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$/.test(r))
+            .map(r => r.replace(/^\||\|$/g, "").split("|").map(c => c.trim()));
+
+        if (parsedRows.length > 0) {
+            let tblHtml = `<div class="overflow-x-auto my-3"><table class="min-w-full border-collapse border border-slate-300 text-xs sm:text-sm bg-white rounded-lg">`;
+            parsedRows.forEach((cells, rIdx) => {
+                tblHtml += `<tr>`;
+                cells.forEach(cell => {
+                    const tag = rIdx === 0 ? "th" : "td";
+                    const cls = rIdx === 0
+                        ? "border border-slate-300 px-3 py-1.5 bg-blue-50 text-blue-950 font-bold text-center"
+                        : "border border-slate-300 px-3 py-1.5 text-slate-800 text-center font-medium";
+                    tblHtml += `<${tag} class="${cls}">${cell}</${tag}>`;
+                });
+                tblHtml += `</tr>`;
+            });
+            tblHtml += `</table></div>`;
+            out.push(tblHtml);
+        }
+        tableRows = [];
+    };
+
+    for (const rawLine of lines) {
+        const line = rawLine.trimEnd();
+        if (/^\s*\|.+\|\s*$/.test(line)) {
+            tableRows.push(line.trim());
+            continue;
+        }
+        flushTable();
+
+        if (/^\s*---+\s*$/.test(line)) {
+            out.push(`<hr class="my-3 border-slate-200">`);
+        } else if (/^###\s+(.+)$/.test(line)) {
+            out.push(`<h4 class="font-bold text-sm sm:text-base text-blue-900 mt-3 mb-1">${line.replace(/^###\s+/, "")}</h4>`);
+        } else if (/^##\s+(.+)$/.test(line)) {
+            out.push(`<h3 class="font-bold text-base text-blue-950 mt-3 mb-1">${line.replace(/^##\s+/, "")}</h3>`);
+        } else if (/^\s*[-*]\s+(.+)$/.test(line)) {
+            const itemTxt = line.replace(/^\s*[-*]\s+/, "").replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+            out.push(`<div class="flex items-start gap-2 my-1 pl-2"><span class="text-blue-700 font-bold">•</span><span class="flex-1">${itemTxt}</span></div>`);
+        } else if (line.trim() === "") {
+            out.push(`<div class="h-1.5"></div>`);
+        } else {
+            const formatted = line.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+            out.push(`<p class="leading-relaxed my-0.5">${formatted}</p>`);
+        }
+    }
+    flushTable();
+
+    let finalHtml = out.join("");
+    finalHtml = finalHtml.replace(/@@MATH_(\d+)@@/g, (_, idx) => mathTokens[Number(idx)] || "");
+    return finalHtml;
+}
+
+function renderAiMessageWithSvg(containerEl, rawText) {
+    const plotBlocks = [];
+    let cleanedText = rawText.replace(/\[\[PLOT:\s*([^\]]+)\]\]/gi, (_, spec) => {
+        const idx = plotBlocks.length;
+        plotBlocks.push(generateExactFunctionSvg(spec));
+        return `@@PLOT_BLOCK_${idx}@@`;
+    });
+
+    const svgBlocks = [];
+    cleanedText = cleanedText
+        .replace(/```(?:xml|svg|html)?\s*(<svg[\s\S]*?<\/svg>)\s*```/gi, "$1")
+        .replace(/<svg[\s\S]*?<\/svg>/gi, (svgStr) => {
+            const idx = svgBlocks.length;
+            svgBlocks.push(`<div class="my-3 p-3 bg-white border border-blue-200 rounded-xl flex justify-center overflow-x-auto shadow-xs">${svgStr}</div>`);
+            return `@@SVG_BLOCK_${idx}@@`;
+        });
+
+    let htmlContent = markdownTextToHtml(cleanedText);
+    htmlContent = htmlContent
+        .replace(/@@PLOT_BLOCK_(\d+)@@/g, (_, idx) => plotBlocks[Number(idx)] || "")
+        .replace(/@@SVG_BLOCK_(\d+)@@/g, (_, idx) => svgBlocks[Number(idx)] || "");
+
+    containerEl.innerHTML = `<div class="space-y-1 text-slate-800">${htmlContent}</div>`;
+    renderKatexInElement(containerEl);
 }
 
 async function handleSendTutor() {
@@ -309,7 +546,7 @@ async function handleSendTutor() {
     const aiRow = document.createElement("div");
     aiRow.className = "flex justify-start";
     const aiBubble = document.createElement("div");
-    aiBubble.className = "max-w-[88%] bg-slate-50 border-l-4 border-blue-600 text-slate-800 rounded-r-2xl px-4 py-3.5 text-sm shadow-xs";
+    aiBubble.className = "max-w-[92%] bg-slate-50 border-l-4 border-blue-600 text-slate-800 rounded-r-2xl px-4 py-3.5 text-sm shadow-xs";
     aiBubble.innerHTML = `<div class="dot-pulse"><span></span><span></span><span></span></div>`;
     aiRow.appendChild(aiBubble);
     box.appendChild(aiRow);
@@ -365,7 +602,9 @@ async function handleSendTutor() {
                         const delta = (parsed.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
                         if (delta) {
                             fullText += delta;
-                            const previewClean = fullText.replace(/<svg[\s\S]*$/i, "\n⏳ Đang dựng hình đồ thị trực quan...");
+                            const previewClean = fullText
+                                .replace(/\[\[PLOT:[\s\S]*$/i, "\n⏳ Đang tính tọa độ và dựng đồ thị chính xác...")
+                                .replace(/<svg[\s\S]*$/i, "\n⏳ Đang dựng hình trực quan...");
                             aiBubble.textContent = previewClean;
                             box.scrollTop = box.scrollHeight;
                         }
