@@ -12,12 +12,20 @@ export async function onRequestPost(context) {
             apiKey: clientApiKey
         } = body;
 
-        const envKey = String(context.env.GEMINI_API_KEY || "").trim();
-        const headerKey = String(context.request.headers.get("x-gemini-key") || "").trim();
-        const bodyKey = String(clientApiKey || "").trim();
-        const apiKey = envKey || bodyKey || headerKey;
+        const envRaw = String(context.env.GEMINI_API_KEY || "");
+        const headerRaw = String(context.request.headers.get("x-gemini-key") || "");
+        const bodyRaw = String(clientApiKey || "");
+        const combinedRaw = [envRaw, bodyRaw, headerRaw].filter(Boolean).join(",");
 
-        if (!apiKey || apiKey.startsWith("DAN_API")) {
+        // Tách danh sách nhiều key (ngăn cách bằng dấu phẩy, chấm phẩy hoặc xuống dòng) và lọc trùng
+        const keyList = Array.from(new Set(
+            combinedRaw
+                .split(/[\s,;]+/)
+                .map(k => k.trim())
+                .filter(k => k.length > 10 && !k.startsWith("DAN_API"))
+        ));
+
+        if (keyList.length === 0) {
             return new Response(JSON.stringify({
                 error: "Chưa tìm thấy biến GEMINI_API_KEY trên Cloudflare Pages. Hãy kiểm tra lại mục Variables and secrets!"
             }), {
@@ -26,36 +34,40 @@ export async function onRequestPost(context) {
             });
         }
 
+        // Xáo trộn thứ tự key để chia đều tải giữa các key mỗi lần có học sinh hỏi
+        const shuffledKeys = [...keyList];
+        for (let i = shuffledKeys.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffledKeys[i], shuffledKeys[j]] = [shuffledKeys[j], shuffledKeys[i]];
+        }
+
         let systemInstruction = "";
         if (mode === "student_tutor") {
-            systemInstruction = `Bạn là Gia sư AI của Trường THPT Đa Kia, xưng hô thân thiện là "Thầy (Cô)" và gọi học sinh là "em".
-Bám sát chương trình GDPT 2018 và bộ sách Kết nối tri thức với cuộc sống (Lớp ${grade}).
-${isWeakMode ? "Học sinh đang ở chế độ HỖ TRỢ NỀN TẢNG: hãy chia nhỏ từng bước thật dễ hiểu, nhắc lại công thức cơ bản trước khi tính và chỉ gợi mở bước đầu tiên để em tự làm." : "Hướng dẫn từng bước rõ ràng, gợi mở tư duy, không chép hộ bài từ đầu đến cuối."}
-QUY TẮC CÔNG THỨC & VẼ ĐỒ THỊ:
-- Mọi công thức Toán/Lí/Hóa viết gọn trong dấu $...$ (ví dụ: $y = x^2 + 1$).
-- KHI HỌC SINH YÊU CẦU VẼ ĐỒ THỊ HÀM SỐ $y = f(x)$: TUYỆT ĐỐI KHÔNG tự viết thẻ <svg> bằng tay. Thay vào đó, ở phần hình vẽ đồ thị, hãy xuất ĐÚNG cú pháp thẻ lệnh:
-[[PLOT: biểu_thức_f(x) | xmin=-4 | xmax=4 | ymin=-2 | ymax=6 | points=(0,1);(-1,2);(1,2);(-2,5);(2,5)]]
-Trong đó:
-+ biểu_thức_f(x) viết theo cú pháp toán học chuẩn (ví dụ: x^2 + 1, -x^2 + 2*x + 3, x^3 - 3*x, (2*x - 1)/(x - 1), sin(x), 2^x, log(x)).
-+ xmin, xmax, ymin, ymax chọn vừa vặn để thấy rõ đỉnh, cực trị, giao điểm trục tọa độ và các điểm đặc biệt (tỷ lệ chia 1 đơn vị bằng nhau trên cả hai trục).
-+ points là danh sách các điểm đặc biệt (đỉnh, cực trị, giao trục) cần chấm tròn và ghi tọa độ trên đồ thị.
-- Chỉ dùng thẻ <svg> khi vẽ hình học phẳng (tam giác, đường tròn, vectơ) không phải đồ thị hàm số.`;
+            systemInstruction = `Gia sư AI Trường THPT Đa Kia, xưng "Thầy (Cô)", gọi học sinh "em". Bám sát SGK Kết nối tri thức Lớp ${grade}.
+${isWeakMode ? "Chế độ HỖ TRỢ NỀN TẢNG: giải thích cực kỳ ngắn gọn, dễ hiểu, nhắc công thức cơ bản rồi gợi mở bước đầu tiên." : "Trả lời súc tích, rõ từng bước, không dài dòng."}
+Quy tắc:
+- Công thức đặt trong $...$.
+- Khi vẽ đồ thị $y = f(x)$, KHÔNG viết thẻ <svg>, chỉ xuất đúng 1 dòng: [[PLOT: biểu_thức | xmin=-4 | xmax=4 | ymin=-2 | ymax=6 | points=(x1,y1);(x2,y2)]] (ví dụ: [[PLOT: x^2 + 1 | xmin=-4 | xmax=4 | ymin=-1 | ymax=6 | points=(0,1);(-1,2);(1,2)]]).`;
         } else if (mode === "teacher_5512_intro" || mode === "teacher_5512_period" || mode === "teacher_5512_outro") {
-            systemInstruction = "Bạn là chuyên gia soạn Kế hoạch bài dạy (KHBD) chuẩn Công văn 5512 của Bộ GD&ĐT, bám sát SGK Kết nối tri thức với cuộc sống và mẫu Trường THPT Đa Kia. Trình bày mạch lạc, đúng cấu trúc từng mục, không dùng ký tự thừa.";
+            systemInstruction = "Chuyên gia soạn KHBD chuẩn Công văn 5512, bám sát SGK Kết nối tri thức và mẫu Trường THPT Đa Kia. Trình bày mạch lạc, đúng mục.";
         } else if (mode === "teacher_svg") {
-            systemInstruction = "Chỉ trả về DUY NHẤT 1 thẻ <svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 500 260\" width=\"500\" height=\"260\">...</svg> minh họa hình học/đồ thị chuẩn SGK, có mũi tên trục tọa độ và nhãn rõ ràng. Không giải thích thêm.";
+            systemInstruction = "Chỉ trả về DUY NHẤT 1 thẻ <svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 500 260\" width=\"500\" height=\"260\">...</svg> minh họa hình học chuẩn SGK. Không giải thích thêm.";
         } else if (mode === "teacher_slides") {
-            systemInstruction = "Chỉ trả về DUY NHẤT chuỗi JSON hợp lệ theo đúng cấu trúc yêu cầu, không thêm văn bản ngoài JSON.";
+            systemInstruction = "Chỉ trả về DUY NHẤT chuỗi JSON hợp lệ theo yêu cầu.";
         } else if (mode === "pdf_to_word") {
-            systemInstruction = "Trích xuất chính xác toàn bộ nội dung văn bản và công thức Toán/Lí/Hóa dưới dạng $...$ chuẩn MathType. Giữ nguyên cấu trúc câu hỏi và đáp án.";
+            systemInstruction = "Trích xuất chính xác toàn bộ nội dung và công thức dưới dạng $...$ chuẩn MathType.";
         }
 
         const contents = [];
-        for (const turn of history) {
+        for (const turn of history.slice(-2)) {
             if (turn && turn.text) {
+                const compactText = String(turn.text)
+                    .replace(/\[\[PLOT:[^\]]+\]\]/gi, "[Đã vẽ đồ thị]")
+                    .replace(/<svg[\s\S]*?<\/svg>/gi, "[Đã vẽ hình]")
+                    .slice(0, 600);
                 contents.push({
                     role: turn.role === "model" ? "model" : "user",
-                    parts: [{ text: String(turn.text) }]
+                    parts: [{ text: compactText }]
                 });
             }
         }
@@ -73,41 +85,56 @@ Trong đó:
         currentParts.push({ text: String(message || "Hướng dẫn giúp em bài này.") });
         contents.push({ role: "user", parts: currentParts });
 
-        const modelName = "gemini-3.8-flash";
-        const endpointUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
-
+        const isTutorFast = mode === "student_tutor";
         const payloadObj = {
             systemInstruction: { parts: [{ text: systemInstruction }] },
             contents,
             generationConfig: {
                 temperature: 0.3,
+                ...(isTutorFast ? { maxOutputTokens: 1200 } : {}),
                 thinkingConfig: { thinkingBudget: 0 }
             }
         };
 
-        const geminiRes = await fetch(endpointUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payloadObj)
-        });
+        let lastErrorStatus = 502;
+        let lastErrorText = "";
 
-        if (!geminiRes.ok) {
-            const errTxt = await geminiRes.text();
-            return new Response(JSON.stringify({
-                error: `Lỗi AI (${geminiRes.status}) [${modelName}]: ${errTxt.slice(0, 260)}`
-            }), {
-                status: 502,
-                headers: { "Content-Type": "application/json" }
+        // Lần lượt thử qua từng key trong danh sách cho tới khi gọi thành công
+        for (const activeKey of shuffledKeys) {
+            let geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:streamGenerateContent?alt=sse&key=${encodeURIComponent(activeKey)}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payloadObj)
             });
+
+            if (geminiRes.status === 404 || geminiRes.status === 400) {
+                geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:streamGenerateContent?alt=sse&key=${encodeURIComponent(activeKey)}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payloadObj)
+                });
+            }
+
+            if (geminiRes.ok) {
+                return new Response(geminiRes.body, {
+                    status: 200,
+                    headers: {
+                        "Content-Type": "text/event-stream; charset=utf-8",
+                        "Cache-Control": "no-cache",
+                        "Connection": "keep-alive"
+                    }
+                });
+            }
+
+            lastErrorStatus = geminiRes.status;
+            lastErrorText = await geminiRes.text();
         }
 
-        return new Response(geminiRes.body, {
-            status: 200,
-            headers: {
-                "Content-Type": "text/event-stream; charset=utf-8",
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive"
-            }
+        return new Response(JSON.stringify({
+            error: `Tất cả ${shuffledKeys.length} API key đều bận hoặc hết lượt (${lastErrorStatus}): ${lastErrorText.slice(0, 200)}`
+        }), {
+            status: 502,
+            headers: { "Content-Type": "application/json" }
         });
     } catch (err) {
         return new Response(JSON.stringify({ error: err.message || "Lỗi xử lý máy chủ" }), {
