@@ -1,3 +1,27 @@
+function extractKeys(context, bodyKey = "") {
+    const envRaw = String(context.env.GEMINI_API_KEY || "");
+    const headerRaw = String(context.request.headers.get("x-gemini-key") || "");
+    const combinedRaw = [envRaw, String(bodyKey || ""), headerRaw].filter(Boolean).join(",");
+
+    return Array.from(new Set(
+        combinedRaw
+            .split(/[\s,;]+/)
+            .map(k => k.trim())
+            .filter(k => k.length > 10 && !k.startsWith("DAN_API"))
+    ));
+}
+
+export async function onRequestGet(context) {
+    const keys = extractKeys(context);
+    return new Response(JSON.stringify({ keys }), {
+        status: 200,
+        headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-store"
+        }
+    });
+}
+
 export async function onRequestPost(context) {
     try {
         const body = await context.request.json();
@@ -12,17 +36,7 @@ export async function onRequestPost(context) {
             apiKey: clientApiKey
         } = body;
 
-        const envRaw = String(context.env.GEMINI_API_KEY || "");
-        const headerRaw = String(context.request.headers.get("x-gemini-key") || "");
-        const bodyRaw = String(clientApiKey || "");
-        const combinedRaw = [envRaw, bodyRaw, headerRaw].filter(Boolean).join(",");
-
-        const keyList = Array.from(new Set(
-            combinedRaw
-                .split(/[\s,;]+/)
-                .map(k => k.trim())
-                .filter(k => k.length > 10 && !k.startsWith("DAN_API"))
-        ));
+        const keyList = extractKeys(context, clientApiKey);
 
         if (keyList.length === 0) {
             return new Response(JSON.stringify({
@@ -47,12 +61,7 @@ Quy tắc công thức & hình vẽ:
 - Khi vẽ ĐỒ THỊ HÀM SỐ $y = f(x)$, xuất đúng 1 dòng:
   [[PLOT: biểu_thức | xmin=-4 | xmax=4 | ymin=-2 | ymax=6 | points=(x1,y1);(x2,y2)]]
 - Khi vẽ HÌNH HỌC KHÔNG GIAN 3D, xuất đúng 1 dòng theo cú pháp:
-  [[SHAPE3D: loại_hình | labels=tên_đỉnh | altitude=chân_đường_cao | extra=nét_thêm]]
-  Trong đó:
-  + loại_hình gồm: pyramid_tri (chóp tam giác S.ABC), pyramid_quad (chóp tứ giác S.ABCD), prism_tri (lăng trụ tam giác ABC.A'B'C'), box (hình hộp/lập phương ABCD.A'B'C'D'), oxyz (hệ trục Oxyz).
-  + labels: danh sách tên đỉnh theo đúng thứ tự (VD: S,A,B,C hoặc S,A,B,C,D hoặc A,B,C,D,A',B',C',D').
-  + altitude (tùy chọn): chân đường cao từ đỉnh S xuống đáy, chọn 1 trong: A (SA vuông góc đáy), O (chóp đều/tâm đáy O), H (trung điểm AB).
-  + extra (tùy chọn): các đoạn nối thêm dạng solid:M-N hoặc dashed:S-O (VD: extra=dashed:A-C;dashed:B-D;dashed:S-O).`;
+  [[SHAPE3D: loại_hình | labels=tên_đỉnh | altitude=chân_đường_cao | extra=nét_thêm]]`;
         } else if (mode === "teacher_5512_intro" || mode === "teacher_5512_period" || mode === "teacher_5512_outro") {
             systemInstruction = "Chuyên gia soạn KHBD chuẩn Công văn 5512, bám sát SGK Kết nối tri thức và mẫu Trường THPT Đa Kia. Trình bày mạch lạc, đúng mục.";
         } else if (mode === "teacher_svg") {
@@ -117,7 +126,9 @@ Quy tắc công thức & hình vẽ:
         if (!geminiRes.ok) {
             const errTxt = await geminiRes.text();
             return new Response(JSON.stringify({
-                error: `Lỗi AI (${geminiRes.status}): ${errTxt.slice(0, 200)}`
+                error: `Lỗi AI (${geminiRes.status}): ${errTxt.slice(0, 220)}`,
+                locationBlocked: errTxt.includes("User location is not supported"),
+                keys: keyList
             }), {
                 status: 502,
                 headers: { "Content-Type": "application/json" }
