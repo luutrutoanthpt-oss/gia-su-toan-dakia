@@ -20,7 +20,7 @@ window.MathJax = {
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-<script src="js/config.js?v=15"></script>
+<script src="js/config.js?v=20"></script>
 
 <style>
 :root {
@@ -484,7 +484,7 @@ input[type="text"], input[type="number"], input[type="password"], select, textar
 
     <div class="setup-grid">
       <div class="panel-card">
-        <div class="panel-title">🎮 CHẾ ĐỘ CHƠI, MÃ QR PHÒNG & TỰ ĐỘNG CHIA ĐỘI</div>
+        <div class="panel-title">🎮 CHẾ ĐỘ CHƠI, MÃ QR PHÒNG & CHIA ĐỘI KHI BẮT ĐẦU</div>
         <div class="mode-selector" id="modeSelector">
           <div class="mode-card" data-mode="solo" onclick="selectGameMode('solo')">
             <div class="mode-icon">🧑‍🎓</div>
@@ -516,7 +516,7 @@ input[type="text"], input[type="number"], input[type="password"], select, textar
         <div id="teacherModeExtra" style="display:none; margin-bottom:12px;">
           <div class="form-group">
             <label>Số lượng đội:</label>
-            <select id="teacherTeamCount" onchange="renderTeamInputs(); autoDistributeLobbyStudents(true);">
+            <select id="teacherTeamCount" onchange="renderTeamInputs();">
               <option value="2">2 Đội</option>
               <option value="3">3 Đội</option>
               <option value="4" selected>4 Đội</option>
@@ -528,9 +528,9 @@ input[type="text"], input[type="number"], input[type="password"], select, textar
           <div class="qr-top-flex">
             <div class="qr-canvas-wrap" id="roomQrContainer"></div>
             <div class="qr-meta-col">
-              <div style="font-weight:900; color:var(--neon-blue); font-size:0.96rem; margin-bottom:4px;">📱 MÃ QR VÀO PHÒNG CHƠI</div>
+              <div style="font-weight:900; color:var(--neon-blue); font-size:0.96rem; margin-bottom:4px;">📱 MÃ QR VÀO PHÒNG CHỜ</div>
               <div style="font-size:0.79rem; color:var(--text-muted); margin-bottom:8px;">
-                Học sinh dùng điện thoại quét QR bằng 4G/5G hoặc Wi-Fi, nhập tên để vào phòng. Hệ thống tự động chia đều vào các đội; thầy kiểm tra đủ quân số xong mới bấm <strong>🚀 BẮT ĐẦU</strong>.
+                Học sinh quét QR nhập tên vào danh sách chờ; khi bấm <strong>🎲 Chia đội khi bắt đầu</strong> hoặc <strong>🚀 BẮT ĐẦU</strong> hệ thống mới phân đội.
               </div>
               <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
                 <input type="text" id="roomJoinLinkInput" style="flex:1; min-width:160px; font-size:13px; padding:7px 10px;" placeholder="Nhập mã phòng hoặc link thật..." oninput="generateRoomQR()">
@@ -543,17 +543,17 @@ input[type="text"], input[type="number"], input[type="password"], select, textar
           </div>
 
           <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
-            <input type="text" id="quickStudentName" style="flex:2; min-width:170px; padding:7px 10px; font-size:14px;" placeholder="Thêm nhanh họ tên HS (VD: Nguyễn Văn An)..." onkeydown="if(event.key==='Enter') addLobbyStudentFromInput()">
+            <input type="text" id="quickStudentName" style="flex:2; min-width:170px; padding:7px 10px; font-size:14px;" placeholder="Thêm nhanh họ tên HS vào danh sách chờ..." onkeydown="if(event.key==='Enter') addLobbyStudentFromInput()">
             <button type="button" class="btn btn-success btn-sm" onclick="addLobbyStudentFromInput()">➕ Thêm HS</button>
-            <button type="button" class="btn btn-gold btn-sm" onclick="autoDistributeLobbyStudents(true)">🎲 Chia đều ngẫu nhiên</button>
+            <button type="button" class="btn btn-gold btn-sm" onclick="autoDistributeLobbyStudents(true)">🎲 Chia đội ngay</button>
           </div>
 
           <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
-            <span style="font-size:0.8rem; color:var(--text-muted);">Học sinh đang online (<strong id="lobbyCount" style="color:var(--neon-blue);">0</strong> em):</span>
+            <span style="font-size:0.8rem; color:var(--text-muted);">Học sinh đang chờ (<strong id="lobbyCount" style="color:var(--neon-blue);">0</strong> em):</span>
             <button type="button" class="btn btn-danger btn-sm" style="min-height:28px; padding:2px 8px; font-size:0.72rem;" onclick="clearLobbyStudents()">Xóa DS chờ</button>
           </div>
           <div class="lobby-students-chips" id="lobbyStudentsChips">
-            <span style="font-size:0.8rem; color:var(--text-muted);">Chưa có học sinh vào phòng.</span>
+            <span style="font-size:0.8rem; color:var(--text-muted);">Chưa có học sinh vào phòng chờ.</span>
           </div>
         </div>
 
@@ -579,7 +579,7 @@ input[type="text"], input[type="number"], input[type="password"], select, textar
             <label>Khối lớp:</label>
             <select id="filterGrade">
               <option value="ALL">Tất cả khối lớp</option>
-              <option value="10">Khối 10</option>
+              <option value="10" selected>Khối 10</option>
               <option value="11">Khối 11</option>
               <option value="12">Khối 12</option>
             </select>
@@ -594,7 +594,7 @@ input[type="text"], input[type="number"], input[type="password"], select, textar
           <div class="form-group">
             <label>Chế độ chuyển câu:</label>
             <select id="autoAdvanceSelect" onchange="syncAutoAdvanceFromSetup()">
-              <option value="auto">⏱️ Tự động chuyển câu khi hết giờ / đủ bài</option>
+              <option value="auto" selected>⏱️ Tự động chuyển câu khi hết giờ / đủ bài</option>
               <option value="manual">👆 Giáo viên bấm chuyển câu thủ công</option>
             </select>
           </div>
@@ -638,12 +638,11 @@ input[type="text"], input[type="number"], input[type="password"], select, textar
 
   <!-- ==================== 2. MÀN HÌNH HỌC SINH QUÉT MÃ QR & CHỜ BẮT ĐẦU ==================== -->
   <section id="screenStudentJoin" class="screen">
-    <!-- BƯỚC A: FORM BÁO DANH -->
     <div id="studentJoinFormCard" class="student-join-card">
       <div style="text-align:center; margin-bottom:16px;">
         <div class="school-banner" style="font-size:0.85rem; padding:5px 16px;">THPT ĐA KIA – ĐẤU TRƯỜNG TRI THỨC</div>
-        <h2 style="color:var(--neon-blue); font-size:1.45rem; margin-top:6px;">📱 BÁO DANH VÀO PHÒNG CHƠI</h2>
-        <p style="color:var(--text-muted); font-size:0.86rem; margin-top:4px;">Nhập tên Zalo hoặc họ tên đầy đủ của em để vào phòng!</p>
+        <h2 style="color:var(--neon-blue); font-size:1.45rem; margin-top:6px;">📱 BÁO DANH VÀO PHÒNG CHỜ</h2>
+        <p style="color:var(--text-muted); font-size:0.86rem; margin-top:4px;">Nhập tên Zalo hoặc họ tên đầy đủ của em để vào phòng chờ!</p>
       </div>
 
       <div class="form-group">
@@ -655,35 +654,33 @@ input[type="text"], input[type="number"], input[type="password"], select, textar
         <input type="text" id="joinStudentNameInput" placeholder="Nhập tên Zalo hoặc họ tên của em..." required onkeydown="if(event.key==='Enter') submitStudentJoin()">
       </div>
 
-      <button id="btnConfirmStudentJoin" class="btn btn-gold btn-lg" style="width:100%; margin-top:8px;" onclick="submitStudentJoin()">🚀 XÁC NHẬN VÀO PHÒNG</button>
+      <button id="btnConfirmStudentJoin" class="btn btn-gold btn-lg" style="width:100%; margin-top:8px;" onclick="submitStudentJoin()">🚀 XÁC NHẬN VÀO PHÒNG CHỜ</button>
       <div id="studentJoinFeedback" style="margin-top:14px;"></div>
     </div>
 
-    <!-- BƯỚC B: PHÒNG CHỜ HỌC SINH (KHÓA LÀM BÀI CHO ĐẾN KHI GIÁO VIÊN BẤM BẮT ĐẦU) -->
     <div id="studentWaitingLobbyCard" class="student-join-card" style="display:none; text-align:center;">
       <div class="school-banner" style="font-size:0.82rem; padding:5px 14px;">PHÒNG CHỜ THI ĐẤU • <span id="stuWaitRoomBadge"></span></div>
       <h2 style="color:var(--gold); font-size:1.4rem; margin:10px 0 6px;">Xin chào, <span id="stuWaitNameDisplay" style="color:var(--neon-blue);"></span>!</h2>
-      <p id="stuWaitTeamDisplay" style="font-size:0.95rem; font-weight:700; color:var(--success); margin-bottom:14px;">✅ Em đã báo danh thành công vào phòng!</p>
+      <p id="stuWaitTeamDisplay" style="font-size:0.95rem; font-weight:700; color:var(--success); margin-bottom:14px;">✅ Em đã vào phòng chờ — Đội thi sẽ được phân khi Thầy (Cô) bấm Bắt đầu!</p>
 
       <div style="background:rgba(4,15,38,0.9); border:1.5px dashed var(--gold); border-radius:16px; padding:18px; margin-bottom:14px;">
         <div style="font-size:2rem; margin-bottom:6px;">🔒</div>
         <div style="font-weight:800; color:var(--gold-bright); font-size:1.05rem;">ĐANG CHỜ THẦY (CÔ) BẤM BẮT ĐẦU</div>
         <p style="font-size:0.84rem; color:var(--text-muted); margin-top:6px; line-height:1.45;">
-          Đề thi đang được khóa. Ngay khi Thầy (Cô) phân đội xong và bấm nút <strong>BẮT ĐẦU</strong> trên màn hình lớp, câu hỏi sẽ tự động mở ra tại đây!
+          Đề thi đang được khóa. Ngay khi Thầy (Cô) bấm nút <strong>BẮT ĐẦU</strong> trên màn hình lớp, câu hỏi sẽ tự động mở ra tại đây!
         </p>
       </div>
 
       <div style="font-size:0.8rem; color:var(--text-muted);">
-        Sĩ số phòng hiện tại: <strong id="stuWaitPeerCount" style="color:var(--neon-blue);">1</strong> học sinh đang chờ
+        Sĩ số phòng chờ hiện tại: <strong id="stuWaitPeerCount" style="color:var(--neon-blue);">1</strong> học sinh
       </div>
     </div>
 
-    <!-- BƯỚC C: GIAO DIỆN LÀM BÀI CỦA HỌC SINH (CHỈ ĐƯỢC GỬI ĐÁP ÁN, KHÔNG CÓ NÚT CHUYỂN CÂU) -->
     <div id="studentPlayArenaCard" class="student-join-card" style="display:none; max-width:760px;">
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; border-bottom:1px solid rgba(0,240,255,0.3); padding-bottom:10px; margin-bottom:12px;">
         <div>
           <span class="q-progress-badge" id="stuQProgress">CÂU 1 / 10</span>
-          <span style="margin-left:8px; font-size:0.85rem; font-weight:800; color:var(--gold);" id="stuTeamTag">Đội thi</span>
+          <span style="margin-left:8px; font-size:0.85rem; font-weight:800; color:var(--gold);" id="stuTeamTag">Thí sinh</span>
         </div>
         <div style="font-size:1rem; font-weight:900; color:var(--success);">
           Điểm của em: <span id="stuCurrentScore">0</span> đ
@@ -825,7 +822,7 @@ input[type="text"], input[type="number"], input[type="password"], select, textar
       <form id="questionForm" onsubmit="saveQuestionForm(event)">
         <div class="form-row">
           <div class="form-group"><label>Môn học *</label><input type="text" id="qSubject" value="Toán học" required></div>
-          <div class="form-group"><label>Khối lớp *</label><select id="qGrade"><option value="10">10</option><option value="11">11</option><option value="12" selected>12</option></select></div>
+          <div class="form-group"><label>Khối lớp *</label><select id="qGrade"><option value="10" selected>10</option><option value="11">11</option><option value="12">12</option></select></div>
           <div class="form-group"><label>Dạng câu hỏi *</label><select id="qType" onchange="toggleFormQuestionType()"><option value="mcq">Trắc nghiệm 4 phương án (A,B,C,D)</option><option value="tf4">Đúng / Sai (4 ý a,b,c,d)</option><option value="short">Điền đáp án ngắn</option></select></div>
         </div>
         <div class="form-group"><label>Nội dung câu hỏi (Hỗ trợ LaTeX $...$) *</label><textarea id="qContent" rows="3" required></textarea></div>
@@ -870,7 +867,7 @@ input[type="text"], input[type="number"], input[type="password"], select, textar
         <div class="form-row">
           <div class="form-group"><label>File Word (.docx)</label><input type="file" id="docxFileInput" accept=".docx"></div>
           <div class="form-group"><label>Môn học</label><input type="text" id="docxDefaultSubject" value="Toán học"></div>
-          <div class="form-group"><label>Khối</label><select id="docxDefaultGrade"><option value="10">10</option><option value="11">11</option><option value="12" selected>12</option></select></div>
+          <div class="form-group"><label>Khối</label><select id="docxDefaultGrade"><option value="10" selected>10</option><option value="11">11</option><option value="12">12</option></select></div>
         </div>
         <button class="btn btn-gold" onclick="importDocxFromModal()">📂 ĐỌC FILE WORD & NẠP VÀO NGÂN HÀNG</button>
       </div>
@@ -1003,33 +1000,33 @@ let studentPollActive = false;
 
 const DEFAULT_QUESTIONS = [
   {
-    id: 'q_mau_1', subject: 'Toán học', grade: '12', topic: 'Tính đơn điệu của hàm số', level: 'Nhận biết', type: 'mcq',
-    question: 'Cho hàm số $y=f(x)$ xác định với mọi $x\\ne -4$ và có bảng xét dấu $f\\prime (x)$ như hình vẽ dưới đây. Hàm số đồng biến trên khoảng nào trong các khoảng sau?',
-    options: ['$(-\\infty ;-3)$.', '$(-8;+\\infty )$.', '$(-\\infty ;-6)$.', '$(-\\infty ;+\\infty )$.'],
+    id: 'q_mau_1', subject: 'Toán học', grade: '10', topic: 'Mệnh đề và tập hợp', level: 'Nhận biết', type: 'mcq',
+    question: 'Cho tập hợp $A = \\{1; 2; 3; 4\\}$ và $B = \\{3; 4; 5; 6\\}$. Tập hợp $A \\cap B$ là:',
+    options: ['$\\{1; 2\\}$.', '$\\{3; 4\\}$.', '$\\{5; 6\\}$.', '$\\{1; 2; 3; 4; 5; 6\\}$.'],
     optionImages: [[], [], [], []],
-    answer: '2',
-    explanation: 'Hàm số đã cho đồng biến trên khoảng $(-\\infty ;-6)$.',
+    answer: '1',
+    explanation: '$A \\cap B$ gồm các phần tử chung của $A$ và $B$, là $\\{3; 4\\}$.',
     time: 20, points: 10, images: []
   },
   {
-    id: 'q_mau_tf4', subject: 'Toán học', grade: '12', topic: 'Tính đơn điệu của hàm số', level: 'Thông hiểu', type: 'tf4',
-    question: 'Cho hàm số $y=f(x)$ xác định trên $\\mathbb{R}$. Xét tính đúng sai của các khẳng định sau?',
+    id: 'q_mau_tf4', subject: 'Toán học', grade: '10', topic: 'Bất phương trình bậc nhất hai ẩn', level: 'Thông hiểu', type: 'tf4',
+    question: 'Cho bất phương trình $2x + y \\le 4$. Xét tính đúng sai của các khẳng định sau?',
     statements: [
-      { label: 'a)', text: 'Hàm số đồng biến trên khoảng $(-\\infty ;-1)$.', isTrue: true },
-      { label: 'b)', text: 'Hàm số nghịch biến trên khoảng $(-\\infty ;3)$.', isTrue: false },
-      { label: 'c)', text: '$f(7)<f(4)$.', isTrue: true },
-      { label: 'd)', text: 'Phương trình $f\\prime (x-6)=0$ nhận $x=6$ làm nghiệm.', isTrue: true }
+      { label: 'a)', text: 'Cặp số $(1; 1)$ là nghiệm của bất phương trình.', isTrue: true },
+      { label: 'b)', text: 'Điểm $M(2; 2)$ thuộc miền nghiệm của bất phương trình.', isTrue: false },
+      { label: 'c)', text: 'Gốc tọa độ $O(0; 0)$ thuộc miền nghiệm của bất phương trình.', isTrue: true },
+      { label: 'd)', text: 'Biên của miền nghiệm là đường thẳng $2x + y = 4$.', isTrue: true }
     ],
-    answer: 'Đ-S-Đ-Đ',
-    explanation: 'a) Đúng; b) Sai; c) Đúng; d) Đúng.',
+    answer: 'a) Đúng | b) Sai | c) Đúng | d) Đúng',
+    explanation: 'Thay tọa độ từng điểm vào bất phương trình $2x + y \\le 4$.',
     time: 30, points: 20, images: []
   },
   {
-    id: 'q_mau_short', subject: 'Toán học', grade: '12', topic: 'Cực trị hàm số', level: 'Vận dụng', type: 'short',
-    question: 'Cho hàm số $y=f(x)=-{{x}^{3}}+\\frac{21{{x}^{2}}}{2}-30x+1$ có đạt cực tiểu tại điểm $x={{x}_{1}}$ và đạt cực đại tại điểm $x={{x}_{2}}$. Tính $P={{x}_{1}}+2{{x}_{2}}$.',
+    id: 'q_mau_short', subject: 'Toán học', grade: '10', topic: 'Hệ thức lượng trong tam giác', level: 'Vận dụng', type: 'short',
+    question: 'Cho tam giác $ABC$ có $AB = 5$, $AC = 8$ và $\\widehat{BAC} = 60^\\circ$. Tính độ dài cạnh $BC$.',
     options: [], optionImages: [[], [], [], []],
-    answer: '12',
-    explanation: '$P={{x}_{1}}+2{{x}_{2}}=2+2\\cdot 5=12$.',
+    answer: '7',
+    explanation: '$BC^2 = 5^2 + 8^2 - 2\\cdot 5\\cdot 8\\cdot \\cos 60^\\circ = 25 + 64 - 40 = 49 \\Rightarrow BC = 7$.',
     time: 30, points: 30, images: []
   }
 ];
@@ -1134,9 +1131,9 @@ function updateAutoAdvanceButtonUI() {
 }
 
 /* ============================================================================
-3. NÉN ẢNH & ĐẨY LÊN GOOGLE DRIVE + ĐỌC FILE WORD (.DOCX) 3 PHẦN
+3. NÉN ẢNH & ĐỌC FILE WORD (.DOCX) 3 PHẦN
    ============================================================================ */
-function compressImageDataUrl(dataUrl, maxWidth = 480, quality = 0.72) {
+function compressImageDataUrl(dataUrl, maxWidth = 320, quality = 0.6) {
   return new Promise((resolve) => {
     if (!dataUrl || !dataUrl.startsWith('data:image')) { resolve(''); return; }
     if (dataUrl.length < 7000) { resolve(dataUrl); return; }
@@ -1163,24 +1160,6 @@ function compressImageDataUrl(dataUrl, maxWidth = 480, quality = 0.72) {
   });
 }
 
-async function uploadQuestionImageToDrive(scriptUrl, rawDataUrl) {
-  if (!rawDataUrl) return '';
-  if (rawDataUrl.startsWith('http')) return rawDataUrl;
-  const compressed = await compressImageDataUrl(rawDataUrl, 480, 0.72);
-  const payloadImg = compressed || rawDataUrl;
-  try {
-    const res = await fetch(scriptUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'arena_upload_img', base64: payloadImg })
-    });
-    const d = await res.json();
-    return d.url || '';
-  } catch (_) {
-    return compressed && compressed.length < 9000 ? compressed : '';
-  }
-}
-
 function triggerInstantFile() {
   document.getElementById('instantExamFileInput').click();
 }
@@ -1189,10 +1168,12 @@ async function loadInstantExamFile(event) {
   const file = event.target.files[0];
   if (!file) return;
   const fname = file.name.toLowerCase();
+  const chosenGrade = document.getElementById('filterGrade')?.value || '10';
+  const gradeToUse = chosenGrade !== 'ALL' ? chosenGrade : '10';
 
   try {
     if (fname.endsWith('.docx')) {
-      const parsed = await parseDocxExamFile(file, 'Toán học', '12');
+      const parsed = await parseDocxExamFile(file, 'Toán học', gradeToUse);
       if (!parsed.length) {
         showToast('Không tìm thấy câu hỏi dạng "Câu 1." trong file Word này!', 'warning');
         return;
@@ -1208,10 +1189,10 @@ async function loadInstantExamFile(event) {
 
       const bar = document.getElementById('activeExamStatusBar');
       bar.style.display = 'block';
-      bar.innerHTML = `✅ Đã nạp file <u>${escapeHTML(file.name)}</u>: <strong>${parsed.length} câu</strong> (${cMcq} câu Nhiều lựa chọn, ${cTf4} câu Đúng/Sai 4 ý, ${cShort} câu Trả lời ngắn). Nhấn <strong>BẮT ĐẦU</strong> để phát đề cho học sinh!`;
+      bar.innerHTML = `✅ Đã nạp file <u>${escapeHTML(file.name)}</u> (Khối ${escapeHTML(gradeToUse)}): <strong>${parsed.length} câu</strong> (${cMcq} câu Nhiều lựa chọn, ${cTf4} câu Đúng/Sai 4 ý, ${cShort} câu Trả lời ngắn). Nhấn <strong>BẮT ĐẦU</strong> để chơi!`;
       showToast(`🎉 Đã nạp ${parsed.length} câu hỏi từ "${file.name}"!`, 'success');
     } else if (fname.endsWith('.json')) {
-      const arr = JSON.parse(await file.text());
+      const arr = (JSON.parse(await file.text())).map(q => ({ ...q, grade: chosenGrade !== 'ALL' ? chosenGrade : (q.grade || '10') }));
       instantUploadedQuestions = arr;
       questionBank = [...arr, ...questionBank];
       saveBank();
@@ -1499,7 +1480,10 @@ async function importDocxFromModal() {
   const file = document.getElementById('docxFileInput').files[0];
   if (!file) { showToast('Vui lòng chọn file .docx trước!', 'warning'); return; }
   const sub = document.getElementById('docxDefaultSubject').value.trim() || 'Toán học';
-  const grd = document.getElementById('docxDefaultGrade').value || '12';
+  const grd = document.getElementById('docxDefaultGrade').value || '10';
+  const filterGradeEl = document.getElementById('filterGrade');
+  if (filterGradeEl && grd) filterGradeEl.value = grd;
+
   try {
     const parsed = await parseDocxExamFile(file, sub, grd);
     if (!parsed.length) { showToast('Không nhận diện được câu hỏi trong file Word!', 'warning'); return; }
@@ -1508,14 +1492,14 @@ async function importDocxFromModal() {
     saveBank();
     document.getElementById('examSourceMode').value = 'uploaded_first';
     closeBankModal();
-    showToast(`✅ Đã nạp ${parsed.length} câu hỏi từ "${file.name}"!`, 'success');
+    showToast(`✅ Đã nạp ${parsed.length} câu hỏi (Khối ${grd}) từ "${file.name}"!`, 'success');
   } catch (err) {
     showToast('❌ Lỗi: ' + err.message, 'error');
   }
 }
 
 /* ============================================================================
-4. MÃ QR & TỰ ĐỘNG PHÂN ĐỘI KHI HỌC SINH VÀO PHÒNG
+4. MÃ QR PHÒNG CHỜ (KHÔNG PHÂN ĐỘI KHI VÀO, CHIA ĐỘI KHI BẮT ĐẦU)
    ============================================================================ */
 function buildAutoRoomUrl(code) {
   const loc = window.location;
@@ -1534,7 +1518,7 @@ function initRoomCodeAndQR() {
   const linkInp = document.getElementById('roomJoinLinkInput');
   if (linkInp) linkInp.value = buildAutoRoomUrl(currentRoomCode);
   const lbl = document.getElementById('roomCodeLabel');
-  if (lbl) lbl.textContent = `Mã phòng: ${currentRoomCode} (Học sinh quét QR để vào đội ngay)`;
+  if (lbl) lbl.textContent = `Mã phòng: ${currentRoomCode} (HS vào phòng chờ, chia đội khi Bắt đầu)`;
   generateRoomQR();
 }
 
@@ -1544,7 +1528,7 @@ function resetRoomCode() {
   saveLobbyStudents();
   initRoomCodeAndQR();
   renderLobbyStudents();
-  autoDistributeLobbyStudents(false);
+  renderTeamInputs();
   startTeacherCloudPolling();
   showToast('Đã tạo phòng mới: ' + currentRoomCode, 'success');
 }
@@ -1588,7 +1572,7 @@ function renderLobbyStudents() {
   if (countEl) countEl.textContent = lobbyStudents.length;
   if (!chipsEl) return;
   if (!lobbyStudents.length) {
-    chipsEl.innerHTML = '<span style="font-size:0.8rem; color:var(--text-muted);">Chưa có học sinh đang online.</span>';
+    chipsEl.innerHTML = '<span style="font-size:0.8rem; color:var(--text-muted);">Chưa có học sinh vào phòng chờ.</span>';
     return;
   }
   chipsEl.innerHTML = lobbyStudents.map((st, idx) => `
@@ -1599,13 +1583,12 @@ function renderLobbyStudents() {
 function removeLobbyStudent(idx) {
   lobbyStudents.splice(idx, 1);
   saveLobbyStudents();
-  autoDistributeLobbyStudents(false);
 }
 
 function clearLobbyStudents() {
   lobbyStudents = [];
   saveLobbyStudents();
-  autoDistributeLobbyStudents(false);
+  renderTeamInputs();
 }
 
 function addLobbyStudentFromInput() {
@@ -1617,6 +1600,7 @@ function addLobbyStudentFromInput() {
   nameInp.focus();
 }
 
+/* Chỉ thêm học sinh vào danh sách chờ, KHÔNG phân đội tự động khi mới vào */
 function registerStudentToRoom(name) {
   const cleanName = String(name || '').trim();
   if (!cleanName) return;
@@ -1625,9 +1609,9 @@ function registerStudentToRoom(name) {
     lobbyStudents.push({ id: 'stu_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5), name: cleanName, score: 0, answered: 0, correct: 0, wrong: 0 });
     saveLobbyStudents();
   }
-  autoDistributeLobbyStudents(true);
 }
 
+/* Phân đội chỉ thực hiện khi bấm Bắt đầu hoặc bấm Chia đội ngay */
 function autoDistributeLobbyStudents(shuffleFirst = true) {
   if (document.querySelectorAll('[id^="teamName_"]').length === 0) {
     renderTeamInputs();
@@ -1707,7 +1691,7 @@ function autoDistributeLobbyStudents(shuffleFirst = true) {
 }
 
 /* ============================================================================
-5. TÁCH RIÊNG MÀN HÌNH HỌC SINH (ĐỒNG BỘ CÂU ĐÚNG/SAI + HÌNH VẼ + TỐC ĐỘ CAO)
+5. TÁCH RIÊNG MÀN HÌNH HỌC SINH (CHỈ GỬI ĐÁP ÁN, KHÔNG CHUYỂN CÂU)
    ============================================================================ */
 function enterStudentExclusiveUI() {
   isStudentDeviceMode = true;
@@ -1752,7 +1736,7 @@ async function submitStudentJoin() {
 
   const scriptUrl = getAppsScriptUrl();
   if (scriptUrl) {
-    fb.innerHTML = `<div class="alert-box alert-info">⏳ Đang kết nối và phân đội vào phòng <strong>${escapeHTML(code)}</strong>...</div>`;
+    fb.innerHTML = `<div class="alert-box alert-info">⏳ Đang báo danh vào phòng chờ <strong>${escapeHTML(code)}</strong>...</div>`;
     try {
       await fetch(scriptUrl, {
         method: 'POST',
@@ -1768,7 +1752,7 @@ async function submitStudentJoin() {
   document.getElementById('studentWaitingLobbyCard').style.display = 'block';
   document.getElementById('stuWaitRoomBadge').textContent = code;
   document.getElementById('stuWaitNameDisplay').textContent = name;
-  showToast(`✅ Đã vào phòng ${code}! Chờ Thầy/Cô bấm Bắt đầu...`, 'success');
+  showToast(`✅ Đã vào phòng chờ ${code}! Chờ Thầy/Cô bấm Bắt đầu...`, 'success');
   startStudentStatePoll();
 }
 
@@ -1792,34 +1776,33 @@ function startStudentStatePoll() {
       const peerEl = document.getElementById('stuWaitPeerCount');
       if (peerEl) peerEl.textContent = peers.length || 1;
 
-      let teamNames = ['Đội Sao Vàng', 'Đội Trí Tuệ', 'Đội Tiên Phong', 'Đội Đỉnh Cao'];
-      try {
-        const parsedTeams = JSON.parse(data.teamsJson || '[]');
-        if (Array.isArray(parsedTeams) && parsedTeams.length > 0) teamNames = parsedTeams;
-      } catch (_) {}
-
-      const me = peers.find(s => String(s.name || '').trim().toLowerCase() === studentSession.name.toLowerCase());
-      if (me) {
-        studentSession.teamIdx = Number(me.teamIdx || 0);
-        studentSession.teamName = teamNames[studentSession.teamIdx] || ('Đội ' + (studentSession.teamIdx + 1));
-        const teamDisp = document.getElementById('stuWaitTeamDisplay');
-        if (teamDisp) teamDisp.textContent = `✅ Em đã được phân vào: ${studentSession.teamName}`;
-      }
-
       const st = String(data.status || '').trim().toUpperCase();
       if (st === 'STARTED') {
+        let teamNames = ['Đội Sao Vàng', 'Đội Trí Tuệ', 'Đội Tiên Phong', 'Đội Đỉnh Cao'];
+        try {
+          const parsedTeams = JSON.parse(data.teamsJson || '[]');
+          if (Array.isArray(parsedTeams) && parsedTeams.length > 0) teamNames = parsedTeams;
+        } catch (_) {}
+
+        const me = peers.find(s => String(s.name || '').trim().toLowerCase() === studentSession.name.toLowerCase());
+        if (me) {
+          studentSession.teamIdx = Number(me.teamIdx || 0);
+          studentSession.teamName = teamNames[studentSession.teamIdx] || ('Đội ' + (studentSession.teamIdx + 1));
+        }
+
         if (!studentSession.questions.length) {
           try {
             const qs = JSON.parse(data.questionsJson || '[]');
             if (Array.isArray(qs) && qs.length > 0) studentSession.questions = qs;
           } catch (_) {}
         }
+
         if (studentSession.questions.length > 0) {
           const serverIdx = Math.min(studentSession.questions.length - 1, Math.max(0, Number(data.currentIndex || 0)));
           document.getElementById('studentJoinFormCard').style.display = 'none';
           document.getElementById('studentWaitingLobbyCard').style.display = 'none';
           document.getElementById('studentPlayArenaCard').style.display = 'block';
-          document.getElementById('stuTeamTag').textContent = `${studentSession.teamName || 'Đội thi'} • ${studentSession.name}`;
+          document.getElementById('stuTeamTag').textContent = `${studentSession.teamName || 'Thí sinh'} • ${studentSession.name}`;
 
           if (serverIdx !== studentSession.qIndex) {
             studentSession.qIndex = serverIdx;
@@ -1910,7 +1893,7 @@ function renderStudentCurrentQuestion() {
     area.innerHTML = `
       <div class="form-group">
         <label>Nhập đáp án trả lời ngắn của em:</label>
-        <input type="text" id="stuShortAnswerInput" placeholder="Nhập đáp án (VD: 12 hoặc 0,5)..." style="font-weight:800; color:var(--gold);">
+        <input type="text" id="stuShortAnswerInput" placeholder="Nhập đáp án (VD: 7 hoặc 0,5)..." style="font-weight:800; color:var(--gold);">
       </div>`;
   }
 
@@ -2008,7 +1991,7 @@ async function submitStudentQuestionAnswer() {
   }
 }
 
-/* ĐỒNG BỘ DANH SÁCH HỌC SINH, SỐ CÂU ĐÚNG/SAI & ĐIỂM SỐ VỀ MÁY GIÁO VIÊN */
+/* ĐỒNG BỘ DANH SÁCH CHỜ, SỐ CÂU ĐÚNG/SAI & CHUYỂN CÂU TỰ ĐỘNG */
 function startTeacherCloudPolling() {
   if (teacherPollTimer) clearInterval(teacherPollTimer);
   const scriptUrl = getAppsScriptUrl();
@@ -2029,8 +2012,7 @@ function startTeacherCloudPolling() {
         if (newSig !== oldSig) {
           lobbyStudents = cloudList;
           saveLobbyStudents();
-          autoDistributeLobbyStudents(true);
-          showToast(`📱 Cập nhật: ${lobbyStudents.length} học sinh đã vào & tự chia đội!`, 'success');
+          showToast(`📱 Cập nhật: ${lobbyStudents.length} học sinh đang chờ vào phòng!`, 'success');
         }
       } else if (document.getElementById('screenArena').classList.contains('active')) {
         let updated = false;
@@ -2082,7 +2064,6 @@ function selectGameMode(mode) {
   document.querySelectorAll('.mode-card').forEach(c => c.classList.toggle('selected', c.dataset.mode === mode));
   document.getElementById('teacherModeExtra').style.display = (mode === 'teacher') ? 'block' : 'none';
   renderTeamInputs();
-  autoDistributeLobbyStudents(false);
 }
 
 function renderTeamInputs() {
@@ -2103,7 +2084,7 @@ function renderTeamInputs() {
         </div>
         <input type="text" id="teamName_${i}" value="${gameState.mode === 'solo' ? 'Thí sinh' : defNames[i]}">
         <label style="margin-top:8px;">Danh sách học sinh trong đội</label>
-        <input type="text" id="teamStudents_${i}" placeholder="Tự động cập nhật khi HS vào phòng..." readonly>
+        <input type="text" id="teamStudents_${i}" placeholder="Tự động chia khi bấm Bắt đầu..." readonly>
       </div>
     `;
   }
@@ -2127,7 +2108,7 @@ function goHome() {
 }
 
 /* ============================================================================
-7. GIÁO VIÊN BẤM BẮT ĐẦU & ĐIỀU KHIỂN CHUYỂN CÂU ĐỒNG BỘ (TẢI HÌNH LÊN DRIVE)
+7. GIÁO VIÊN BẤM BẮT ĐẦU & ĐIỀU KHIỂN CHUYỂN CÂU ĐỒNG BỘ
    ============================================================================ */
 function pushCurrentQuestionIndexToStudents(status = 'STARTED') {
   const scriptUrl = getAppsScriptUrl();
@@ -2146,7 +2127,7 @@ function pushCurrentQuestionIndexToStudents(status = 'STARTED') {
 
 async function startGame() {
   syncAutoAdvanceFromSetup();
-  autoDistributeLobbyStudents(false);
+  autoDistributeLobbyStudents(true);
 
   const sourceMode = document.getElementById('examSourceMode').value;
   const sub = document.getElementById('filterSubject').value;
@@ -2157,15 +2138,24 @@ async function startGame() {
   let pool = [];
   if (sourceMode === 'uploaded_first' && instantUploadedQuestions.length > 0) {
     pool = JSON.parse(JSON.stringify(instantUploadedQuestions));
+    if (grade !== 'ALL') {
+      pool = pool.map(q => ({ ...q, grade }));
+    }
   } else {
     pool = JSON.parse(JSON.stringify(questionBank.filter(q =>
       (sub === 'ALL' || q.subject === sub) &&
       (grade === 'ALL' || String(q.grade) === grade)
     )));
+    if (!pool.length && grade !== 'ALL') {
+      pool = JSON.parse(JSON.stringify(DEFAULT_QUESTIONS)).map(q => ({ ...q, grade }));
+    }
   }
 
   if (!pool.length) {
-    pool = JSON.parse(JSON.stringify(DEFAULT_QUESTIONS));
+    pool = JSON.parse(JSON.stringify(DEFAULT_QUESTIONS)).map(q => ({
+      ...q,
+      grade: grade !== 'ALL' ? grade : q.grade
+    }));
   }
 
   if (ord === 'shuffle') {
@@ -2202,38 +2192,48 @@ async function startGame() {
     });
   });
 
+  gameState.activeTeamIndex = 0;
+  gameState.currentIndex = 0;
+  switchScreen('screenArena');
+  SoundEngine.playTransition();
+  renderScoreboard();
+  loadCurrentQuestion();
+
   const scriptUrl = getAppsScriptUrl();
   if (scriptUrl) {
-    showToast('⏳ Đang tải hình vẽ lên hệ thống & phát đề...', 'info');
-    const lightQuestions = await Promise.all((gameState.questions || []).map(async (q) => {
-      const uploadedImgs = [];
-      for (const src of (q.images || []).slice(0, 2)) {
-        const url = await uploadQuestionImageToDrive(scriptUrl, src);
-        if (url) uploadedImgs.push(url);
-      }
+    showToast('⚡ Đang đồng bộ đề nhanh tới học sinh...', 'info');
+    try {
+      const lightQuestions = await Promise.all((gameState.questions || []).map(async (q) => {
+        const uploadedImgs = [];
+        const firstImg = (q.images || [])[0];
+        if (firstImg) {
+          const compressed = await compressImageDataUrl(firstImg, 320, 0.6);
+          if (compressed && compressed.length < 18000) {
+            uploadedImgs.push(compressed);
+          }
+        }
 
-      const stmts = (q.statements || []).map(s => ({
-        label: s.label,
-        text: s.text,
-        isTrue: Boolean(s.isTrue),
-        images: []
+        const stmts = (q.statements || []).map(s => ({
+          label: s.label,
+          text: s.text,
+          isTrue: Boolean(s.isTrue),
+          images: []
+        }));
+
+        return {
+          id: q.id || ('q_' + Math.random().toString(36).slice(2, 7)),
+          type: q.type || 'mcq',
+          question: q.question || '',
+          options: Array.isArray(q.options) ? q.options : [],
+          optionImages: [[], [], [], []],
+          statements: stmts,
+          answer: q.answer !== undefined ? String(q.answer) : '0',
+          points: Number(q.points) || 10,
+          images: uploadedImgs
+        };
       }));
 
-      return {
-        id: q.id || ('q_' + Math.random().toString(36).slice(2, 7)),
-        type: q.type || 'mcq',
-        question: q.question || '',
-        options: Array.isArray(q.options) ? q.options : [],
-        optionImages: [[], [], [], []],
-        statements: stmts,
-        answer: q.answer !== undefined ? String(q.answer) : '0',
-        points: Number(q.points) || 10,
-        images: uploadedImgs
-      };
-    }));
-
-    try {
-      const res = await fetch(scriptUrl, {
+      await fetch(scriptUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({
@@ -2246,19 +2246,11 @@ async function startGame() {
           teamsMap
         })
       });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
+      showToast('🚀 Đã đồng bộ Câu 1 tới học sinh!', 'success');
     } catch (e) {
-      showToast('⚠️ Lỗi gửi đề thi lên Google Sheets!', 'error');
+      showToast('⚠️ Chưa đồng bộ được đề lên Sheets, vẫn chạy được trên màn hình lớp.', 'warning');
     }
   }
-
-  gameState.activeTeamIndex = 0;
-  gameState.currentIndex = 0;
-  switchScreen('screenArena');
-  SoundEngine.playTransition();
-  renderScoreboard();
-  loadCurrentQuestion();
-  showToast('🚀 Đã mở khóa Câu 1 (kèm hình vẽ) cho toàn bộ học sinh!', 'success');
 }
 
 function getPoints(q) {
@@ -2614,7 +2606,7 @@ async function generateWithRealAI() {
   const sub = document.getElementById('aiSubject').value.trim() || 'Toán học';
   const top = document.getElementById('aiTopic').value.trim() || 'Tổng hợp';
   const cnt = parseInt(document.getElementById('aiCount').value) || 5;
-  const prompt = `Trả về DUY NHẤT mảng JSON gồm ${cnt} câu hỏi trắc nghiệm môn ${sub}, chủ đề ${top}. Mỗi phần tử: {"subject":"${sub}","grade":"12","topic":"${top}","level":"Thông hiểu","type":"mcq","question":"...","options":["A","B","C","D"],"optionImages":[[],[],[],[]],"answer":"0","explanation":"...","images":[]}`;
+  const prompt = `Trả về DUY NHẤT mảng JSON gồm ${cnt} câu hỏi trắc nghiệm môn ${sub}, chủ đề ${top}. Mỗi phần tử: {"subject":"${sub}","grade":"10","topic":"${top}","level":"Thông hiểu","type":"mcq","question":"...","options":["A","B","C","D"],"optionImages":[[],[],[],[]],"answer":"0","explanation":"...","images":[]}`;
 
   try {
     let txt = '';
