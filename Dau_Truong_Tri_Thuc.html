@@ -20,7 +20,7 @@ window.MathJax = {
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-<script src="js/config.js?v=12"></script>
+<script src="js/config.js?v=13"></script>
 
 <style>
 :root {
@@ -1136,7 +1136,7 @@ function updateAutoAdvanceButtonUI() {
 /* ============================================================================
 3. NÉN ẢNH TỰ ĐỘNG & ĐỌC FILE WORD (.DOCX) 3 PHẦN
    ============================================================================ */
-function compressImageDataUrl(dataUrl, maxWidth = 420, quality = 0.68) {
+function compressImageDataUrl(dataUrl, maxWidth = 360, quality = 0.62) {
   return new Promise((resolve) => {
     if (!dataUrl || !dataUrl.startsWith('data:image')) { resolve(''); return; }
     if (dataUrl.length < 7000) { resolve(dataUrl); return; }
@@ -1677,6 +1677,7 @@ function autoDistributeLobbyStudents(shuffleFirst = true) {
   if (scriptUrl && !isStudentDeviceMode && teamsMap.length > 0) {
     fetch(scriptUrl, {
       method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
         action: 'arena_teams',
         room: currentRoomCode,
@@ -1737,6 +1738,7 @@ async function submitStudentJoin() {
     try {
       await fetch(scriptUrl, {
         method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action: 'arena_join', room: code, name })
       });
     } catch (_) {}
@@ -1971,6 +1973,7 @@ async function submitStudentQuestionAnswer() {
   if (scriptUrl) {
     fetch(scriptUrl, {
       method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
         action: 'arena_score',
         room: studentSession.room,
@@ -2094,7 +2097,7 @@ function goHome() {
 }
 
 /* ============================================================================
-7. GIÁO VIÊN BẤM BẮT ĐẦU & ĐIỀU KHIỂN CHUYỂN CÂU ĐỒNG BỘ (CHỜ XÁC NHẬN TRƯỚC KHI CHẠY)
+7. GIÁO VIÊN BẤM BẮT ĐẦU & ĐIỀU KHIỂN CHUYỂN CÂU ĐỒNG BỘ (CHUẨN CORS & TỰ GIẢM TẢI)
    ============================================================================ */
 async function pushCurrentQuestionIndexToStudents(status = 'STARTED') {
   const scriptUrl = getAppsScriptUrl();
@@ -2102,6 +2105,7 @@ async function pushCurrentQuestionIndexToStudents(status = 'STARTED') {
   try {
     await fetch(scriptUrl, {
       method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
         action: 'arena_step',
         room: currentRoomCode,
@@ -2175,38 +2179,24 @@ async function startGame() {
     showToast('⏳ Đang nén hình vẽ & đồng bộ đề tới học sinh...', 'info');
     let lightQuestions = await Promise.all((gameState.questions || []).map(async (q) => {
       const compressedMainImgs = [];
-      for (const src of (q.images || []).slice(0, 2)) {
-        const c = await compressImageDataUrl(src, 420, 0.68);
+      for (const src of (q.images || []).slice(0, 1)) {
+        const c = await compressImageDataUrl(src, 360, 0.62);
         if (c) compressedMainImgs.push(c);
       }
 
-      const compressedOptImgs = [[], [], [], []];
-      if (Array.isArray(q.optionImages)) {
-        for (let oi = 0; oi < 4; oi++) {
-          const firstOptImg = (q.optionImages[oi] || [])[0];
-          if (firstOptImg) {
-            const co = await compressImageDataUrl(firstOptImg, 220, 0.65);
-            if (co) compressedOptImgs[oi] = [co];
-          }
-        }
-      }
-
-      const stmts = [];
-      for (const s of (q.statements || [])) {
-        const sImgs = [];
-        if (Array.isArray(s.images) && s.images[0]) {
-          const cs = await compressImageDataUrl(s.images[0], 240, 0.65);
-          if (cs) sImgs.push(cs);
-        }
-        stmts.push({ label: s.label, text: s.text, isTrue: Boolean(s.isTrue), images: sImgs });
-      }
+      const stmts = (q.statements || []).map(s => ({
+        label: s.label,
+        text: s.text,
+        isTrue: Boolean(s.isTrue),
+        images: []
+      }));
 
       return {
         id: q.id || ('q_' + Math.random().toString(36).slice(2, 7)),
         type: q.type || 'mcq',
         question: q.question || '',
         options: Array.isArray(q.options) ? q.options : [],
-        optionImages: compressedOptImgs,
+        optionImages: [[], [], [], []],
         statements: stmts,
         answer: q.answer !== undefined ? String(q.answer) : '0',
         points: Number(q.points) || 10,
@@ -2214,31 +2204,38 @@ async function startGame() {
       };
     }));
 
-    if (JSON.stringify(lightQuestions).length > 47000) {
-      lightQuestions = lightQuestions.map(q => ({ ...q, optionImages: [[], [], [], []] }));
-    }
-    if (JSON.stringify(lightQuestions).length > 47000) {
-      lightQuestions = lightQuestions.map(q => ({
-        ...q,
-        images: q.images.slice(0, 1)
-      }));
+    if (JSON.stringify(lightQuestions).length > 32000) {
+      lightQuestions = lightQuestions.map(q => ({ ...q, images: [] }));
     }
 
-    try {
-      await fetch(scriptUrl, {
+    const sendArenaStart = async (questionsPayload) => {
+      const res = await fetch(scriptUrl, {
         method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({
           action: 'arena_start',
           room: currentRoomCode,
           status: 'STARTED',
           currentIndex: 0,
           teamNames,
-          questions: lightQuestions,
+          questions: questionsPayload,
           teamsMap
         })
       });
-    } catch (e) {
-      showToast('⚠️ Lỗi gửi đề thi lên Google Sheets!', 'error');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+    };
+
+    try {
+      await sendArenaStart(lightQuestions);
+    } catch (e1) {
+      try {
+        const textOnlyQuestions = lightQuestions.map(q => ({ ...q, images: [] }));
+        await sendArenaStart(textOnlyQuestions);
+        showToast('⚠️ Mạng chậm: Đã gửi đề dạng văn bản để học sinh kịp làm bài!', 'warning');
+      } catch (e2) {
+        console.error('Lỗi arena_start:', e1, e2);
+        showToast('⚠️ Lỗi gửi đề thi lên Google Sheets! Kiểm tra lại quyền Web App (Anyone) hoặc URL trong js/config.js.', 'error');
+      }
     }
   }
 
@@ -2248,7 +2245,7 @@ async function startGame() {
   SoundEngine.playTransition();
   renderScoreboard();
   loadCurrentQuestion();
-  showToast('🚀 Đã mở khóa Câu 1 (kèm hình vẽ) cho toàn bộ học sinh!', 'success');
+  showToast('🚀 Đã mở khóa Câu 1 cho toàn bộ học sinh trong phòng!', 'success');
 }
 
 function getPoints(q) {
