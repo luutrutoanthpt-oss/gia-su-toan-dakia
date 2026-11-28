@@ -975,11 +975,14 @@ function markdownTextToHtml(mdText) {
 
         if (/^\s*---+\s*$/.test(line)) {
             out.push(`<hr class="my-3 border-slate-200">`);
-        } else if (/^###\s+(.+)$/.test(line)) {
-            const hTxt = line.replace(/^###\s+/, "").replace(/\*\*(.+?)\*\*/g, "$1");
+        } else if (/^\s*#{4,6}\s+(.+)$/.test(line)) {
+            const hTxt = line.replace(/^\s*#{4,6}\s+/, "").replace(/\*\*(.+?)\*\*/g, "$1");
+            out.push(`<h5 class="font-bold text-sm text-blue-800 mt-2.5 mb-1">${hTxt}</h5>`);
+        } else if (/^\s*###\s+(.+)$/.test(line)) {
+            const hTxt = line.replace(/^\s*###\s+/, "").replace(/\*\*(.+?)\*\*/g, "$1");
             out.push(`<h4 class="font-bold text-sm sm:text-base text-blue-900 mt-3 mb-1">${hTxt}</h4>`);
-        } else if (/^##\s+(.+)$/.test(line)) {
-            const hTxt = line.replace(/^##\s+/, "").replace(/\*\*(.+?)\*\*/g, "$1");
+        } else if (/^\s*#{1,2}\s+(.+)$/.test(line)) {
+            const hTxt = line.replace(/^\s*#{1,2}\s+/, "").replace(/\*\*(.+?)\*\*/g, "$1");
             out.push(`<h3 class="font-bold text-base text-blue-950 mt-3 mb-1">${hTxt}</h3>`);
         } else if (/^\s*[-*]\s+(.+)$/.test(line)) {
             const itemTxt = line.replace(/^\s*[-*]\s+/, "").replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
