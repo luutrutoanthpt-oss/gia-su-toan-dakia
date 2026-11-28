@@ -20,7 +20,7 @@ window.MathJax = {
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-<script src="js/config.js?v=14"></script>
+<script src="js/config.js?v=15"></script>
 
 <style>
 :root {
@@ -1622,7 +1622,7 @@ function registerStudentToRoom(name) {
   if (!cleanName) return;
   const exists = lobbyStudents.some(s => s.name.toLowerCase() === cleanName.toLowerCase());
   if (!exists) {
-    lobbyStudents.push({ id: 'stu_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5), name: cleanName, score: 0, answered: 0 });
+    lobbyStudents.push({ id: 'stu_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5), name: cleanName, score: 0, answered: 0, correct: 0, wrong: 0 });
     saveLobbyStudents();
   }
   autoDistributeLobbyStudents(true);
@@ -1707,7 +1707,7 @@ function autoDistributeLobbyStudents(shuffleFirst = true) {
 }
 
 /* ============================================================================
-5. TÁCH RIÊNG MÀN HÌNH HỌC SINH (CHỈ GỬI ĐÁP ÁN, HIỆN ĐỦ HÌNH VẼ & ĐỒNG BỘ NHANH)
+5. TÁCH RIÊNG MÀN HÌNH HỌC SINH (ĐỒNG BỘ CÂU ĐÚNG/SAI + HÌNH VẼ + TỐC ĐỘ CAO)
    ============================================================================ */
 function enterStudentExclusiveUI() {
   isStudentDeviceMode = true;
@@ -1835,7 +1835,7 @@ function startStudentStatePoll() {
     } catch (_) {}
 
     if (studentPollActive) {
-      studentPollTimer = setTimeout(checkRoomNow, 600);
+      studentPollTimer = setTimeout(checkRoomNow, 500);
     }
   };
 
@@ -1849,7 +1849,8 @@ function showStudentFinishedScreen() {
   document.getElementById('stuQuestionBody').innerHTML = `<div style="text-align:center; padding:18px;">
     <div style="font-size:2.6rem;">🏆</div>
     <h3 style="color:var(--gold); margin-top:6px;">TRẬN ĐẤU ĐÃ KẾT THÚC!</h3>
-    <p style="margin-top:8px; color:var(--text-muted);">Tổng điểm em đóng góp cho <strong>${escapeHTML(studentSession.teamName || 'đội')}</strong>: <strong style="color:var(--success); font-size:1.35rem;">${studentSession.score} điểm</strong></p>
+    <p style="margin-top:8px; color:var(--text-muted);">Đúng <strong>${studentSession.correct}</strong> câu • Sai <strong>${studentSession.wrong}</strong> câu</p>
+    <p style="margin-top:6px; color:var(--text-muted);">Tổng điểm đóng góp cho <strong>${escapeHTML(studentSession.teamName || 'đội')}</strong>: <strong style="color:var(--success); font-size:1.35rem;">${studentSession.score} điểm</strong></p>
     <p style="font-size:0.85rem; color:var(--text-muted); margin-top:6px;">Hãy nhìn lên màn hình lớp để xem bảng tổng kết xếp hạng nhé!</p>
   </div>`;
   document.getElementById('stuQuestionImages').style.display = 'none';
@@ -1999,13 +2000,15 @@ async function submitStudentQuestionAnswer() {
         room: studentSession.room,
         name: studentSession.name,
         score: studentSession.score,
-        answered: studentSession.qIndex + 1
+        answered: studentSession.qIndex + 1,
+        correct: studentSession.correct,
+        wrong: studentSession.wrong
       })
     }).catch(() => {});
   }
 }
 
-/* ĐỒNG BỘ DANH SÁCH HỌC SINH & TỰ ĐỘNG PHÂN ĐỘI + ĐIỂM SỐ VỀ MÁY GIÁO VIÊN */
+/* ĐỒNG BỘ DANH SÁCH HỌC SINH, SỐ CÂU ĐÚNG/SAI & ĐIỂM SỐ VỀ MÁY GIÁO VIÊN */
 function startTeacherCloudPolling() {
   if (teacherPollTimer) clearInterval(teacherPollTimer);
   const scriptUrl = getAppsScriptUrl();
@@ -2037,8 +2040,13 @@ function startTeacherCloudPolling() {
           team.membersList.forEach(m => {
             const match = cloudList.find(c => c.name.toLowerCase() === m.name.toLowerCase());
             if (match) {
-              if (Number(match.score || 0) !== m.score) {
-                m.score = Number(match.score || 0);
+              const newScore = Number(match.score || 0);
+              const newCorrect = Number(match.correct || 0);
+              const newWrong = Number(match.wrong || 0);
+              if (newScore !== m.score || newCorrect !== m.correct || newWrong !== m.wrong) {
+                m.score = newScore;
+                m.correct = newCorrect;
+                m.wrong = newWrong;
                 updated = true;
               }
               if (Number(match.answered || 0) <= gameState.currentIndex) {
@@ -2047,6 +2055,8 @@ function startTeacherCloudPolling() {
             }
           });
           team.score = team.membersList.reduce((sum, m) => sum + Number(m.score || 0), 0);
+          team.correct = team.membersList.reduce((sum, m) => sum + Number(m.correct || 0), 0);
+          team.wrong = team.membersList.reduce((sum, m) => sum + Number(m.wrong || 0), 0);
         });
 
         if (updated) renderScoreboard();
@@ -2057,11 +2067,11 @@ function startTeacherCloudPolling() {
           autoAdvanceDelayTimer = setTimeout(() => {
             autoAdvanceDelayTimer = null;
             nextQuestion();
-          }, 2000);
+          }, 1500);
         }
       }
     } catch (_) {}
-  }, 1500);
+  }, 1200);
 }
 
 /* ============================================================================
@@ -2119,21 +2129,19 @@ function goHome() {
 /* ============================================================================
 7. GIÁO VIÊN BẤM BẮT ĐẦU & ĐIỀU KHIỂN CHUYỂN CÂU ĐỒNG BỘ (TẢI HÌNH LÊN DRIVE)
    ============================================================================ */
-async function pushCurrentQuestionIndexToStudents(status = 'STARTED') {
+function pushCurrentQuestionIndexToStudents(status = 'STARTED') {
   const scriptUrl = getAppsScriptUrl();
   if (!scriptUrl) return;
-  try {
-    await fetch(scriptUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({
-        action: 'arena_step',
-        room: currentRoomCode,
-        status,
-        currentIndex: gameState.currentIndex
-      })
-    });
-  } catch (_) {}
+  fetch(scriptUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({
+      action: 'arena_step',
+      room: currentRoomCode,
+      status,
+      currentIndex: gameState.currentIndex
+    })
+  }).catch(() => {});
 }
 
 async function startGame() {
@@ -2266,12 +2274,12 @@ function getPoints(q) {
 function renderScoreboard() {
   const bar = document.getElementById('scoreboardBar');
   bar.innerHTML = gameState.teams.map((t, idx) => {
-    const membersSummary = t.membersList.map(m => `${m.name} (${m.score}đ)`).join(', ');
+    const membersSummary = t.membersList.map(m => `${m.name} (${m.score}đ • ${m.correct}✓)`).join(', ');
     return `
       <div class="team-score-card ${idx === gameState.activeTeamIndex ? 'active-turn' : ''}">
         <div class="team-header-row">
           <span class="team-name-display">${escapeHTML(t.name)}</span>
-          <span class="team-members-badge">👥 ${t.membersList.length} HS</span>
+          <span class="team-members-badge">👥 ${t.membersList.length} HS • ✅ ${t.correct} câu</span>
         </div>
         <div style="font-size:0.75rem; color:#d7e8ff; margin-bottom:4px; line-height:1.35;">🎓 ${escapeHTML(membersSummary)}</div>
         <div class="team-points-display">${t.score} <span style="font-size:0.85rem; color:var(--text-muted);">điểm</span></div>
@@ -2365,7 +2373,7 @@ function startTimer() {
         autoAdvanceDelayTimer = setTimeout(() => {
           autoAdvanceDelayTimer = null;
           nextQuestion();
-        }, 2000);
+        }, 1500);
       } else {
         showToast('⏰ HẾT GIỜ CÂU NÀY!', 'warning');
       }
@@ -2381,27 +2389,27 @@ function updateTimerUI() {
   c.classList.toggle('warning', gameState.timeLeft > 5 && gameState.timeLeft <= 10);
 }
 
-async function prevQuestion() {
+function prevQuestion() {
   if (gameState.currentIndex > 0) {
     SoundEngine.playTransition();
     gameState.currentIndex--;
     if (gameState.teams.length > 1) {
       gameState.activeTeamIndex = (gameState.activeTeamIndex - 1 + gameState.teams.length) % gameState.teams.length;
     }
-    await pushCurrentQuestionIndexToStudents('STARTED');
+    pushCurrentQuestionIndexToStudents('STARTED');
     renderScoreboard();
     loadCurrentQuestion();
   }
 }
 
-async function nextQuestion() {
+function nextQuestion() {
   SoundEngine.playTransition();
   if (gameState.currentIndex + 1 < gameState.questions.length) {
     gameState.currentIndex++;
     if (gameState.teams.length > 1) {
       gameState.activeTeamIndex = (gameState.activeTeamIndex + 1) % gameState.teams.length;
     }
-    await pushCurrentQuestionIndexToStudents('STARTED');
+    pushCurrentQuestionIndexToStudents('STARTED');
     renderScoreboard();
     loadCurrentQuestion();
   } else {
@@ -2455,7 +2463,7 @@ function finishGame() {
       <td>${i === 0 ? '🥇 Hạng 1' : (i === 1 ? '🥈 Hạng 2' : (i === 2 ? '🥉 Hạng 3' : `Hạng ${i + 1}`))}</td>
       <td style="font-weight:800; color:${i === 0 ? 'var(--gold)' : 'var(--white)'};">${escapeHTML(t.name)}</td>
       <td>${t.membersList.length}</td>
-      <td style="text-align:left; font-size:0.88rem;">${t.membersList.map(m => `${escapeHTML(m.name)} (<strong>${m.score}đ</strong>)`).join(', ')}</td>
+      <td style="text-align:left; font-size:0.88rem;">${t.membersList.map(m => `${escapeHTML(m.name)} (<strong>${m.score}đ</strong> • ${m.correct}✓)`).join(', ')}</td>
       <td style="color:var(--success); font-weight:700;">${t.correct}</td>
       <td style="color:var(--danger); font-weight:700;">${t.wrong}</td>
       <td style="font-size:1.25rem; font-weight:900; color:var(--gold);">${t.score}</td>
