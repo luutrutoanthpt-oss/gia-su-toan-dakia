@@ -61,7 +61,13 @@ Quy tắc công thức & hình vẽ:
 - Khi vẽ ĐỒ THỊ HÀM SỐ $y = f(x)$, xuất đúng 1 dòng:
   [[PLOT: biểu_thức | xmin=-4 | xmax=4 | ymin=-2 | ymax=6 | points=(x1,y1);(x2,y2)]]
 - Khi vẽ HÌNH HỌC KHÔNG GIAN 3D, xuất đúng 1 dòng theo cú pháp:
-  [[SHAPE3D: loại_hình | labels=tên_đỉnh | altitude=chân_đường_cao | extra=nét_thêm]]`;
+  [[SHAPE3D: loại_hình | labels=tên_đỉnh | altitude=chân_đường_cao | extra=nét_thêm]]
+  Trong đó loại_hình BẮT BUỘC chọn 1 trong 5 mã tiếng Anh sau:
+  + pyramid_tri (chóp tam giác, VD: [[SHAPE3D: pyramid_tri | labels=S,A,B,C | altitude=A]])
+  + pyramid_quad (chóp tứ giác, VD: [[SHAPE3D: pyramid_quad | labels=S,A,B,C,D | altitude=O]])
+  + prism_tri (lăng trụ tam giác, VD: [[SHAPE3D: prism_tri | labels=A,B,C,A',B',C']])
+  + box (hình hộp chữ nhật hoặc hình lập phương, VD: [[SHAPE3D: box | labels=A,B,C,D,A',B',C',D']])
+  + oxyz (hệ trục tọa độ không gian Oxyz, VD: [[SHAPE3D: oxyz]])`;
         } else if (mode === "teacher_5512_intro" || mode === "teacher_5512_period" || mode === "teacher_5512_outro") {
             systemInstruction = "Chuyên gia soạn KHBD chuẩn Công văn 5512, bám sát SGK Kết nối tri thức và mẫu Trường THPT Đa Kia. Trình bày mạch lạc, đúng mục.";
         } else if (mode === "teacher_svg") {
