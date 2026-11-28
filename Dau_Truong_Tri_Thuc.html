@@ -999,6 +999,7 @@ let studentSession = {
 };
 let teacherPollTimer = null;
 let studentPollTimer = null;
+let studentPollActive = false;
 
 const DEFAULT_QUESTIONS = [
   {
@@ -1133,8 +1134,35 @@ function updateAutoAdvanceButtonUI() {
 }
 
 /* ============================================================================
-3. ĐỌC FILE WORD (.DOCX) 3 PHẦN
+3. NÉN ẢNH TỰ ĐỘNG & ĐỌC FILE WORD (.DOCX) 3 PHẦN
    ============================================================================ */
+function compressImageDataUrl(dataUrl, maxWidth = 420, quality = 0.68) {
+  return new Promise((resolve) => {
+    if (!dataUrl || !dataUrl.startsWith('data:image')) { resolve(''); return; }
+    if (dataUrl.length < 7000) { resolve(dataUrl); return; }
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const scale = Math.min(1, maxWidth / (img.width || maxWidth));
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      } catch (_) {
+        resolve('');
+      }
+    };
+    img.onerror = () => resolve('');
+    img.src = dataUrl;
+  });
+}
+
 function triggerInstantFile() {
   document.getElementById('instantExamFileInput').click();
 }
@@ -1660,7 +1688,7 @@ function autoDistributeLobbyStudents(shuffleFirst = true) {
 }
 
 /* ============================================================================
-5. TÁCH RIÊNG MÀN HÌNH HỌC SINH (CHỈ GỬI ĐÁP ÁN, KHÔNG ĐƯỢC QUA CÂU)
+5. TÁCH RIÊNG MÀN HÌNH HỌC SINH (CHỈ GỬI ĐÁP ÁN, HIỆN ĐỦ HÌNH VẼ & ĐỒNG BỘ NHANH)
    ============================================================================ */
 function enterStudentExclusiveUI() {
   isStudentDeviceMode = true;
@@ -1725,7 +1753,8 @@ async function submitStudentJoin() {
 }
 
 function startStudentStatePoll() {
-  if (studentPollTimer) clearInterval(studentPollTimer);
+  if (studentPollTimer) clearTimeout(studentPollTimer);
+  studentPollActive = true;
   const scriptUrl = getAppsScriptUrl();
   if (!scriptUrl) {
     showToast('⚠️ Thiếu cấu hình googleScriptUrl trong js/config.js!', 'error');
@@ -1733,6 +1762,7 @@ function startStudentStatePoll() {
   }
 
   const checkRoomNow = async () => {
+    if (!studentPollActive) return;
     try {
       const res = await fetch(`${scriptUrl}?action=arena_state&room=${encodeURIComponent(studentSession.room)}&t=${Date.now()}`, {
         cache: 'no-store'
@@ -1776,14 +1806,18 @@ function startStudentStatePoll() {
           }
         }
       } else if (st === 'ENDED') {
-        clearInterval(studentPollTimer);
+        studentPollActive = false;
         showStudentFinishedScreen();
+        return;
       }
     } catch (_) {}
+
+    if (studentPollActive) {
+      studentPollTimer = setTimeout(checkRoomNow, 850);
+    }
   };
 
   checkRoomNow();
-  studentPollTimer = setInterval(checkRoomNow, 1500);
 }
 
 function showStudentFinishedScreen() {
@@ -1818,7 +1852,7 @@ function renderStudentCurrentQuestion() {
   const imgBox = document.getElementById('stuQuestionImages');
   if (q.images && q.images.length > 0) {
     imgBox.style.display = 'flex';
-    imgBox.innerHTML = q.images.map(src => `<img src="${src}" alt="Hình minh họa">`).join('');
+    imgBox.innerHTML = q.images.map(src => `<img src="${src}" onerror="this.style.display='none'" alt="Hình minh họa">`).join('');
   } else {
     imgBox.style.display = 'none';
     imgBox.innerHTML = '';
@@ -1827,22 +1861,28 @@ function renderStudentCurrentQuestion() {
   const area = document.getElementById('stuAnswerOptionsArea');
   if (q.type === 'mcq') {
     const letters = ['A', 'B', 'C', 'D'];
-    area.innerHTML = `<div class="options-grid">${(q.options || []).map((o, i) => `
-      <div class="option-btn" id="stuOptBtn_${i}" onclick="pickStudentMcq(${i})">
-        <span class="option-letter">${letters[i]}</span>
-        <span class="option-content">${escapeHTML(o)}</span>
-      </div>
-    `).join('')}</div>`;
+    area.innerHTML = `<div class="options-grid">${(q.options || []).map((o, i) => {
+      const optImgs = (q.optionImages && q.optionImages[i])
+        ? q.optionImages[i].map(src => `<img src="${src}" class="inline-eq-img" onerror="this.style.display='none'">`).join('')
+        : '';
+      return `
+        <div class="option-btn" id="stuOptBtn_${i}" onclick="pickStudentMcq(${i})">
+          <span class="option-letter">${letters[i]}</span>
+          <span class="option-content">${escapeHTML(o)} ${optImgs}</span>
+        </div>`;
+    }).join('')}</div>`;
   } else if (q.type === 'tf4') {
-    area.innerHTML = `<div class="tf4-list">${(q.statements || []).map((st, si) => `
-      <div class="tf4-row">
-        <div class="tf4-statement"><strong style="color:var(--neon-blue);">${escapeHTML(st.label)}</strong> ${escapeHTML(st.text)}</div>
-        <div class="tf4-choices">
-          <span class="tf4-pill" id="stuTfTrue_${si}" onclick="pickStudentTf(${si}, true)">ĐÚNG</span>
-          <span class="tf4-pill" id="stuTfFalse_${si}" onclick="pickStudentTf(${si}, false)">SAI</span>
-        </div>
-      </div>
-    `).join('')}</div>`;
+    area.innerHTML = `<div class="tf4-list">${(q.statements || []).map((st, si) => {
+      const sImgs = (st.images || []).map(src => `<img src="${src}" class="inline-eq-img" onerror="this.style.display='none'">`).join('');
+      return `
+        <div class="tf4-row">
+          <div class="tf4-statement"><strong style="color:var(--neon-blue);">${escapeHTML(st.label)}</strong> ${escapeHTML(st.text)} ${sImgs}</div>
+          <div class="tf4-choices">
+            <span class="tf4-pill" id="stuTfTrue_${si}" onclick="pickStudentTf(${si}, true)">ĐÚNG</span>
+            <span class="tf4-pill" id="stuTfFalse_${si}" onclick="pickStudentTf(${si}, false)">SAI</span>
+          </div>
+        </div>`;
+    }).join('')}</div>`;
   } else {
     area.innerHTML = `
       <div class="form-group">
@@ -1998,7 +2038,7 @@ function startTeacherCloudPolling() {
         }
       }
     } catch (_) {}
-  }, 2000);
+  }, 1500);
 }
 
 /* ============================================================================
@@ -2054,20 +2094,22 @@ function goHome() {
 }
 
 /* ============================================================================
-7. GIÁO VIÊN BẤM BẮT ĐẦU & ĐIỀU KHIỂN CHUYỂN CÂU ĐỒNG BỘ
+7. GIÁO VIÊN BẤM BẮT ĐẦU & ĐIỀU KHIỂN CHUYỂN CÂU ĐỒNG BỘ (CHỜ XÁC NHẬN TRƯỚC KHI CHẠY)
    ============================================================================ */
-function pushCurrentQuestionIndexToStudents(status = 'STARTED') {
+async function pushCurrentQuestionIndexToStudents(status = 'STARTED') {
   const scriptUrl = getAppsScriptUrl();
   if (!scriptUrl) return;
-  fetch(scriptUrl, {
-    method: 'POST',
-    body: JSON.stringify({
-      action: 'arena_step',
-      room: currentRoomCode,
-      status,
-      currentIndex: gameState.currentIndex
-    })
-  }).catch(() => {});
+  try {
+    await fetch(scriptUrl, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'arena_step',
+        room: currentRoomCode,
+        status,
+        currentIndex: gameState.currentIndex
+      })
+    });
+  } catch (_) {}
 }
 
 async function startGame() {
@@ -2130,20 +2172,56 @@ async function startGame() {
 
   const scriptUrl = getAppsScriptUrl();
   if (scriptUrl) {
-    showToast('⏳ Đang phát đề thi tới điện thoại học sinh...', 'info');
-    let lightQuestions = (gameState.questions || []).map(q => ({
-      id: q.id || ('q_' + Math.random().toString(36).slice(2, 7)),
-      type: q.type || 'mcq',
-      question: q.question || '',
-      options: Array.isArray(q.options) ? q.options : [],
-      statements: Array.isArray(q.statements) ? q.statements.map(s => ({ label: s.label, text: s.text, isTrue: Boolean(s.isTrue) })) : [],
-      answer: q.answer !== undefined ? String(q.answer) : '0',
-      points: Number(q.points) || 10,
-      images: []
+    showToast('⏳ Đang nén hình vẽ & đồng bộ đề tới học sinh...', 'info');
+    let lightQuestions = await Promise.all((gameState.questions || []).map(async (q) => {
+      const compressedMainImgs = [];
+      for (const src of (q.images || []).slice(0, 2)) {
+        const c = await compressImageDataUrl(src, 420, 0.68);
+        if (c) compressedMainImgs.push(c);
+      }
+
+      const compressedOptImgs = [[], [], [], []];
+      if (Array.isArray(q.optionImages)) {
+        for (let oi = 0; oi < 4; oi++) {
+          const firstOptImg = (q.optionImages[oi] || [])[0];
+          if (firstOptImg) {
+            const co = await compressImageDataUrl(firstOptImg, 220, 0.65);
+            if (co) compressedOptImgs[oi] = [co];
+          }
+        }
+      }
+
+      const stmts = [];
+      for (const s of (q.statements || [])) {
+        const sImgs = [];
+        if (Array.isArray(s.images) && s.images[0]) {
+          const cs = await compressImageDataUrl(s.images[0], 240, 0.65);
+          if (cs) sImgs.push(cs);
+        }
+        stmts.push({ label: s.label, text: s.text, isTrue: Boolean(s.isTrue), images: sImgs });
+      }
+
+      return {
+        id: q.id || ('q_' + Math.random().toString(36).slice(2, 7)),
+        type: q.type || 'mcq',
+        question: q.question || '',
+        options: Array.isArray(q.options) ? q.options : [],
+        optionImages: compressedOptImgs,
+        statements: stmts,
+        answer: q.answer !== undefined ? String(q.answer) : '0',
+        points: Number(q.points) || 10,
+        images: compressedMainImgs
+      };
     }));
 
-    if (JSON.stringify(lightQuestions).length > 45000) {
-      lightQuestions = lightQuestions.slice(0, 30);
+    if (JSON.stringify(lightQuestions).length > 47000) {
+      lightQuestions = lightQuestions.map(q => ({ ...q, optionImages: [[], [], [], []] }));
+    }
+    if (JSON.stringify(lightQuestions).length > 47000) {
+      lightQuestions = lightQuestions.map(q => ({
+        ...q,
+        images: q.images.slice(0, 1)
+      }));
     }
 
     try {
@@ -2170,7 +2248,7 @@ async function startGame() {
   SoundEngine.playTransition();
   renderScoreboard();
   loadCurrentQuestion();
-  showToast('🚀 Đã mở khóa Câu 1 cho toàn bộ học sinh trong phòng!', 'success');
+  showToast('🚀 Đã mở khóa Câu 1 (kèm hình vẽ) cho toàn bộ học sinh!', 'success');
 }
 
 function getPoints(q) {
@@ -2301,27 +2379,27 @@ function updateTimerUI() {
   c.classList.toggle('warning', gameState.timeLeft > 5 && gameState.timeLeft <= 10);
 }
 
-function prevQuestion() {
+async function prevQuestion() {
   if (gameState.currentIndex > 0) {
     SoundEngine.playTransition();
     gameState.currentIndex--;
     if (gameState.teams.length > 1) {
       gameState.activeTeamIndex = (gameState.activeTeamIndex - 1 + gameState.teams.length) % gameState.teams.length;
     }
-    pushCurrentQuestionIndexToStudents('STARTED');
+    await pushCurrentQuestionIndexToStudents('STARTED');
     renderScoreboard();
     loadCurrentQuestion();
   }
 }
 
-function nextQuestion() {
+async function nextQuestion() {
   SoundEngine.playTransition();
   if (gameState.currentIndex + 1 < gameState.questions.length) {
     gameState.currentIndex++;
     if (gameState.teams.length > 1) {
       gameState.activeTeamIndex = (gameState.activeTeamIndex + 1) % gameState.teams.length;
     }
-    pushCurrentQuestionIndexToStudents('STARTED');
+    await pushCurrentQuestionIndexToStudents('STARTED');
     renderScoreboard();
     loadCurrentQuestion();
   } else {
