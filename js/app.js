@@ -298,6 +298,10 @@ function generateExact3DShapeSvg(shapeSpec) {
         }
     };
 
+    const isBoxShape = /box|cube|hop|hộp|lap_phuong|lập phương|chu_nhat|chữ nhật/i.test(shapeType) || customLabels.length >= 8;
+    const isPrismTriShape = !isBoxShape && (/prism|lang_tru|lăng trụ/i.test(shapeType) || customLabels.length === 6);
+    const isPyramidTriShape = !isBoxShape && !isPrismTriShape && (/pyramid_tri|chop_tam_giac|tu_dien|tứ diện/i.test(shapeType) || customLabels.length === 4);
+
     if (shapeType.includes("oxyz")) {
         const uid = "xyz_" + Math.random().toString(36).slice(2, 7);
         return `
@@ -325,7 +329,34 @@ function generateExact3DShapeSvg(shapeSpec) {
             </svg>
             <span class="text-xs font-semibold text-blue-900 mt-1">Hệ trục tọa độ Oxyz trong không gian</span>
         </div>`;
-    } else if (shapeType.includes("pyramid_tri")) {
+    } else if (isBoxShape) {
+        const L = customLabels.length >= 8 ? customLabels : ["A", "B", "C", "D", "A'", "B'", "C'", "D'"];
+        const isCube = /cube|lap_phuong|lập phương/i.test(shapeType);
+        vertices[L[0]] = { x: 125, y: 185, dx: -15, dy: -4 };
+        vertices[L[1]] = { x: 75, y: 235, dx: -16, dy: 8 };
+        vertices[L[2]] = { x: isCube ? 215 : 245, y: 235, dx: 8, dy: 8 };
+        vertices[L[3]] = { x: isCube ? 265 : 295, y: 185, dx: 8, dy: 4 };
+
+        const h = isCube ? 135 : 120;
+        vertices[L[4]] = { x: 125, y: 185 - h, dx: -16, dy: -6 };
+        vertices[L[5]] = { x: 75, y: 235 - h, dx: -16, dy: -4 };
+        vertices[L[6]] = { x: (isCube ? 215 : 245), y: 235 - h, dx: 8, dy: -4 };
+        vertices[L[7]] = { x: (isCube ? 265 : 295), y: 185 - h, dx: 8, dy: -6 };
+
+        addEdge(L[0], L[1], "dashed");
+        addEdge(L[0], L[3], "dashed");
+        addEdge(L[0], L[4], "dashed");
+        addEdge(L[1], L[2], "solid");
+        addEdge(L[2], L[3], "solid");
+        addEdge(L[4], L[5], "solid");
+        addEdge(L[5], L[6], "solid");
+        addEdge(L[6], L[7], "solid");
+        addEdge(L[7], L[4], "solid");
+        addEdge(L[1], L[5], "solid");
+        addEdge(L[2], L[6], "solid");
+        addEdge(L[3], L[7], "solid");
+        caption = `${isCube ? "Hình lập phương" : "Hình hộp"} ${L[0]}${L[1]}${L[2]}${L[3]}.${L[4]}${L[5]}${L[6]}${L[7]}`;
+    } else if (isPyramidTriShape) {
         const L = customLabels.length >= 4 ? customLabels : ["S", "A", "B", "C"];
         vertices[L[1]] = { x: 85, y: 195, dx: -16, dy: 5 };
         vertices[L[2]] = { x: 185, y: 238, dx: -4, dy: 16 };
@@ -360,7 +391,7 @@ function generateExact3DShapeSvg(shapeSpec) {
         addEdge(L[0], L[2], "solid");
         addEdge(L[0], L[3], "solid");
         caption = `Hình chóp ${L[0]}.${L[1]}${L[2]}${L[3]}`;
-    } else if (shapeType.includes("prism_tri")) {
+    } else if (isPrismTriShape) {
         const L = customLabels.length >= 6 ? customLabels : ["A", "B", "C", "A'", "B'", "C'"];
         vertices[L[0]] = { x: 95, y: 205, dx: -16, dy: 5 };
         vertices[L[1]] = { x: 185, y: 242, dx: -4, dy: 16 };
@@ -381,32 +412,6 @@ function generateExact3DShapeSvg(shapeSpec) {
         addEdge(L[1], L[4], "solid");
         addEdge(L[2], L[5], "solid");
         caption = `Hình lăng trụ ${L[0]}${L[1]}${L[2]}.${L[3]}${L[4]}${L[5]}`;
-    } else if (shapeType.includes("box")) {
-        const L = customLabels.length >= 8 ? customLabels : ["A", "B", "C", "D", "A'", "B'", "C'", "D'"];
-        vertices[L[0]] = { x: 115, y: 185, dx: -15, dy: -4 };
-        vertices[L[1]] = { x: 65, y: 235, dx: -16, dy: 8 };
-        vertices[L[2]] = { x: 245, y: 235, dx: 8, dy: 8 };
-        vertices[L[3]] = { x: 295, y: 185, dx: 8, dy: 4 };
-
-        const h = 125;
-        vertices[L[4]] = { x: 115, y: 185 - h, dx: -16, dy: -6 };
-        vertices[L[5]] = { x: 65, y: 235 - h, dx: -16, dy: -4 };
-        vertices[L[6]] = { x: 245, y: 235 - h, dx: 8, dy: -4 };
-        vertices[L[7]] = { x: 295, y: 185 - h, dx: 8, dy: -6 };
-
-        addEdge(L[0], L[1], "dashed");
-        addEdge(L[0], L[3], "dashed");
-        addEdge(L[0], L[4], "dashed");
-        addEdge(L[1], L[2], "solid");
-        addEdge(L[2], L[3], "solid");
-        addEdge(L[4], L[5], "solid");
-        addEdge(L[5], L[6], "solid");
-        addEdge(L[6], L[7], "solid");
-        addEdge(L[7], L[4], "solid");
-        addEdge(L[1], L[5], "solid");
-        addEdge(L[2], L[6], "solid");
-        addEdge(L[3], L[7], "solid");
-        caption = `Hình hộp ${L[0]}${L[1]}${L[2]}${L[3]}.${L[4]}${L[5]}${L[6]}${L[7]}`;
     } else {
         const L = customLabels.length >= 5 ? customLabels : ["S", "A", "B", "C", "D"];
         vertices[L[1]] = { x: 125, y: 185, dx: -15, dy: -3 };
@@ -879,7 +884,14 @@ Quy tắc công thức & hình vẽ:
 - Công thức đặt trong $...$.
 - KHÔNG tự viết thẻ <svg> bằng tay.
 - Khi vẽ ĐỒ THỊ HÀM SỐ $y = f(x)$, xuất đúng 1 dòng: [[PLOT: biểu_thức | xmin=-4 | xmax=4 | ymin=-2 | ymax=6 | points=(x1,y1);(x2,y2)]]
-- Khi vẽ HÌNH HỌC KHÔNG GIAN 3D, xuất đúng 1 dòng: [[SHAPE3D: loại_hình | labels=tên_đỉnh | altitude=chân_đường_cao | extra=nét_thêm]]`;
+- Khi vẽ HÌNH HỌC KHÔNG GIAN 3D, xuất đúng 1 dòng theo cú pháp:
+  [[SHAPE3D: loại_hình | labels=tên_đỉnh | altitude=chân_đường_cao | extra=nét_thêm]]
+  Trong đó loại_hình BẮT BUỘC chọn 1 trong 5 mã tiếng Anh sau:
+  + pyramid_tri (chóp tam giác, VD: [[SHAPE3D: pyramid_tri | labels=S,A,B,C | altitude=A]])
+  + pyramid_quad (chóp tứ giác, VD: [[SHAPE3D: pyramid_quad | labels=S,A,B,C,D | altitude=O]])
+  + prism_tri (lăng trụ tam giác, VD: [[SHAPE3D: prism_tri | labels=A,B,C,A',B',C']])
+  + box (hình hộp chữ nhật hoặc hình lập phương, VD: [[SHAPE3D: box | labels=A,B,C,D,A',B',C',D']])
+  + oxyz (hệ trục tọa độ không gian Oxyz, VD: [[SHAPE3D: oxyz]])`;
 
                 const directParts = [];
                 if (imgPayload) {
