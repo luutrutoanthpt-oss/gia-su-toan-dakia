@@ -20,7 +20,7 @@ window.MathJax = {
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-<script src="js/config.js?v=13"></script>
+<script src="js/config.js?v=14"></script>
 
 <style>
 :root {
@@ -1134,9 +1134,9 @@ function updateAutoAdvanceButtonUI() {
 }
 
 /* ============================================================================
-3. NÉN ẢNH TỰ ĐỘNG & ĐỌC FILE WORD (.DOCX) 3 PHẦN
+3. NÉN ẢNH & ĐẨY LÊN GOOGLE DRIVE + ĐỌC FILE WORD (.DOCX) 3 PHẦN
    ============================================================================ */
-function compressImageDataUrl(dataUrl, maxWidth = 360, quality = 0.62) {
+function compressImageDataUrl(dataUrl, maxWidth = 480, quality = 0.72) {
   return new Promise((resolve) => {
     if (!dataUrl || !dataUrl.startsWith('data:image')) { resolve(''); return; }
     if (dataUrl.length < 7000) { resolve(dataUrl); return; }
@@ -1161,6 +1161,24 @@ function compressImageDataUrl(dataUrl, maxWidth = 360, quality = 0.62) {
     img.onerror = () => resolve('');
     img.src = dataUrl;
   });
+}
+
+async function uploadQuestionImageToDrive(scriptUrl, rawDataUrl) {
+  if (!rawDataUrl) return '';
+  if (rawDataUrl.startsWith('http')) return rawDataUrl;
+  const compressed = await compressImageDataUrl(rawDataUrl, 480, 0.72);
+  const payloadImg = compressed || rawDataUrl;
+  try {
+    const res = await fetch(scriptUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'arena_upload_img', base64: payloadImg })
+    });
+    const d = await res.json();
+    return d.url || '';
+  } catch (_) {
+    return compressed && compressed.length < 9000 ? compressed : '';
+  }
 }
 
 function triggerInstantFile() {
@@ -1790,12 +1808,14 @@ function startStudentStatePoll() {
 
       const st = String(data.status || '').trim().toUpperCase();
       if (st === 'STARTED') {
-        let qs = [];
-        try { qs = JSON.parse(data.questionsJson || '[]'); } catch (_) {}
-        if (Array.isArray(qs) && qs.length > 0) {
-          studentSession.questions = qs;
-          const serverIdx = Math.min(qs.length - 1, Math.max(0, Number(data.currentIndex || 0)));
-
+        if (!studentSession.questions.length) {
+          try {
+            const qs = JSON.parse(data.questionsJson || '[]');
+            if (Array.isArray(qs) && qs.length > 0) studentSession.questions = qs;
+          } catch (_) {}
+        }
+        if (studentSession.questions.length > 0) {
+          const serverIdx = Math.min(studentSession.questions.length - 1, Math.max(0, Number(data.currentIndex || 0)));
           document.getElementById('studentJoinFormCard').style.display = 'none';
           document.getElementById('studentWaitingLobbyCard').style.display = 'none';
           document.getElementById('studentPlayArenaCard').style.display = 'block';
@@ -1815,7 +1835,7 @@ function startStudentStatePoll() {
     } catch (_) {}
 
     if (studentPollActive) {
-      studentPollTimer = setTimeout(checkRoomNow, 850);
+      studentPollTimer = setTimeout(checkRoomNow, 600);
     }
   };
 
@@ -2097,7 +2117,7 @@ function goHome() {
 }
 
 /* ============================================================================
-7. GIÁO VIÊN BẤM BẮT ĐẦU & ĐIỀU KHIỂN CHUYỂN CÂU ĐỒNG BỘ (CHUẨN CORS & TỰ GIẢM TẢI)
+7. GIÁO VIÊN BẤM BẮT ĐẦU & ĐIỀU KHIỂN CHUYỂN CÂU ĐỒNG BỘ (TẢI HÌNH LÊN DRIVE)
    ============================================================================ */
 async function pushCurrentQuestionIndexToStudents(status = 'STARTED') {
   const scriptUrl = getAppsScriptUrl();
@@ -2176,12 +2196,12 @@ async function startGame() {
 
   const scriptUrl = getAppsScriptUrl();
   if (scriptUrl) {
-    showToast('⏳ Đang nén hình vẽ & đồng bộ đề tới học sinh...', 'info');
-    let lightQuestions = await Promise.all((gameState.questions || []).map(async (q) => {
-      const compressedMainImgs = [];
-      for (const src of (q.images || []).slice(0, 1)) {
-        const c = await compressImageDataUrl(src, 360, 0.62);
-        if (c) compressedMainImgs.push(c);
+    showToast('⏳ Đang tải hình vẽ lên hệ thống & phát đề...', 'info');
+    const lightQuestions = await Promise.all((gameState.questions || []).map(async (q) => {
+      const uploadedImgs = [];
+      for (const src of (q.images || []).slice(0, 2)) {
+        const url = await uploadQuestionImageToDrive(scriptUrl, src);
+        if (url) uploadedImgs.push(url);
       }
 
       const stmts = (q.statements || []).map(s => ({
@@ -2200,15 +2220,11 @@ async function startGame() {
         statements: stmts,
         answer: q.answer !== undefined ? String(q.answer) : '0',
         points: Number(q.points) || 10,
-        images: compressedMainImgs
+        images: uploadedImgs
       };
     }));
 
-    if (JSON.stringify(lightQuestions).length > 32000) {
-      lightQuestions = lightQuestions.map(q => ({ ...q, images: [] }));
-    }
-
-    const sendArenaStart = async (questionsPayload) => {
+    try {
       const res = await fetch(scriptUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -2218,24 +2234,13 @@ async function startGame() {
           status: 'STARTED',
           currentIndex: 0,
           teamNames,
-          questions: questionsPayload,
+          questions: lightQuestions,
           teamsMap
         })
       });
       if (!res.ok) throw new Error('HTTP ' + res.status);
-    };
-
-    try {
-      await sendArenaStart(lightQuestions);
-    } catch (e1) {
-      try {
-        const textOnlyQuestions = lightQuestions.map(q => ({ ...q, images: [] }));
-        await sendArenaStart(textOnlyQuestions);
-        showToast('⚠️ Mạng chậm: Đã gửi đề dạng văn bản để học sinh kịp làm bài!', 'warning');
-      } catch (e2) {
-        console.error('Lỗi arena_start:', e1, e2);
-        showToast('⚠️ Lỗi gửi đề thi lên Google Sheets! Kiểm tra lại quyền Web App (Anyone) hoặc URL trong js/config.js.', 'error');
-      }
+    } catch (e) {
+      showToast('⚠️ Lỗi gửi đề thi lên Google Sheets!', 'error');
     }
   }
 
@@ -2245,7 +2250,7 @@ async function startGame() {
   SoundEngine.playTransition();
   renderScoreboard();
   loadCurrentQuestion();
-  showToast('🚀 Đã mở khóa Câu 1 cho toàn bộ học sinh trong phòng!', 'success');
+  showToast('🚀 Đã mở khóa Câu 1 (kèm hình vẽ) cho toàn bộ học sinh!', 'success');
 }
 
 function getPoints(q) {
