@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
-    <link rel="stylesheet" href="css/style.css?v=8">
+    <link rel="stylesheet" href="css/style.css?v=9">
     <style>
         .katex { font-size: 1.05em; }
         .dot-pulse { display: inline-flex; gap: 4px; align-items: center; }
@@ -43,17 +43,37 @@
         </div>
 
         <!-- THANH MENU CHÍNH -->
-        <nav class="bg-blue-950/40 border-t border-blue-400/20 px-4 sm:px-6 overflow-x-auto">
-            <div class="max-w-7xl mx-auto flex items-center gap-1.5 py-1.5 text-xs sm:text-sm whitespace-nowrap">
+        <nav class="bg-blue-950/40 border-t border-blue-400/20 px-4 sm:px-6">
+            <div class="max-w-7xl mx-auto flex flex-wrap items-center gap-1.5 py-1.5 text-xs sm:text-sm">
                 <button onclick="switchMainTab('home')" id="nav-home" class="main-nav-btn bg-white text-blue-900 font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-xs">
                     <span>🏠</span> Trang chủ
                 </button>
                 <button onclick="switchMainTab('tutor')" id="nav-tutor" class="main-nav-btn text-blue-100 hover:bg-white/10 font-semibold px-3.5 py-2 rounded-xl flex items-center gap-1.5">
                     <span>🤖</span> Gia sư AI Đa môn
                 </button>
-                <button onclick="switchMainTab('topics')" id="nav-topics" class="main-nav-btn text-blue-100 hover:bg-white/10 font-semibold px-3.5 py-2 rounded-xl flex items-center gap-1.5">
-                    <span>📚</span> Chủ đề Toán
-                </button>
+
+                <!-- NÚT CHỦ ĐỀ ĐA MÔN CÓ MŨI TÊN XỔ XUỐNG 10 MÔN -->
+                <div class="relative inline-block" id="topicsNavDropdownWrapper">
+                    <button type="button" onclick="toggleTopicsNavDropdown(event)" id="nav-topics" class="main-nav-btn text-blue-100 hover:bg-white/10 font-semibold px-3.5 py-2 rounded-xl flex items-center gap-1.5">
+                        <span>📚</span>
+                        <span id="navTopicsLabel">Chủ đề các môn</span>
+                        <span class="text-[10px] opacity-80">▼</span>
+                    </button>
+                    <div id="topicsNavDropdownMenu" class="hidden absolute left-0 mt-1.5 w-56 bg-white text-slate-800 rounded-2xl shadow-2xl border border-slate-200 py-1.5 z-50 text-xs sm:text-sm">
+                        <div class="px-3.5 py-1.5 text-[11px] font-bold text-slate-400 uppercase border-b border-slate-100">Chọn môn học (GDPT 2018)</div>
+                        <button type="button" onclick="selectTopicSubjectFromNav('Toán học')" class="w-full text-left px-3.5 py-2 hover:bg-blue-50 hover:text-blue-800 font-semibold flex items-center gap-2"><span>📐</span> Toán học</button>
+                        <button type="button" onclick="selectTopicSubjectFromNav('Vật lí')" class="w-full text-left px-3.5 py-2 hover:bg-blue-50 hover:text-blue-800 font-semibold flex items-center gap-2"><span>⚡</span> Vật lí</button>
+                        <button type="button" onclick="selectTopicSubjectFromNav('Hóa học')" class="w-full text-left px-3.5 py-2 hover:bg-blue-50 hover:text-blue-800 font-semibold flex items-center gap-2"><span>🧪</span> Hóa học</button>
+                        <button type="button" onclick="selectTopicSubjectFromNav('Sinh học')" class="w-full text-left px-3.5 py-2 hover:bg-blue-50 hover:text-blue-800 font-semibold flex items-center gap-2"><span>🧬</span> Sinh học</button>
+                        <button type="button" onclick="selectTopicSubjectFromNav('Tin học')" class="w-full text-left px-3.5 py-2 hover:bg-blue-50 hover:text-blue-800 font-semibold flex items-center gap-2"><span>💻</span> Tin học</button>
+                        <button type="button" onclick="selectTopicSubjectFromNav('Ngữ văn')" class="w-full text-left px-3.5 py-2 hover:bg-blue-50 hover:text-blue-800 font-semibold flex items-center gap-2"><span>📖</span> Ngữ văn</button>
+                        <button type="button" onclick="selectTopicSubjectFromNav('Tiếng Anh')" class="w-full text-left px-3.5 py-2 hover:bg-blue-50 hover:text-blue-800 font-semibold flex items-center gap-2"><span>🌐</span> Tiếng Anh</button>
+                        <button type="button" onclick="selectTopicSubjectFromNav('Lịch sử')" class="w-full text-left px-3.5 py-2 hover:bg-blue-50 hover:text-blue-800 font-semibold flex items-center gap-2"><span>🏛️</span> Lịch sử</button>
+                        <button type="button" onclick="selectTopicSubjectFromNav('Địa lí')" class="w-full text-left px-3.5 py-2 hover:bg-blue-50 hover:text-blue-800 font-semibold flex items-center gap-2"><span>🌍</span> Địa lí</button>
+                        <button type="button" onclick="selectTopicSubjectFromNav('GDKT & PL')" class="w-full text-left px-3.5 py-2 hover:bg-blue-50 hover:text-blue-800 font-semibold flex items-center gap-2"><span>⚖️</span> GDKT & PL</button>
+                    </div>
+                </div>
+
                 <button onclick="switchMainTab('exam')" id="nav-exam" class="main-nav-btn text-blue-100 hover:bg-white/10 font-semibold px-3.5 py-2 rounded-xl flex items-center gap-1.5">
                     <span>✍️</span> Luyện tập & Đề thi
                 </button>
@@ -103,8 +123,8 @@
 
                 <div onclick="switchMainTab('topics')" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-emerald-400 hover:shadow-md cursor-pointer transition space-y-2.5">
                     <div class="w-11 h-11 rounded-xl bg-emerald-50 text-2xl flex items-center justify-center">📚</div>
-                    <h3 class="font-bold text-base text-slate-900">Học Theo Chủ Đề</h3>
-                    <p class="text-xs text-slate-500 leading-relaxed">Tóm tắt lý thuyết, công thức trọng tâm và ví dụ minh họa Toán 10, 11, 12.</p>
+                    <h3 class="font-bold text-base text-slate-900">Học Theo Chủ Đề Đa Môn</h3>
+                    <p class="text-xs text-slate-500 leading-relaxed">Tóm tắt lý thuyết, công thức trọng tâm và ví dụ minh họa đầy đủ 10 môn khối 10, 11, 12.</p>
                 </div>
 
                 <div onclick="switchMainTab('exam')" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-amber-400 hover:shadow-md cursor-pointer transition space-y-2.5">
@@ -315,19 +335,33 @@
             </div>
         </section>
 
-        <!-- TAB 3: CHỦ ĐỀ TOÁN -->
+        <!-- TAB 3: CHỦ ĐỀ CÁC MÔN HỌC (ĐẦY ĐỦ 10 MÔN & TOÀN BỘ CHƯƠNG TRÌNH GDPT 2018) -->
         <section id="sec-topics" class="main-sec hidden space-y-4">
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
                 <div class="flex flex-wrap justify-between items-center gap-3 border-b pb-3">
                     <div>
-                        <h2 class="font-bold text-base text-blue-900">📚 Hệ Thống Chủ Đề Toán THPT – Kết Nối Tri Thức Với Cuộc Sống</h2>
-                        <p class="text-xs text-slate-500">Chọn chuyên đề để Gia sư AI tóm tắt nhanh công thức trọng tâm và ra bài tập luyện tập ngay.</p>
+                        <h2 id="topicSectionHeading" class="font-bold text-base text-blue-900">📚 Hệ Thống Chủ Đề Toán học – Kết Nối Tri Thức Với Cuộc Sống</h2>
+                        <p class="text-xs text-slate-500">Chọn môn học và khối lớp để xem đầy đủ các chương; bấm vào chương bất kỳ để Gia sư AI tóm tắt kiến thức trọng tâm và ra bài luyện tập.</p>
                     </div>
-                    <select id="topicGradeFilter" onchange="renderMathTopics()" class="border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold bg-white">
-                        <option value="10">Toán Lớp 10</option>
-                        <option value="11">Toán Lớp 11</option>
-                        <option value="12">Toán Lớp 12</option>
-                    </select>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <select id="topicSubjectFilter" onchange="renderSubjectTopics()" class="border border-blue-200 bg-blue-50/60 text-blue-900 rounded-xl px-3 py-2 text-xs font-bold outline-none">
+                            <option value="Toán học">📐 Toán học</option>
+                            <option value="Vật lí">⚡ Vật lí</option>
+                            <option value="Hóa học">🧪 Hóa học</option>
+                            <option value="Sinh học">🧬 Sinh học</option>
+                            <option value="Tin học">💻 Tin học</option>
+                            <option value="Ngữ văn">📖 Ngữ văn</option>
+                            <option value="Tiếng Anh">🌐 Tiếng Anh</option>
+                            <option value="Lịch sử">🏛️ Lịch sử</option>
+                            <option value="Địa lí">🌍 Địa lí</option>
+                            <option value="GDKT & PL">⚖️ GDKT & PL</option>
+                        </select>
+                        <select id="topicGradeFilter" onchange="renderSubjectTopics()" class="border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold bg-white outline-none">
+                            <option value="10">Khối Lớp 10</option>
+                            <option value="11">Khối Lớp 11</option>
+                            <option value="12">Khối Lớp 12</option>
+                        </select>
+                    </div>
                 </div>
                 <div id="mathTopicsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
             </div>
@@ -475,7 +509,7 @@
         </div>
     </div>
 
-    <script src="js/config.js?v=8"></script>
-    <script src="js/app.js?v=8"></script>
+    <script src="js/config.js?v=9"></script>
+    <script src="js/app.js?v=9"></script>
 </body>
 </html>
