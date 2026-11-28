@@ -42,7 +42,7 @@
             </div>
         </div>
 
-        <!-- THANH MENU 6 TAB GỐC -->
+        <!-- THANH MENU 7 TAB (ĐÃ BỔ SUNG TAB ĐẤU TRƯỜNG TRI THỨC) -->
         <nav class="bg-blue-950/40 border-t border-blue-400/20 px-4 sm:px-6 overflow-x-auto">
             <div class="max-w-7xl mx-auto flex items-center gap-1.5 py-1.5 text-xs sm:text-sm whitespace-nowrap">
                 <button onclick="switchMainTab('home')" id="nav-home" class="main-nav-btn bg-white text-blue-900 font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-xs">
@@ -56,6 +56,9 @@
                 </button>
                 <button onclick="switchMainTab('exam')" id="nav-exam" class="main-nav-btn text-blue-100 hover:bg-white/10 font-semibold px-3.5 py-2 rounded-xl flex items-center gap-1.5">
                     <span>✍️</span> Luyện tập & Đề thi
+                </button>
+                <button onclick="switchMainTab('arena')" id="nav-arena" class="main-nav-btn text-blue-100 hover:bg-white/10 font-semibold px-3.5 py-2 rounded-xl flex items-center gap-1.5">
+                    <span>🏆</span> Đấu Trường Tri Thức
                 </button>
                 <button onclick="switchMainTab('progress')" id="nav-progress" class="main-nav-btn text-blue-100 hover:bg-white/10 font-semibold px-3.5 py-2 rounded-xl flex items-center gap-1.5">
                     <span>📊</span> Tiến độ của em
@@ -372,7 +375,27 @@
             </div>
         </section>
 
-        <!-- TAB 5: TIẾN ĐỘ CỦA EM -->
+        <!-- TAB 5: ĐẤU TRƯỜNG TRI THỨC (GAMESHOW TRÌNH CHIẾU & QR) -->
+        <section id="sec-arena" class="main-sec hidden space-y-3">
+            <div class="bg-slate-900 border border-cyan-500/40 rounded-2xl overflow-hidden shadow-lg">
+                <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 bg-slate-950 border-b border-cyan-500/30">
+                    <div class="flex items-center gap-2 text-xs sm:text-sm font-bold text-amber-400">
+                        <span>🏆 GAMESHOW ĐẤU TRƯỜNG TRI THỨC – THPT ĐA KIA</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="toggleArenaFullscreen()" class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs transition">
+                            ⛶ Phóng to toàn màn hình (Trình chiếu lớp)
+                        </button>
+                        <a href="Dau_Truong_Tri_Thuc.html" target="_blank" class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs transition">
+                            ↗ Mở tab riêng
+                        </a>
+                    </div>
+                </div>
+                <iframe id="arenaGameIframe" src="Dau_Truong_Tri_Thuc.html" class="w-full border-0 block" style="height: 84vh; min-height: 680px;" allow="autoplay; fullscreen"></iframe>
+            </div>
+        </section>
+
+        <!-- TAB 6: TIẾN ĐỘ CỦA EM -->
         <section id="sec-progress" class="main-sec hidden space-y-4">
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
                 <h2 class="font-bold text-base text-blue-900">📊 Nhật Ký Tự Học & Kết Quả Kiểm Tra Của Em</h2>
@@ -406,7 +429,7 @@
             </div>
         </section>
 
-        <!-- TAB 6: BẢN QUYỀN & TÁC GIẢ -->
+        <!-- TAB 7: BẢN QUYỀN & TÁC GIẢ -->
         <section id="sec-about" class="main-sec hidden">
             <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-200 space-y-6">
                 <div class="flex items-center gap-4">
