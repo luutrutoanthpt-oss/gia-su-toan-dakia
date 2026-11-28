@@ -288,7 +288,6 @@ function generateExact3DShapeSvg(shapeSpec) {
         }
     }
 
-    // Hệ tọa độ 2D chuẩn mặt phẳng vẽ (380x270) theo góc nghiêng quy ước SGK Việt Nam
     const vertices = {};
     const edges = [];
     let caption = "Hình minh họa hình học không gian";
@@ -409,7 +408,6 @@ function generateExact3DShapeSvg(shapeSpec) {
         addEdge(L[3], L[7], "solid");
         caption = `Hình hộp ${L[0]}${L[1]}${L[2]}${L[3]}.${L[4]}${L[5]}${L[6]}${L[7]}`;
     } else {
-        // Mặc định: Hình chóp tứ giác S.ABCD chuẩn quy tắc SGK
         const L = customLabels.length >= 5 ? customLabels : ["S", "A", "B", "C", "D"];
         vertices[L[1]] = { x: 125, y: 185, dx: -15, dy: -3 };
         vertices[L[2]] = { x: 68, y: 238, dx: -16, dy: 8 };
@@ -450,7 +448,6 @@ function generateExact3DShapeSvg(shapeSpec) {
         caption = `Hình chóp ${L[0]}.${L[1]}${L[2]}${L[3]}${L[4]}`;
     }
 
-    // Xử lý các đường phụ thêm theo lệnh extra=dashed:A-C;solid:M-N
     extraSpecs.forEach(item => {
         const m = item.match(/^(solid|dashed)\s*:\s*([A-Z0-9']+)\s*-\s*([A-Z0-9']+)$/i);
         if (m) {
@@ -512,7 +509,7 @@ function insertMathSymbol(symbolText) {
     inp.setSelectionRange(newCursor, newCursor);
 }
 
-// ==================== ĐIỀU HƯỚNG 6 TAB CHÍNH ====================
+// ==================== ĐIỀU HƯỚNG CÁC TAB CHÍNH ====================
 function switchMainTab(tabId) {
     document.querySelectorAll(".main-sec").forEach(sec => sec.classList.add("hidden"));
     document.querySelectorAll(".main-nav-btn").forEach(btn => {
@@ -529,6 +526,18 @@ function switchMainTab(tabId) {
 
     if (tabId === "exam") renderOnlineExamsList();
     if (tabId === "progress") renderStudentProgressView();
+}
+
+function toggleArenaFullscreen() {
+    const iframe = document.getElementById("arenaGameIframe");
+    if (!iframe) return;
+    if (!document.fullscreenElement) {
+        iframe.requestFullscreen().catch(() => {
+            window.open("Dau_Truong_Tri_Thuc.html", "_blank");
+        });
+    } else {
+        document.exitFullscreen().catch(() => {});
+    }
 }
 
 // ==================== ĐĂNG NHẬP MÃ HỌC SINH ====================
@@ -737,6 +746,48 @@ function renderAiMessageWithSvg(containerEl, rawText) {
     renderKatexInElement(containerEl);
 }
 
+async function streamDirectFromVietnamClient(keyList, payloadObj, onDeltaText) {
+    const models = ["gemini-3.5-flash-lite", "gemini-3.6-flash"];
+    let lastErr = "Không thể kết nối trực tiếp tới Google AI.";
+
+    for (let i = 0; i < models.length; i++) {
+        const key = keyList[i % keyList.length];
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${models[i]}:streamGenerateContent?alt=sse&key=${encodeURIComponent(key)}`;
+        const directRes = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payloadObj)
+        });
+
+        if (directRes.ok && directRes.body) {
+            const reader = directRes.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+            let buf = "";
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buf += decoder.decode(value, { stream: true });
+                const lines = buf.split("\n");
+                buf = lines.pop();
+                for (const line of lines) {
+                    if (line.startsWith("data: ")) {
+                        const dataStr = line.slice(6).trim();
+                        if (!dataStr || dataStr === "[DONE]") continue;
+                        try {
+                            const parsed = JSON.parse(dataStr);
+                            const delta = (parsed.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
+                            if (delta) onDeltaText(delta);
+                        } catch (_) {}
+                    }
+                }
+            }
+            return;
+        }
+        lastErr = `Lỗi AI (${directRes.status}): ${(await directRes.text()).slice(0, 200)}`;
+    }
+    throw new Error(lastErr);
+}
+
 async function handleSendTutor() {
     const inputEl = document.getElementById("tutorPromptInput");
     const msg = inputEl.value.trim();
@@ -781,6 +832,21 @@ async function handleSendTutor() {
     btn.disabled = true;
 
     const activeKey = resolveActiveGeminiKey();
+    let fullText = "";
+    let lastRenderTime = 0;
+
+    const handleDelta = (delta) => {
+        fullText += delta;
+        const now = Date.now();
+        if (now - lastRenderTime > 160) {
+            lastRenderTime = now;
+            const streamPreview = fullText
+                .replace(/\[\[\s*(?:PLOT|SHAPE3D):[\s\S]*$/i, "\n⏳ Đang dựng hình minh họa...")
+                .replace(/<svg[\s\S]*$/i, "\n⏳ Đang dựng hình...");
+            aiBubble.innerHTML = `<div class="space-y-1 text-slate-800">${markdownTextToHtml(streamPreview)}</div>`;
+            box.scrollTop = box.scrollHeight;
+        }
+    };
 
     try {
         const res = await fetch("/api/tutor", {
@@ -802,41 +868,56 @@ async function handleSendTutor() {
 
         if (!res.ok) {
             const errJson = await res.json().catch(() => ({ error: "Không kết nối được máy chủ AI" }));
-            throw new Error(errJson.error || "Không kết nối được máy chủ AI");
-        }
+            const serverKeys = Array.isArray(errJson.keys) && errJson.keys.length > 0
+                ? errJson.keys
+                : (activeKey ? [activeKey] : []);
 
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder("utf-8");
-        let sseBuffer = "";
-        let fullText = "";
-        let lastRenderTime = 0;
+            if ((errJson.locationBlocked || String(errJson.error || "").includes("User location is not supported")) && serverKeys.length > 0) {
+                const sysPrompt = `Gia sư AI Trường THPT Đa Kia, xưng "Thầy (Cô)", gọi học sinh "em". Bám sát SGK Kết nối tri thức Lớp ${grade}.
+${isWeak ? "Chế độ HỖ TRỢ NỀN TẢNG: giải thích cực kỳ ngắn gọn, dễ hiểu, nhắc công thức cơ bản rồi gợi mở bước đầu tiên." : "Trả lời súc tích, rõ từng bước, không dài dòng."}
+Quy tắc công thức & hình vẽ:
+- Công thức đặt trong $...$.
+- KHÔNG tự viết thẻ <svg> bằng tay.
+- Khi vẽ ĐỒ THỊ HÀM SỐ $y = f(x)$, xuất đúng 1 dòng: [[PLOT: biểu_thức | xmin=-4 | xmax=4 | ymin=-2 | ymax=6 | points=(x1,y1);(x2,y2)]]
+- Khi vẽ HÌNH HỌC KHÔNG GIAN 3D, xuất đúng 1 dòng: [[SHAPE3D: loại_hình | labels=tên_đỉnh | altitude=chân_đường_cao | extra=nét_thêm]]`;
 
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            sseBuffer += decoder.decode(value, { stream: true });
-            const lines = sseBuffer.split("\n");
-            sseBuffer = lines.pop();
-            for (const line of lines) {
-                if (line.startsWith("data: ")) {
-                    const dataStr = line.slice(6).trim();
-                    if (!dataStr || dataStr === "[DONE]") continue;
-                    try {
-                        const parsed = JSON.parse(dataStr);
-                        const delta = (parsed.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
-                        if (delta) {
-                            fullText += delta;
-                            const now = Date.now();
-                            if (now - lastRenderTime > 160) {
-                                lastRenderTime = now;
-                                const streamPreview = fullText
-                                    .replace(/\[\[\s*(?:PLOT|SHAPE3D):[\s\S]*$/i, "\n⏳ Đang dựng hình minh họa...")
-                                    .replace(/<svg[\s\S]*$/i, "\n⏳ Đang dựng hình...");
-                                aiBubble.innerHTML = `<div class="space-y-1 text-slate-800">${markdownTextToHtml(streamPreview)}</div>`;
-                                box.scrollTop = box.scrollHeight;
-                            }
-                        }
-                    } catch (_) {}
+                const directParts = [];
+                if (imgPayload) {
+                    const m = imgPayload.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+                    if (m) directParts.push({ inlineData: { mimeType: m[1], data: m[2] } });
+                }
+                directParts.push({ text: `[Môn ${subject} - Lớp ${grade}] ${msg || "Hướng dẫn giải chi tiết bài tập trong ảnh."}` });
+
+                const shuffled = [...serverKeys].sort(() => Math.random() - 0.5);
+                await streamDirectFromVietnamClient(shuffled, {
+                    systemInstruction: { parts: [{ text: sysPrompt }] },
+                    contents: [{ role: "user", parts: directParts }],
+                    generationConfig: { temperature: 0.3, maxOutputTokens: 1000 }
+                }, handleDelta);
+            } else {
+                throw new Error(errJson.error || "Không kết nối được máy chủ AI");
+            }
+        } else {
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+            let sseBuffer = "";
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                sseBuffer += decoder.decode(value, { stream: true });
+                const lines = sseBuffer.split("\n");
+                sseBuffer = lines.pop();
+                for (const line of lines) {
+                    if (line.startsWith("data: ")) {
+                        const dataStr = line.slice(6).trim();
+                        if (!dataStr || dataStr === "[DONE]") continue;
+                        try {
+                            const parsed = JSON.parse(dataStr);
+                            const delta = (parsed.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
+                            if (delta) handleDelta(delta);
+                        } catch (_) {}
+                    }
                 }
             }
         }
