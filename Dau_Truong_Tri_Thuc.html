@@ -20,7 +20,7 @@ window.MathJax = {
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-<script src="js/config.js?v=10"></script>
+<script src="js/config.js?v=11"></script>
 
 <style>
 :root {
@@ -336,6 +336,7 @@ input[type="text"], input[type="number"], input[type="password"], select, textar
   background: linear-gradient(90deg, rgba(255, 215, 0, 0.25) 0%, rgba(24, 68, 148, 0.95) 100%);
   box-shadow: var(--gold-glow);
 }
+.option-btn.locked-opt { pointer-events: none; opacity: 0.85; }
 .option-content {
   flex: 1; min-width: 0; word-wrap: break-word; overflow-wrap: break-word;
   display: flex; align-items: center; flex-wrap: wrap; gap: 4px;
@@ -377,10 +378,10 @@ input[type="text"], input[type="number"], input[type="password"], select, textar
   justify-content: center;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 10px;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
 }
-.teacher-control-dock .btn { min-width: 145px; font-size: 0.95rem; }
+.teacher-control-dock .btn { min-width: 138px; font-size: 0.9rem; }
 
 .modal-overlay { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(2, 7, 20, 0.92); overflow-y: auto; padding: 14px; }
 .modal-overlay.open { display: block; }
@@ -515,7 +516,7 @@ input[type="text"], input[type="number"], input[type="password"], select, textar
         <div id="teacherModeExtra" style="display:none; margin-bottom:12px;">
           <div class="form-group">
             <label>Số lượng đội:</label>
-            <select id="teacherTeamCount" onchange="renderTeamInputs(); autoDistributeLobbyStudents();">
+            <select id="teacherTeamCount" onchange="renderTeamInputs(); autoDistributeLobbyStudents(true);">
               <option value="2">2 Đội</option>
               <option value="3">3 Đội</option>
               <option value="4" selected>4 Đội</option>
@@ -529,7 +530,7 @@ input[type="text"], input[type="number"], input[type="password"], select, textar
             <div class="qr-meta-col">
               <div style="font-weight:900; color:var(--neon-blue); font-size:0.96rem; margin-bottom:4px;">📱 MÃ QR VÀO PHÒNG CHƠI</div>
               <div style="font-size:0.79rem; color:var(--text-muted); margin-bottom:8px;">
-                Học sinh dùng điện thoại quét QR bằng 4G/5G hoặc Wi-Fi, nhập tên để vào phòng. Giáo viên kiểm tra đủ quân số & chia đội xong mới bấm <strong>🚀 BẮT ĐẦU</strong>.
+                Học sinh dùng điện thoại quét QR bằng 4G/5G hoặc Wi-Fi, nhập tên để vào phòng. Hệ thống tự động chia đều vào các đội; thầy kiểm tra đủ quân số xong mới bấm <strong>🚀 BẮT ĐẦU</strong>.
               </div>
               <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
                 <input type="text" id="roomJoinLinkInput" style="flex:1; min-width:160px; font-size:13px; padding:7px 10px;" placeholder="Nhập mã phòng hoặc link thật..." oninput="generateRoomQR()">
@@ -560,7 +561,7 @@ input[type="text"], input[type="number"], input[type="password"], select, textar
       </div>
 
       <div class="panel-card">
-        <div class="panel-title">⚙️ NGUỒN CÂU HỎI, THỜI GIAN & ĐIỂM THƯỞNG</div>
+        <div class="panel-title">⚙️ NGUỒN CÂU HỎI, THỜI GIAN & CHUYỂN CÂU TỰ ĐỘNG</div>
         <div class="form-group">
           <label>Nguồn đề thi sử dụng:</label>
           <select id="examSourceMode">
@@ -591,8 +592,11 @@ input[type="text"], input[type="number"], input[type="password"], select, textar
             <input type="number" id="gameQuestionCount" min="0" max="200" value="0">
           </div>
           <div class="form-group">
-            <label>Thời gian mặc định (giây):</label>
-            <input type="number" id="defaultTimeLimit" min="5" max="120" value="20">
+            <label>Chế độ chuyển câu:</label>
+            <select id="autoAdvanceSelect" onchange="syncAutoAdvanceFromSetup()">
+              <option value="auto">⏱️ Tự động chuyển câu khi hết giờ / đủ bài</option>
+              <option value="manual">👆 Giáo viên bấm chuyển câu thủ công</option>
+            </select>
           </div>
         </div>
 
@@ -674,7 +678,7 @@ input[type="text"], input[type="number"], input[type="password"], select, textar
       </div>
     </div>
 
-    <!-- BƯỚC C: GIAO DIỆN LÀM BÀI CỦA HỌC SINH TRÊN ĐIỆN THOẠI (CHỈ MỞ KHI GIÁO VIÊN ĐÃ BẮT ĐẦU) -->
+    <!-- BƯỚC C: GIAO DIỆN LÀM BÀI CỦA HỌC SINH (CHỈ ĐƯỢC GỬI ĐÁP ÁN, KHÔNG CÓ NÚT CHUYỂN CÂU) -->
     <div id="studentPlayArenaCard" class="student-join-card" style="display:none; max-width:760px;">
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; border-bottom:1px solid rgba(0,240,255,0.3); padding-bottom:10px; margin-bottom:12px;">
         <div>
@@ -691,8 +695,8 @@ input[type="text"], input[type="number"], input[type="password"], select, textar
       <div id="stuAnswerOptionsArea"></div>
 
       <div style="margin-top:16px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
-        <div id="stuAnswerStatusMsg" style="font-size:0.85rem; font-weight:700; color:var(--text-muted);"></div>
-        <button id="btnStuSubmitNext" class="btn btn-gold" onclick="submitStudentQuestionAnswer()">✅ Gửi đáp án & Câu tiếp ➔</button>
+        <div id="stuAnswerStatusMsg" style="font-size:0.86rem; font-weight:700; color:var(--text-muted);"></div>
+        <button id="btnStuSubmitOnly" class="btn btn-gold" onclick="submitStudentQuestionAnswer()">✅ Gửi đáp án</button>
       </div>
     </div>
   </section>
@@ -713,7 +717,7 @@ input[type="text"], input[type="number"], input[type="password"], select, textar
     <div class="scoreboard-bar" id="scoreboardBar"></div>
 
     <div class="question-stage teacher-locked" id="questionStage">
-      <div class="teacher-lock-notice">🔒 Màn hình Giáo viên trình chiếu • Điểm học sinh làm bài trên điện thoại tự động cộng vào đội</div>
+      <div class="teacher-lock-notice">🔒 Màn hình Giáo viên điều khiển • Học sinh chỉ gửi đáp án, chuyển câu đồng bộ theo Thầy (Cô)</div>
       <div class="question-text" id="questionText">Đang tải câu hỏi...</div>
       <div class="question-media-box" id="questionMediaBox" style="display:none;"></div>
       <div id="answerArea"></div>
@@ -722,6 +726,7 @@ input[type="text"], input[type="number"], input[type="password"], select, textar
     <div class="teacher-control-dock">
       <button class="btn" id="btnPrevQuestion" onclick="prevQuestion()">⬅️ Câu trước</button>
       <button class="btn btn-neon" id="btnNextQuestion" onclick="nextQuestion()">Câu sau ➡️</button>
+      <button class="btn btn-success" id="btnToggleAutoAdvance" onclick="toggleAutoAdvance()">⏱️ Tự động qua câu: BẬT</button>
       <button class="btn btn-gold" id="btnPauseResume" onclick="togglePauseGame()">⏸️ Tạm dừng</button>
       <button class="btn btn-danger" id="btnEndGame" onclick="endGameEarly()">🏁 Kết thúc</button>
     </div>
@@ -900,9 +905,6 @@ input[type="text"], input[type="number"], input[type="password"], select, textar
 </div>
 
 <script>
-/* ============================================================================
-1. BỘ ÂM THANH GAMESHOW (WEB AUDIO API)
-   ============================================================================ */
 const SoundEngine = (() => {
   let ctx = null, muted = false, volume = 0.7, bgmPlaying = false, bgmInterval = null, bgmStep = 0;
 
@@ -968,9 +970,6 @@ function toggleFitScreen() {
   if (btn) btn.textContent = fitScreenEnabled ? '🖥️ Co dãn vừa màn hình: BẬT' : '🖥️ Co dãn vừa màn hình: TẮT';
 }
 
-/* ============================================================================
-2. ĐỒNG BỘ GOOGLE SHEETS (MÃ.GS) GIỮA MÁY GIÁO VIÊN & ĐIỆN THOẠI HỌC SINH
-   ============================================================================ */
 const STORAGE_KEY_BANK = 'dttt_thpt_dakia_bank_v4';
 const STORAGE_KEY_LOBBY = 'dttt_thpt_dakia_lobby_v4';
 
@@ -982,7 +981,22 @@ function getAppsScriptUrl() {
 }
 
 let isStudentDeviceMode = false;
-let studentSession = { name: '', room: '', teamIdx: 0, questions: [], qIndex: 0, score: 0, correct: 0, wrong: 0, selectedOpt: null, selectedTf: [null, null, null, null] };
+let autoAdvanceEnabled = true;
+let autoAdvanceDelayTimer = null;
+let studentSession = {
+  name: '',
+  room: '',
+  teamIdx: 0,
+  teamName: '',
+  questions: [],
+  qIndex: -1,
+  answeredCurrent: false,
+  score: 0,
+  correct: 0,
+  wrong: 0,
+  selectedOpt: null,
+  selectedTf: [null, null, null, null]
+};
 let teacherPollTimer = null;
 let studentPollTimer = null;
 
@@ -1091,6 +1105,31 @@ function refreshSubjectDropdowns() {
   if (bSub) {
     bSub.innerHTML = '<option value="ALL">Tất cả môn</option>' + subs.map(s => `<option value="${escapeHTML(s)}">${escapeHTML(s)}</option>`).join('');
   }
+}
+
+function syncAutoAdvanceFromSetup() {
+  const sel = document.getElementById('autoAdvanceSelect');
+  autoAdvanceEnabled = !sel || sel.value === 'auto';
+  updateAutoAdvanceButtonUI();
+}
+
+function toggleAutoAdvance() {
+  autoAdvanceEnabled = !autoAdvanceEnabled;
+  const sel = document.getElementById('autoAdvanceSelect');
+  if (sel) sel.value = autoAdvanceEnabled ? 'auto' : 'manual';
+  if (!autoAdvanceEnabled && autoAdvanceDelayTimer) {
+    clearTimeout(autoAdvanceDelayTimer);
+    autoAdvanceDelayTimer = null;
+  }
+  updateAutoAdvanceButtonUI();
+  showToast(autoAdvanceEnabled ? '⏱️ Đã BẬT chế độ chuyển câu tự động!' : '👆 Đã chuyển sang chế độ qua câu thủ công!', 'info');
+}
+
+function updateAutoAdvanceButtonUI() {
+  const btn = document.getElementById('btnToggleAutoAdvance');
+  if (!btn) return;
+  btn.textContent = autoAdvanceEnabled ? '⏱️ Tự động qua câu: BẬT' : '👆 Tự động qua câu: TẮT';
+  btn.className = autoAdvanceEnabled ? 'btn btn-success' : 'btn';
 }
 
 /* ============================================================================
@@ -1430,7 +1469,7 @@ async function importDocxFromModal() {
 }
 
 /* ============================================================================
-4. MÃ QR & ĐỒNG BỘ TRỰC TUYẾN QUA GOOGLE APPS SCRIPT
+4. MÃ QR & TỰ ĐỘNG PHÂN ĐỘI KHI HỌC SINH VÀO PHÒNG
    ============================================================================ */
 function buildAutoRoomUrl(code) {
   const loc = window.location;
@@ -1449,7 +1488,7 @@ function initRoomCodeAndQR() {
   const linkInp = document.getElementById('roomJoinLinkInput');
   if (linkInp) linkInp.value = buildAutoRoomUrl(currentRoomCode);
   const lbl = document.getElementById('roomCodeLabel');
-  if (lbl) lbl.textContent = `Mã phòng: ${currentRoomCode} (Học sinh quét QR để báo danh vào phòng)`;
+  if (lbl) lbl.textContent = `Mã phòng: ${currentRoomCode} (Học sinh quét QR để vào đội ngay)`;
   generateRoomQR();
 }
 
@@ -1543,7 +1582,11 @@ function registerStudentToRoom(name) {
   autoDistributeLobbyStudents(true);
 }
 
+/* Luôn phân đều học sinh vào các đội và đồng bộ ngay tên đội lên Google Sheets */
 function autoDistributeLobbyStudents(shuffleFirst = true) {
+  if (document.querySelectorAll('[id^="teamName_"]').length === 0) {
+    renderTeamInputs();
+  }
   const teamBoxes = document.querySelectorAll('[id^="teamName_"]');
   const teamCount = teamBoxes.length;
   if (!teamCount) return;
@@ -1558,16 +1601,18 @@ function autoDistributeLobbyStudents(shuffleFirst = true) {
     saveLobbyStudents();
   }
 
-  if (gameState.mode === 'solo' && list.length > 0) {
+  if (gameState.mode === 'solo') {
     const container = document.getElementById('teamsConfigList');
-    container.innerHTML = list.map((st, idx) => `
-      <div class="team-input-box">
-        <label>Thí sinh #${idx + 1}</label>
-        <input type="text" id="teamName_${idx}" value="${escapeHTML(st.name)}" readonly>
-        <input type="hidden" id="teamMembers_${idx}" value="1">
-        <input type="hidden" id="teamStudents_${idx}" value="${escapeHTML(st.name)}">
-      </div>
-    `).join('');
+    if (list.length > 0) {
+      container.innerHTML = list.map((st, idx) => `
+        <div class="team-input-box">
+          <label>Thí sinh #${idx + 1}</label>
+          <input type="text" id="teamName_${idx}" value="${escapeHTML(st.name)}" readonly>
+          <input type="hidden" id="teamMembers_${idx}" value="1">
+          <input type="hidden" id="teamStudents_${idx}" value="${escapeHTML(st.name)}">
+        </div>
+      `).join('');
+    }
     return;
   }
 
@@ -1589,16 +1634,34 @@ function autoDistributeLobbyStudents(shuffleFirst = true) {
     buckets[chosenTeamIdx].push(list[cursor++]);
   }
 
+  const teamsMap = [];
+  const teamNames = [];
   buckets.forEach((b, idx) => {
     const stuInp = document.getElementById(`teamStudents_${idx}`);
     const memInp = document.getElementById(`teamMembers_${idx}`);
+    const nameInp = document.getElementById(`teamName_${idx}`);
     if (stuInp) stuInp.value = b.map(s => s.name).join(', ');
     if (memInp) memInp.value = b.length;
+    teamNames.push(nameInp ? nameInp.value.trim() : `Đội ${idx + 1}`);
+    b.forEach(s => teamsMap.push({ name: s.name, teamIdx: idx }));
   });
+
+  const scriptUrl = getAppsScriptUrl();
+  if (scriptUrl && !isStudentDeviceMode && teamsMap.length > 0) {
+    fetch(scriptUrl, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'arena_teams',
+        room: currentRoomCode,
+        teamNames,
+        teamsMap
+      })
+    }).catch(() => {});
+  }
 }
 
 /* ============================================================================
-5. TÁCH RIÊNG MÀN HÌNH HỌC SINH (BÁO DANH -> PHÒNG CHỜ KHÓA -> LÀM BÀI KHI GV BẤM BẮT ĐẦU)
+5. TÁCH RIÊNG MÀN HÌNH HỌC SINH (CHỈ GỬI ĐÁP ÁN, KHÔNG ĐƯỢC QUA CÂU)
    ============================================================================ */
 function enterStudentExclusiveUI() {
   isStudentDeviceMode = true;
@@ -1643,7 +1706,7 @@ async function submitStudentJoin() {
 
   const scriptUrl = getAppsScriptUrl();
   if (scriptUrl) {
-    fb.innerHTML = `<div class="alert-box alert-info">⏳ Đang kết nối vào phòng <strong>${escapeHTML(code)}</strong>...</div>`;
+    fb.innerHTML = `<div class="alert-box alert-info">⏳ Đang kết nối và phân đội vào phòng <strong>${escapeHTML(code)}</strong>...</div>`;
     try {
       await fetch(scriptUrl, {
         method: 'POST',
@@ -1659,10 +1722,10 @@ async function submitStudentJoin() {
   document.getElementById('stuWaitRoomBadge').textContent = code;
   document.getElementById('stuWaitNameDisplay').textContent = name;
   showToast(`✅ Đã vào phòng ${code}! Chờ Thầy/Cô bấm Bắt đầu...`, 'success');
-  startStudentWaitingPoll();
+  startStudentStatePoll();
 }
 
-function startStudentWaitingPoll() {
+function startStudentStatePoll() {
   if (studentPollTimer) clearInterval(studentPollTimer);
   const scriptUrl = getAppsScriptUrl();
   if (!scriptUrl) return;
@@ -1674,36 +1737,61 @@ function startStudentWaitingPoll() {
       const peers = Array.isArray(data.students) ? data.students : [];
       document.getElementById('stuWaitPeerCount').textContent = peers.length || 1;
 
+      let teamNames = ['Đội Sao Vàng', 'Đội Trí Tuệ', 'Đội Tiên Phong', 'Đội Đỉnh Cao'];
+      try {
+        const parsedTeams = JSON.parse(data.teamsJson || '[]');
+        if (Array.isArray(parsedTeams) && parsedTeams.length > 0) teamNames = parsedTeams;
+      } catch (_) {}
+
       const me = peers.find(s => s.name.toLowerCase() === studentSession.name.toLowerCase());
       if (me) {
         studentSession.teamIdx = Number(me.teamIdx || 0);
-        const defNames = ['Đội Sao Vàng', 'Đội Trí Tuệ', 'Đội Tiên Phong', 'Đội Đỉnh Cao'];
-        document.getElementById('stuWaitTeamDisplay').textContent = `✅ Đã xếp vào: ${defNames[studentSession.teamIdx] || ('Đội ' + (studentSession.teamIdx + 1))}`;
+        studentSession.teamName = teamNames[studentSession.teamIdx] || ('Đội ' + (studentSession.teamIdx + 1));
+        document.getElementById('stuWaitTeamDisplay').textContent = `✅ Em đã được phân vào: ${studentSession.teamName}`;
       }
 
       if (data.status === 'STARTED') {
         let qs = [];
         try { qs = JSON.parse(data.questionsJson || '[]'); } catch (_) {}
         if (Array.isArray(qs) && qs.length > 0) {
-          clearInterval(studentPollTimer);
           studentSession.questions = qs;
-          studentSession.qIndex = 0;
-          studentSession.score = 0;
-          studentSession.correct = 0;
-          studentSession.wrong = 0;
-          openStudentPlayArena();
+          const serverIdx = Math.min(qs.length - 1, Math.max(0, Number(data.currentIndex || 0)));
+
+          if (document.getElementById('studentPlayArenaCard').style.display === 'none') {
+            document.getElementById('studentWaitingLobbyCard').style.display = 'none';
+            document.getElementById('studentPlayArenaCard').style.display = 'block';
+          }
+
+          document.getElementById('stuTeamTag').textContent = `${studentSession.teamName || 'Đội thi'} • ${studentSession.name}`;
+
+          // Chỉ chuyển câu khi Giáo viên (hoặc chế độ tự động trên máy Giáo viên) chuyển câu!
+          if (serverIdx !== studentSession.qIndex) {
+            studentSession.qIndex = serverIdx;
+            studentSession.answeredCurrent = false;
+            renderStudentCurrentQuestion();
+          }
         }
+      } else if (data.status === 'ENDED') {
+        clearInterval(studentPollTimer);
+        showStudentFinishedScreen();
       }
     } catch (_) {}
-  }, 2000);
+  }, 1800);
 }
 
-function openStudentPlayArena() {
+function showStudentFinishedScreen() {
   document.getElementById('studentWaitingLobbyCard').style.display = 'none';
   document.getElementById('studentPlayArenaCard').style.display = 'block';
-  const defNames = ['Đội Sao Vàng', 'Đội Trí Tuệ', 'Đội Tiên Phong', 'Đội Đỉnh Cao'];
-  document.getElementById('stuTeamTag').textContent = `${defNames[studentSession.teamIdx] || ('Đội ' + (studentSession.teamIdx + 1))} • ${studentSession.name}`;
-  renderStudentCurrentQuestion();
+  document.getElementById('stuCurrentScore').textContent = studentSession.score;
+  document.getElementById('stuQuestionBody').innerHTML = `<div style="text-align:center; padding:18px;">
+    <div style="font-size:2.6rem;">🏆</div>
+    <h3 style="color:var(--gold); margin-top:6px;">TRẬN ĐẤU ĐÃ KẾT THÚC!</h3>
+    <p style="margin-top:8px; color:var(--text-muted);">Tổng điểm em đóng góp cho <strong>${escapeHTML(studentSession.teamName || 'đội')}</strong>: <strong style="color:var(--success); font-size:1.35rem;">${studentSession.score} điểm</strong></p>
+    <p style="font-size:0.85rem; color:var(--text-muted); margin-top:6px;">Hãy nhìn lên màn hình lớp để xem bảng tổng kết xếp hạng nhé!</p>
+  </div>`;
+  document.getElementById('stuQuestionImages').style.display = 'none';
+  document.getElementById('stuAnswerOptionsArea').innerHTML = '';
+  document.getElementById('btnStuSubmitOnly').style.display = 'none';
 }
 
 function renderStudentCurrentQuestion() {
@@ -1717,7 +1805,7 @@ function renderStudentCurrentQuestion() {
 
   document.getElementById('stuQProgress').textContent = `CÂU ${idx + 1} / ${qs.length}`;
   document.getElementById('stuCurrentScore').textContent = studentSession.score;
-  document.getElementById('stuAnswerStatusMsg').textContent = '';
+  document.getElementById('stuAnswerStatusMsg').textContent = 'Chọn đáp án rồi bấm "Gửi đáp án"';
   document.getElementById('stuQuestionBody').innerHTML = escapeHTML(q.question).replace(/\n/g, '<br>');
 
   const imgBox = document.getElementById('stuQuestionImages');
@@ -1756,13 +1844,15 @@ function renderStudentCurrentQuestion() {
       </div>`;
   }
 
-  const btn = document.getElementById('btnStuSubmitNext');
+  const btn = document.getElementById('btnStuSubmitOnly');
+  btn.style.display = 'inline-flex';
   btn.disabled = false;
-  btn.textContent = (idx + 1 >= qs.length) ? '🏁 Nộp bài & Hoàn thành' : '✅ Gửi đáp án & Câu tiếp ➔';
+  btn.textContent = '✅ Gửi đáp án';
   renderMath(document.getElementById('studentPlayArenaCard'));
 }
 
 function pickStudentMcq(optIdx) {
+  if (studentSession.answeredCurrent) return;
   studentSession.selectedOpt = optIdx;
   for (let i = 0; i < 4; i++) {
     const el = document.getElementById(`stuOptBtn_${i}`);
@@ -1771,6 +1861,7 @@ function pickStudentMcq(optIdx) {
 }
 
 function pickStudentTf(stmtIdx, val) {
+  if (studentSession.answeredCurrent) return;
   studentSession.selectedTf[stmtIdx] = val;
   const tEl = document.getElementById(`stuTfTrue_${stmtIdx}`);
   const fEl = document.getElementById(`stuTfFalse_${stmtIdx}`);
@@ -1778,7 +1869,9 @@ function pickStudentTf(stmtIdx, val) {
   if (fEl) fEl.classList.toggle('active-false', val === false);
 }
 
+/* Học sinh CHỈ được gửi đáp án, sau khi gửi bị khóa và chờ Giáo viên chuyển câu */
 async function submitStudentQuestionAnswer() {
+  if (studentSession.answeredCurrent) return;
   const q = studentSession.questions[studentSession.qIndex];
   if (!q) return;
 
@@ -1799,23 +1892,34 @@ async function submitStudentQuestionAnswer() {
     }
     isCorrect = stmts.every((st, i) => Boolean(studentSession.selectedTf[i]) === Boolean(st.isTrue));
   } else {
-    const raw = (document.getElementById('stuShortAnswerInput')?.value || '').trim().replace(/\s+/g, '').replace(',', '.').toLowerCase();
+    const inp = document.getElementById('stuShortAnswerInput');
+    const raw = (inp?.value || '').trim().replace(/\s+/g, '').replace(',', '.').toLowerCase();
     const key = String(q.answer || '').trim().replace(/\s+/g, '').replace(',', '.').toLowerCase();
     if (!raw) {
       showToast('Em hãy nhập đáp án trước khi gửi!', 'warning');
       return;
     }
     isCorrect = raw === key;
+    if (inp) inp.disabled = true;
   }
+
+  studentSession.answeredCurrent = true;
+  const btn = document.getElementById('btnStuSubmitOnly');
+  btn.disabled = true;
+  btn.textContent = '🔒 Đã gửi đáp án';
+  document.querySelectorAll('#stuAnswerOptionsArea .option-btn').forEach(el => el.classList.add('locked-opt'));
 
   if (isCorrect) {
     studentSession.score += pts;
     studentSession.correct++;
+    document.getElementById('stuAnswerStatusMsg').innerHTML = `<span style="color:var(--success);">🎉 Chính xác (+${pts}đ)! Đang chờ Thầy (Cô) chuyển câu tiếp...</span>`;
     showToast(`🎉 Chính xác! +${pts} điểm`, 'success');
   } else {
     studentSession.wrong++;
+    document.getElementById('stuAnswerStatusMsg').innerHTML = `<span style="color:#ff8a80;">❌ Chưa chính xác! Đang chờ Thầy (Cô) chuyển câu tiếp...</span>`;
     showToast('❌ Chưa chính xác ở câu này!', 'error');
   }
+  document.getElementById('stuCurrentScore').textContent = studentSession.score;
 
   const scriptUrl = getAppsScriptUrl();
   if (scriptUrl) {
@@ -1830,25 +1934,9 @@ async function submitStudentQuestionAnswer() {
       })
     }).catch(() => {});
   }
-
-  if (studentSession.qIndex + 1 < studentSession.questions.length) {
-    studentSession.qIndex++;
-    renderStudentCurrentQuestion();
-  } else {
-    document.getElementById('stuCurrentScore').textContent = studentSession.score;
-    document.getElementById('stuQuestionBody').innerHTML = `<div style="text-align:center; padding:16px;">
-      <div style="font-size:2.5rem;">🏆</div>
-      <h3 style="color:var(--gold); margin-top:6px;">EM ĐÃ HOÀN THÀNH PHẦN THI!</h3>
-      <p style="margin-top:6px; color:var(--text-muted);">Tổng điểm đóng góp cho đội: <strong style="color:var(--success); font-size:1.3rem;">${studentSession.score} điểm</strong></p>
-      <p style="font-size:0.85rem; color:var(--text-muted); margin-top:4px;">Hãy nhìn lên màn hình lớp để xem bảng xếp hạng chung cuộc nhé!</p>
-    </div>`;
-    document.getElementById('stuQuestionImages').style.display = 'none';
-    document.getElementById('stuAnswerOptionsArea').innerHTML = '';
-    document.getElementById('btnStuSubmitNext').style.display = 'none';
-  }
 }
 
-/* ĐỒNG BỘ DANH SÁCH HỌC SINH & ĐIỂM SỐ VỀ MÁY GIÁO VIÊN */
+/* ĐỒNG BỘ DANH SÁCH HỌC SINH & TỰ ĐỘNG PHÂN ĐỘI + ĐIỂM SỐ VỀ MÁY GIÁO VIÊN */
 function startTeacherCloudPolling() {
   if (teacherPollTimer) clearInterval(teacherPollTimer);
   const scriptUrl = getAppsScriptUrl();
@@ -1862,28 +1950,48 @@ function startTeacherCloudPolling() {
       const cloudList = Array.isArray(data.students) ? data.students : [];
 
       if (document.getElementById('screenHome').classList.contains('active')) {
-        if (cloudList.length !== lobbyStudents.length) {
+        const oldSig = lobbyStudents.map(s => s.name).join('|');
+        const newSig = cloudList.map(s => s.name).join('|');
+        if (newSig !== oldSig) {
           lobbyStudents = cloudList;
           saveLobbyStudents();
           autoDistributeLobbyStudents(true);
-          showToast(`📱 Có ${lobbyStudents.length} học sinh trong phòng!`, 'success');
+          showToast(`📱 Cập nhật: ${lobbyStudents.length} học sinh đã vào & tự chia đội!`, 'success');
         }
       } else if (document.getElementById('screenArena').classList.contains('active')) {
         let updated = false;
+        let allAnsweredThisQuestion = cloudList.length > 0;
+
         gameState.teams.forEach(team => {
           team.membersList.forEach(m => {
             const match = cloudList.find(c => c.name.toLowerCase() === m.name.toLowerCase());
-            if (match && Number(match.score || 0) !== m.score) {
-              m.score = Number(match.score || 0);
-              updated = true;
+            if (match) {
+              if (Number(match.score || 0) !== m.score) {
+                m.score = Number(match.score || 0);
+                updated = true;
+              }
+              if (Number(match.answered || 0) <= gameState.currentIndex) {
+                allAnsweredThisQuestion = false;
+              }
             }
           });
           team.score = team.membersList.reduce((sum, m) => sum + Number(m.score || 0), 0);
         });
+
         if (updated) renderScoreboard();
+
+        // Nếu bật tự động qua câu và 100% học sinh đã nộp câu hiện tại -> tự động qua câu sau 2 giây
+        if (autoAdvanceEnabled && !gameState.isPaused && allAnsweredThisQuestion && !autoAdvanceDelayTimer) {
+          stopTimer();
+          showToast('✅ Tất cả học sinh đã nộp đáp án! Tự động chuyển câu...', 'success');
+          autoAdvanceDelayTimer = setTimeout(() => {
+            autoAdvanceDelayTimer = null;
+            nextQuestion();
+          }, 2000);
+        }
       }
     } catch (_) {}
-  }, 2500);
+  }, 2000);
 }
 
 /* ============================================================================
@@ -1939,9 +2047,26 @@ function goHome() {
 }
 
 /* ============================================================================
-7. GIÁO VIÊN BẤM BẮT ĐẦU -> PHÁT ĐỀ & MỞ KHÓA CHO TOÀN BỘ ĐIỆN THOẠI HỌC SINH
+7. GIÁO VIÊN BẤM BẮT ĐẦU & ĐIỀU KHIỂN CHUYỂN CÂU ĐỒNG BỘ
    ============================================================================ */
+function pushCurrentQuestionIndexToStudents(status = 'STARTED') {
+  const scriptUrl = getAppsScriptUrl();
+  if (!scriptUrl) return;
+  fetch(scriptUrl, {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'arena_step',
+      room: currentRoomCode,
+      status,
+      currentIndex: gameState.currentIndex
+    })
+  }).catch(() => {});
+}
+
 async function startGame() {
+  syncAutoAdvanceFromSetup();
+  autoDistributeLobbyStudents(false);
+
   const sourceMode = document.getElementById('examSourceMode').value;
   const sub = document.getElementById('filterSubject').value;
   const grade = document.getElementById('filterGrade').value;
@@ -1975,8 +2100,10 @@ async function startGame() {
 
   gameState.teams = [];
   const teamsMap = [];
+  const teamNames = [];
   document.querySelectorAll('[id^="teamName_"]').forEach((inp, idx) => {
     const tName = inp.value.trim() || `Đội ${idx + 1}`;
+    teamNames.push(tName);
     const stuRaw = (document.getElementById(`teamStudents_${idx}`)?.value || '').trim();
     const names = stuRaw ? stuRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
     names.forEach(n => teamsMap.push({ name: n, teamIdx: idx }));
@@ -1995,7 +2122,6 @@ async function startGame() {
     });
   });
 
-  // Phát tín hiệu BẮT ĐẦU + Gói câu hỏi nhẹ (bỏ ảnh quá nặng nếu vượt giới hạn) xuống điện thoại học sinh
   const scriptUrl = getAppsScriptUrl();
   if (scriptUrl) {
     const lightQuestions = gameState.questions.map(q => ({
@@ -2014,6 +2140,8 @@ async function startGame() {
         action: 'arena_start',
         room: currentRoomCode,
         status: 'STARTED',
+        currentIndex: 0,
+        teamNames,
         questions: lightQuestions,
         teamsMap
       })
@@ -2026,7 +2154,7 @@ async function startGame() {
   SoundEngine.playTransition();
   renderScoreboard();
   loadCurrentQuestion();
-  showToast('🚀 Đã mở khóa đề thi cho toàn bộ học sinh trong phòng!', 'success');
+  showToast('🚀 Đã mở khóa Câu 1 cho toàn bộ học sinh trong phòng!', 'success');
 }
 
 function getPoints(q) {
@@ -2058,6 +2186,10 @@ function renderScoreboard() {
 
 function loadCurrentQuestion() {
   stopTimer();
+  if (autoAdvanceDelayTimer) {
+    clearTimeout(autoAdvanceDelayTimer);
+    autoAdvanceDelayTimer = null;
+  }
   const q = gameState.questions[gameState.currentIndex];
   const pts = getPoints(q);
   gameState.isPaused = false;
@@ -2113,11 +2245,11 @@ function loadCurrentQuestion() {
   const t1 = Math.min(180, Math.max(5, parseInt(document.getElementById('timePart1')?.value) || 20));
   const t2 = Math.min(180, Math.max(5, parseInt(document.getElementById('timePart2')?.value) || 30));
   const t3 = Math.min(180, Math.max(5, parseInt(document.getElementById('timePart3')?.value) || 30));
-  const defT = Math.min(180, Math.max(5, parseInt(document.getElementById('defaultTimeLimit')?.value) || 20));
   if (q.type === 'mcq') gameState.timeLeft = t1;
   else if (q.type === 'tf4') gameState.timeLeft = t2;
   else if (q.type === 'short') gameState.timeLeft = t3;
-  else gameState.timeLeft = (q.time >= 5 && q.time <= 180) ? Number(q.time) : defT;
+  else gameState.timeLeft = 20;
+
   updateTimerUI();
   startTimer();
   renderMath(document.getElementById('questionStage'));
@@ -2132,7 +2264,15 @@ function startTimer() {
     if (gameState.timeLeft <= 0) {
       stopTimer();
       SoundEngine.playTimeout();
-      showToast('⏰ HẾT GIỜ CÂU NÀY!', 'warning');
+      if (autoAdvanceEnabled) {
+        showToast('⏰ Hết giờ! Tự động chuyển sang câu tiếp theo...', 'warning');
+        autoAdvanceDelayTimer = setTimeout(() => {
+          autoAdvanceDelayTimer = null;
+          nextQuestion();
+        }, 2000);
+      } else {
+        showToast('⏰ HẾT GIỜ CÂU NÀY!', 'warning');
+      }
     }
   }, 1000);
 }
@@ -2152,6 +2292,7 @@ function prevQuestion() {
     if (gameState.teams.length > 1) {
       gameState.activeTeamIndex = (gameState.activeTeamIndex - 1 + gameState.teams.length) % gameState.teams.length;
     }
+    pushCurrentQuestionIndexToStudents('STARTED');
     renderScoreboard();
     loadCurrentQuestion();
   }
@@ -2164,6 +2305,7 @@ function nextQuestion() {
     if (gameState.teams.length > 1) {
       gameState.activeTeamIndex = (gameState.activeTeamIndex + 1) % gameState.teams.length;
     }
+    pushCurrentQuestionIndexToStudents('STARTED');
     renderScoreboard();
     loadCurrentQuestion();
   } else {
@@ -2196,6 +2338,11 @@ function scrollToStudentResults() {
 }
 
 function finishGame() {
+  if (autoAdvanceDelayTimer) {
+    clearTimeout(autoAdvanceDelayTimer);
+    autoAdvanceDelayTimer = null;
+  }
+  pushCurrentQuestionIndexToStudents('ENDED');
   switchScreen('screenEnd');
   SoundEngine.playVictory();
   startFireworks();
@@ -2269,7 +2416,6 @@ function startFireworks() {
 }
 function stopFireworks() { if (fwId) { cancelAnimationFrame(fwId); fwId = null; } }
 
-/* Quản lý ngân hàng & AI */
 function openBankModal(tab = 'tab-list') { document.getElementById('bankModal').classList.add('open'); switchBankTab(tab); }
 function closeBankModal() { document.getElementById('bankModal').classList.remove('open'); }
 function switchBankTab(tab) {
